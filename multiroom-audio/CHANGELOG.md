@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.10] - Stability Improvements
+
+### Added
+- Signal handlers (SIGTERM, SIGINT) for graceful shutdown on HAOS
+- Enhanced startup logging with environment details (log path, config path)
+
+### Changed
+- Process manager now uses safer subprocess handling that works across all container environments
+- Improved error handling around process group creation (os.setsid)
+
+---
+
 ## [1.2.9] - Fix Ingress & Sendspin Device Detection
 
 ### Fixed

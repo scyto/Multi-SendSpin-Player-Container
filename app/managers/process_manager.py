@@ -9,9 +9,39 @@ import logging
 import os
 import signal
 import subprocess
+import sys
 import time
 
 logger = logging.getLogger(__name__)
+
+
+def _get_preexec_fn():
+    """
+    Get the appropriate preexec_fn for subprocess.Popen.
+
+    Returns a function that calls os.setsid on Unix-like systems to create
+    a new process group, allowing us to kill the entire group when stopping
+    players. Returns None on Windows or if setsid is not available.
+    """
+    # Skip on Windows
+    if sys.platform == "win32":
+        return None
+
+    # Check if setsid is available
+    if not hasattr(os, "setsid"):
+        logger.warning("os.setsid not available on this platform")
+        return None
+
+    def safe_setsid():
+        """Wrapper around os.setsid with error handling."""
+        import contextlib
+
+        with contextlib.suppress(OSError):
+            # OSError can happen if we're already a session leader
+            # Silently continue - this is expected in some container environments
+            os.setsid()
+
+    return safe_setsid
 
 # =============================================================================
 # CONSTANTS
@@ -85,11 +115,14 @@ class ProcessManager:
 
         try:
             # Start the process in its own process group
+            preexec = _get_preexec_fn()
+            logger.debug(f"Starting subprocess with preexec_fn={preexec is not None}")
+
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                preexec_fn=os.setsid,  # type: ignore[attr-defined]
+                preexec_fn=preexec,
             )
 
             self.processes[name] = process
@@ -139,7 +172,7 @@ class ProcessManager:
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                preexec_fn=os.setsid,  # type: ignore[attr-defined]
+                preexec_fn=_get_preexec_fn(),
             )
 
             self.processes[name] = process

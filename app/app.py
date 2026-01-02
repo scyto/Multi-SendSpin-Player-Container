@@ -34,6 +34,7 @@ Usage:
 
 import logging
 import os
+import signal
 import sys
 import traceback
 from typing import Any
@@ -65,7 +66,44 @@ logger.info("Starting Multi Output Player")
 logger.info(f"Python version: {sys.version}")
 logger.info(f"Working directory: {os.getcwd()}")
 logger.info(f"Python path: {sys.path}")
+logger.info(f"Log path: {LOG_PATH}")
+logger.info(f"Config path: {os.environ.get('CONFIG_PATH', '/app/config')}")
 logger.info("=" * 50)
+
+# =============================================================================
+# SIGNAL HANDLERS
+# =============================================================================
+
+# Global reference to manager for signal handler
+_manager = None
+
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals gracefully."""
+    sig_name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
+    logger.info(f"Received signal {sig_name}, shutting down gracefully...")
+
+    # Stop all running players
+    if _manager is not None:
+        try:
+            logger.info("Stopping all players...")
+            stopped = _manager.process.stop_all()
+            logger.info(f"Stopped {stopped} players")
+        except Exception as e:
+            logger.error(f"Error stopping players: {e}")
+
+    logger.info("Shutdown complete")
+    sys.exit(0)
+
+
+# Register signal handlers
+try:
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    logger.info("Signal handlers registered (SIGTERM, SIGINT)")
+except Exception as e:
+    logger.warning(f"Could not register signal handlers: {e}")
+
 
 # =============================================================================
 # ENVIRONMENT VARIABLE VALIDATION
@@ -578,6 +616,9 @@ try:
 
     manager = PlayerManager(config_manager, audio_manager, process_manager, provider_registry)
     logger.info("PlayerManager initialized successfully")
+
+    # Set global reference for signal handler
+    _manager = manager
 
 except Exception as e:
     logger.error(f"Failed to initialize managers: {e}")
