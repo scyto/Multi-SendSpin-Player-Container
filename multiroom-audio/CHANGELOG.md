@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.2] - Startup Fix
+
+### Fixed
+- **Segmentation fault on startup**: Replaced gunicorn with Flask's built-in server to avoid fork-related crashes with SocketIO and audio libraries (sounddevice/PortAudio)
+- The gunicorn pre-fork model caused segfaults when native audio libraries were initialized before the fork
+
+### Technical Details
+- Flask's development server is sufficient for home automation with limited concurrent users
+- Eliminates race conditions between gunicorn worker forks and SocketIO/audio initialization
+
+---
+
 ## [1.1.0] - Snapcast & HAOS Support
 
 ### Added

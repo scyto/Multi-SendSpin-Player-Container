@@ -174,7 +174,7 @@ Key differences from standalone Docker:
 - **Base image**: Alpine (smaller) instead of Debian
 - **Audio system**: PulseAudio via hassio_audio instead of ALSA
 - **Config storage**: `/data` instead of `/app/config`
-- **Startup**: bashio script instead of gunicorn directly
+- **Startup**: bashio script using Flask's built-in server
 
 ---
 

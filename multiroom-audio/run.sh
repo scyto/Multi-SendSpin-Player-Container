@@ -67,18 +67,7 @@ fi
 bashio::log.info "Starting web interface on port 8080..."
 cd /app
 
-# Use gunicorn for production if available, otherwise flask directly
-if command -v gunicorn &> /dev/null; then
-    exec gunicorn \
-        --bind 0.0.0.0:8080 \
-        --workers 1 \
-        --threads 4 \
-        --worker-class gthread \
-        --timeout 120 \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level "${LOG_LEVEL}" \
-        "app:create_app()"
-else
-    exec python3 -m flask run --host=0.0.0.0 --port=8080
-fi
+# Use Flask's built-in server directly
+# Note: We avoid gunicorn due to fork-related segfaults with SocketIO and audio libraries.
+# Flask's dev server is sufficient for home automation with limited concurrent users.
+exec python3 app.py
