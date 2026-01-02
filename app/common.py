@@ -351,6 +351,9 @@ def register_routes(app, manager):
     @app.route("/api/players", methods=["POST"])
     def create_player():
         """API endpoint to create a new player"""
+        logger.info("POST /api/players - create_player endpoint called")
+        import sys
+        sys.stdout.flush()
         # Validate request.json is present and valid
         if request.json is None:
             return jsonify({"success": False, "error": "Request body must be valid JSON"}), 400
@@ -358,6 +361,7 @@ def register_routes(app, manager):
         data = request.json
         name = data.get("name")
         device = data.get("device", "default")
+        logger.info(f"POST /api/players - name={name}, device={device}, provider={data.get('provider', 'squeezelite')}")
 
         if not name:
             return jsonify({"success": False, "error": "Name is required"}), 400
@@ -387,6 +391,7 @@ def register_routes(app, manager):
                     if k not in ("name", "device", "provider", "server_ip", "server_url", "mac_address")
                 }
 
+                logger.info(f"POST /api/players - calling manager.create_player for {provider_type}")
                 success, message = manager.create_player(
                     name=name,
                     device=device,
@@ -748,9 +753,9 @@ def register_websocket_handlers(socketio, manager):
             logger.warning(f"Failed to send initial status update on connect: {e}")
 
     @socketio.on("disconnect")
-    def handle_disconnect():
+    def handle_disconnect(reason=None):
         """Handle WebSocket client disconnection gracefully"""
-        logger.debug("WebSocket client disconnected")
+        logger.debug(f"WebSocket client disconnected (reason: {reason})")
 
     @socketio.on_error_default
     def default_error_handler(e):
