@@ -57,10 +57,10 @@ if os.path.exists(_CRASH_LOG_PATH) and os.path.getsize(_CRASH_LOG_PATH) > 0:
     open(_CRASH_LOG_PATH, "w").close()  # noqa: SIM115
     _crash_file = open(_CRASH_LOG_PATH, "a", buffering=1)  # noqa: SIM115
 
-# Enable faulthandler to write to both stderr AND the crash file
+# Enable faulthandler to write crash traces to the file
+# NOTE: faulthandler.enable() can only output to ONE destination
+# We choose the file because stderr may not be captured on HAOS
 faulthandler.enable(file=_crash_file, all_threads=True)
-# Also enable on stderr for immediate visibility
-faulthandler.enable(file=sys.stderr, all_threads=True)
 
 print(f"Faulthandler enabled - crash traces will be written to {_CRASH_LOG_PATH}", file=sys.stderr)
 

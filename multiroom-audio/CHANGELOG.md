@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.13] - Fix Crash Logging
+
+### Fixed
+- **Faulthandler now actually writes to file**: Fixed bug where second `faulthandler.enable()` call was overriding the first, causing crash traces to go to stderr (not captured) instead of the file
+
+### Notes
+- Crash traces are written to `/data/logs/crash.log`
+- On restart after a crash, the contents are printed to supervisor logs with "PREVIOUS CRASH DETECTED" banner
+- The crash.log is cleared after being displayed
+
+---
+
 ## [1.2.12] - Persistent Crash Logging
 
 ### Changed
