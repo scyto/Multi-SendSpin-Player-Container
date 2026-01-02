@@ -1,11 +1,11 @@
 # Changelog
 
-## [1.2.3] - Simplify Network Config
+## [1.2.4] - Simplify Add-on Config
 
 ### Changed
-- Removed direct port exposure from HAOS add-on; now uses ingress only
-- Access the add-on exclusively via the Home Assistant sidebar
-- Eliminates confusing "Network" port settings in add-on configuration
+- Removed direct port exposure; now uses ingress only (sidebar access)
+- Removed `default_server_ip` option; set server IP per-player in web UI instead
+- Add-on configuration now only has `log_level` setting
 
 ---
 
