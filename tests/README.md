@@ -6,13 +6,16 @@ This directory contains comprehensive unit tests for the Multi-Room Audio Contro
 
 ```
 tests/
-├── __init__.py                          # Package marker
 ├── conftest.py                          # Shared pytest fixtures
-├── test_player_config_schema.py         # Tests for Pydantic schemas
-├── test_config_manager.py               # Tests for ConfigManager
-├── test_audio_manager.py                # Tests for AudioManager
-├── test_process_manager.py              # Tests for ProcessManager
-├── test_snapcast_provider.py            # Tests for SnapcastProvider
+├── test_api_endpoints.py                # API route integration tests
+├── test_audio_manager.py                # AudioManager unit tests
+├── test_config_manager.py               # ConfigManager unit tests
+├── test_env_validation.py               # Environment validation tests
+├── test_player_config_schema.py         # Pydantic schema validation tests
+├── test_process_manager.py              # ProcessManager unit tests
+├── test_sendspin_provider.py            # Sendspin provider tests
+├── test_snapcast_provider.py            # Snapcast provider tests
+├── test_squeezelite_provider.py         # Squeezelite provider tests
 └── README.md                            # This file
 ```
 
@@ -147,9 +150,11 @@ The test suite covers:
 
 | Provider | Test File | Key Tests |
 |----------|-----------|-----------|
-| Squeezelite | `test_player_config_schema.py` | MAC generation, buffer params, server IP |
-| Sendspin | `test_player_config_schema.py` | PortAudio device index, server URL |
+| Squeezelite | `test_squeezelite_provider.py` | MAC generation, buffer params, command building |
+| Sendspin | `test_sendspin_provider.py` | PortAudio device index, server URL, delay_ms |
 | Snapcast | `test_snapcast_provider.py` | Host ID generation, latency, auto-discovery |
+
+Schema validation for all providers is covered in `test_player_config_schema.py`.
 
 ## Mocking Strategy
 
