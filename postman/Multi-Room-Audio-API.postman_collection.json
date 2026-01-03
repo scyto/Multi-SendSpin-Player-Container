@@ -220,7 +220,7 @@
 			"name": "Devices",
 			"item": [
 				{
-					"name": "Get Audio Devices",
+					"name": "Get Audio Devices (ALSA)",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -229,7 +229,20 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "devices"]
 						},
-						"description": "Get all available audio devices that can be used for players"
+						"description": "Get ALSA audio devices for Squeezelite and Snapcast players"
+					}
+				},
+				{
+					"name": "Get PortAudio Devices (Sendspin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/devices/portaudio",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "devices", "portaudio"]
+						},
+						"description": "Get PortAudio devices for Sendspin players. Use device index when creating Sendspin players."
 					}
 				}
 			]
@@ -319,9 +332,9 @@
 							"raw": "{\n    \"device\": \"hw:1,0\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/test-sound",
+							"raw": "{{baseUrl}}/api/devices/test",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "test-sound"]
+							"path": ["api", "devices", "test"]
 						},
 						"description": "Play a test tone on the specified audio device"
 					}
