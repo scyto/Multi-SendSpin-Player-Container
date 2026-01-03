@@ -20,6 +20,8 @@ Rewrite the multi-room audio controller from Python/Flask to **pure C# ASP.NET C
 - **Base Images:**
   - [home-assistant/docker-base](https://github.com/home-assistant/docker-base) - Official HA base images
   - [hassio-addons/addon-base](https://github.com/hassio-addons/addon-base) - Community add-on base
+- **Reference Add-ons:**
+  - [home-assistant/addons/vlc](https://github.com/home-assistant/addons/tree/master/vlc) - Official VLC add-on (audio player pattern)
 
 ---
 

@@ -21,6 +21,8 @@ See **[nextgen.md](nextgen.md)** for the complete implementation plan.
   - [Add-on Configuration](https://developers.home-assistant.io/docs/add-ons/configuration/) - config.yaml schema
   - [Add-on Communication](https://developers.home-assistant.io/docs/add-ons/communication/) - Ingress, supervisor
   - [Add-on Publishing](https://developers.home-assistant.io/docs/add-ons/publishing/) - Repository setup
+- **Reference Add-ons:**
+  - [home-assistant/addons/vlc](https://github.com/home-assistant/addons/tree/master/vlc) - Official VLC add-on (audio player pattern)
 
 ### Branch Strategy
 - **`main`** - Current Python implementation (stable)
