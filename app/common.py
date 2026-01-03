@@ -880,19 +880,37 @@ def run_server(app, socketio, host: str = "0.0.0.0", port: int | None = None):
         port: Port number to bind to. If None, uses WEB_PORT env var or 8095.
                If 0, lets OS assign an available port.
     """
+    import socket
+
     # Get port from environment or use default
     if port is None:
         port = int(os.environ.get("WEB_PORT", "8095"))
 
     try:
-        # Find an available port
-        actual_port = find_available_port(port, host)
+        # Check if we're in HAOS - dynamic ports break ingress
+        if is_hassio() and port != 0:
+            # In HAOS, we MUST use the configured ingress port (8095)
+            # Check if port is available
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                try:
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    sock.bind((host, port))
+                    actual_port = port
+                except OSError as e:
+                    logger.error(f"Port {port} is already in use!")
+                    logger.error("In Home Assistant OS, the add-on MUST use port 8095 for ingress to work.")
+                    logger.error("Something else on your system is using this port.")
+                    logger.error("Please check for other services using port 8095 and stop them.")
+                    raise RuntimeError(f"Port {port} required for HAOS ingress but is in use") from e
+        else:
+            # Standalone Docker - can use dynamic ports
+            actual_port = find_available_port(port, host)
 
-        if actual_port != port:
-            if port == 0:
-                logger.info(f"OS assigned port {actual_port}")
-            else:
-                logger.warning(f"Port {port} in use, using port {actual_port} instead")
+            if actual_port != port:
+                if port == 0:
+                    logger.info(f"OS assigned port {actual_port}")
+                else:
+                    logger.warning(f"Port {port} in use, using port {actual_port} instead")
 
         logger.info("Starting Flask-SocketIO server...")
         logger.info(f"Server will be available at: http://{host}:{actual_port}")
