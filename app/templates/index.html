@@ -49,7 +49,7 @@
                     <p class="mb-0 opacity-75">Manage your multi-room audio players</p>
                 </div>
                 <div class="col-auto">
-                    <a href="/docs" class="btn btn-outline-light me-2" target="_blank" title="API Documentation">
+                    <a href="./docs" class="btn btn-outline-light me-2" target="_blank" title="API Documentation">
                         <i class="fas fa-code me-2"></i>API Docs
                     </a>
                     <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addPlayerModal">
@@ -388,7 +388,7 @@
         async function loadProviders() {
             try {
                 console.log('Loading providers from /api/providers...');
-                const response = await fetch('/api/providers');
+                const response = await fetch('./api/providers');
                 console.log('Providers response status:', response.status);
                 if (!response.ok) {
                     console.error('Providers API error:', response.status, response.statusText);
@@ -489,7 +489,7 @@
         // Load devices based on provider type
         async function loadDevicesForProvider(provider, deviceSelect, preserveValue = '') {
             const isSendspin = provider === 'sendspin';
-            const endpoint = isSendspin ? '/api/devices/portaudio' : '/api/devices';
+            const endpoint = isSendspin ? './api/devices/portaudio' : './api/devices';
 
             try {
                 console.log('Loading devices from', endpoint, 'for provider', provider);
@@ -653,7 +653,7 @@
         async function startPlayer(playerName) {
             setButtonLoading(playerName, 'start', true);
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/start`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -674,7 +674,7 @@
         async function stopPlayer(playerName) {
             setButtonLoading(playerName, 'stop', true);
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/stop`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}/stop`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -698,7 +698,7 @@
             }
             
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -719,7 +719,7 @@
         async function editPlayer(playerName) {
             try {
                 // Get current player data
-                const playersResponse = await fetch(`/api/players`);
+                const playersResponse = await fetch(`./api/players`);
                 const playersData = await playersResponse.json();
                 const player = playersData.players[playerName];
 
@@ -768,7 +768,7 @@
         
         async function setVolume(playerName, volume) {
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/volume`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}/volume`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ volume: parseInt(volume) })
@@ -790,7 +790,7 @@
         
         async function loadPlayerVolume(playerName) {
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/volume`);
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}/volume`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -865,7 +865,7 @@
             testButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
 
             try {
-                const response = await fetch('/api/devices/test', {
+                const response = await fetch('./api/devices/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ device, provider })
@@ -896,7 +896,7 @@
             const originalName = data.original_name;
             
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(originalName)}`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(originalName)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -937,7 +937,7 @@
             }
 
             try {
-                const response = await fetch('/api/players', {
+                const response = await fetch('./api/players', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -1025,7 +1025,7 @@
 
             // Fetch player config
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(playerName)}`);
+                const response = await fetch(`./api/players/${encodeURIComponent(playerName)}`);
                 const player = await response.json();
 
                 const isSendspin = (player.provider || 'squeezelite') === 'sendspin';
@@ -1081,7 +1081,7 @@
             const offset = parseInt(document.getElementById('statsOffsetInput').value) || 0;
 
             try {
-                const response = await fetch(`/api/players/${encodeURIComponent(currentStatsPlayer)}/offset`, {
+                const response = await fetch(`./api/players/${encodeURIComponent(currentStatsPlayer)}/offset`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({delay_ms: offset})
@@ -1126,7 +1126,7 @@
 
             try {
                 // Stop the player
-                const stopResponse = await fetch(`/api/players/${encodeURIComponent(currentStatsPlayer)}/stop`, {
+                const stopResponse = await fetch(`./api/players/${encodeURIComponent(currentStatsPlayer)}/stop`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1139,7 +1139,7 @@
                 await new Promise(resolve => setTimeout(resolve, 5000));
 
                 // Start the player
-                const startResponse = await fetch(`/api/players/${encodeURIComponent(currentStatsPlayer)}/start`, {
+                const startResponse = await fetch(`./api/players/${encodeURIComponent(currentStatsPlayer)}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
