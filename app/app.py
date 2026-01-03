@@ -334,7 +334,13 @@ class PlayerManager:
         logger.info("create_player: saving config...")
         sys.stdout.flush()
 
-        self.config.set_player(name, player_config)
+        logger.info("create_player: calling set_player (Pydantic validation disabled)...")
+        sys.stdout.flush()
+        # Disable Pydantic validation - suspected Python 3.14 + pydantic-core bug
+        self.config.set_player(name, player_config, validate=False)
+
+        logger.info("create_player: calling save (YAML write)...")
+        sys.stdout.flush()
         self.config.save()
 
         logger.info("create_player: DONE")
@@ -652,8 +658,10 @@ class PlayerManager:
 try:
     logger.info("Initializing managers...")
 
-    config_manager = ConfigManager(CONFIG_FILE)
-    logger.info(f"ConfigManager initialized with {len(config_manager.players)} players")
+    # Disable Pydantic validation - suspected Python 3.14 + pydantic-core segfault bug
+    # Provider-level validation still happens, just not the Pydantic schema validation
+    config_manager = ConfigManager(CONFIG_FILE, validate_on_load=False, validate_on_save=False)
+    logger.info(f"ConfigManager initialized with {len(config_manager.players)} players (Pydantic validation disabled)")
 
     audio_manager = AudioManager(windows_mode=WINDOWS_MODE)
     logger.info("AudioManager initialized")

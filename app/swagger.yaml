@@ -41,10 +41,8 @@ info:
     url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: https://players.home.chrisuthe.com
-    description: Production server
   - url: http://localhost:8080
-    description: Development server
+    description: Local server (use your actual host IP/URL for external access)
 
 tags:
   - name: Players
