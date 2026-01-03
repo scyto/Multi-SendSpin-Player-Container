@@ -173,6 +173,41 @@
 						},
 						"description": "Check if a player is currently running"
 					}
+				},
+				{
+					"name": "Get Single Player",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/players/{{playerName}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "players", "{{playerName}}"]
+						},
+						"description": "Get configuration details for a specific player"
+					}
+				},
+				{
+					"name": "Update Player Sync Offset",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"delay_ms\": -150\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/players/{{playerName}}/offset",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "players", "{{playerName}}", "offset"]
+						},
+						"description": "Update synchronization offset for a player. Typical values are -200 to 0ms. Requires player restart to apply."
+					}
 				}
 			]
 		},
