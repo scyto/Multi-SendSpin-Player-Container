@@ -25,6 +25,11 @@ export AUDIO_BACKEND="pulse"
 export WEB_PORT="8096"
 export FLASK_ENV="production"
 
+# PulseAudio configuration for HAOS
+# PortAudio (used by Sendspin) needs these to find PulseAudio
+export PULSE_SERVER="unix:/run/pulse/native"
+export PULSE_RUNTIME_PATH="/run/pulse"
+
 # Ensure directories exist
 mkdir -p /share/multiroom-audio/logs
 
@@ -35,9 +40,16 @@ bashio::log.info "Audio backend: pulse (HAOS)"
 
 # List available audio devices
 bashio::log.info "Detecting audio devices..."
+bashio::log.info "PULSE_SERVER: ${PULSE_SERVER}"
 if command -v pactl &> /dev/null; then
     bashio::log.info "PulseAudio sinks:"
     pactl list sinks short 2>/dev/null || bashio::log.warning "Could not list PulseAudio sinks"
+
+    # Also test PortAudio device detection for Sendspin
+    if command -v sendspin &> /dev/null; then
+        bashio::log.info "PortAudio devices (for Sendspin):"
+        sendspin --list-audio-devices 2>/dev/null || bashio::log.warning "Could not list PortAudio devices"
+    fi
 fi
 
 # Check for player binaries and log their locations
