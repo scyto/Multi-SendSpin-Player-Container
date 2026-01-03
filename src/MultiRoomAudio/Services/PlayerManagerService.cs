@@ -7,17 +7,21 @@ using Sendspin.SDK.Models;
 using Sendspin.SDK.Synchronization;
 using MultiRoomAudio.Audio;
 using MultiRoomAudio.Models;
+using MultiRoomAudio.Utilities;
 
 namespace MultiRoomAudio.Services;
 
 /// <summary>
 /// Manages the lifecycle of all Sendspin players.
 /// Handles creation, connection, state management, and disposal.
+/// Integrates with ConfigurationService for persistence and autostart.
 /// </summary>
 public class PlayerManagerService : IHostedService, IDisposable
 {
     private readonly ILogger<PlayerManagerService> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ConfigurationService _config;
+    private readonly EnvironmentService _environment;
     private readonly ConcurrentDictionary<string, PlayerContext> _players = new();
     private readonly MdnsServerDiscovery _serverDiscovery;
     private bool _disposed;
@@ -45,18 +49,52 @@ public class PlayerManagerService : IHostedService, IDisposable
 
     public PlayerManagerService(
         ILogger<PlayerManagerService> logger,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ConfigurationService config,
+        EnvironmentService environment)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
+        _config = config;
+        _environment = environment;
         _serverDiscovery = new MdnsServerDiscovery(
             loggerFactory.CreateLogger<MdnsServerDiscovery>());
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("PlayerManagerService started");
-        return Task.CompletedTask;
+
+        // Autostart configured players
+        var autostartPlayers = _config.GetAutostartPlayers();
+        if (autostartPlayers.Count > 0)
+        {
+            _logger.LogInformation("Autostarting {Count} configured players...", autostartPlayers.Count);
+
+            foreach (var playerConfig in autostartPlayers)
+            {
+                try
+                {
+                    var request = new PlayerCreateRequest
+                    {
+                        Name = playerConfig.Name,
+                        Device = playerConfig.PortAudioDeviceIndex?.ToString() ?? playerConfig.Device,
+                        ClientId = ClientIdGenerator.Generate(playerConfig.Name),
+                        ServerUrl = playerConfig.Server,
+                        Volume = playerConfig.Volume ?? 100,
+                        DelayMs = playerConfig.DelayMs,
+                        Persist = false // Already persisted, don't re-save
+                    };
+
+                    await CreatePlayerAsync(request, cancellationToken);
+                    _logger.LogInformation("Autostarted player: {Name}", playerConfig.Name);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to autostart player: {Name}", playerConfig.Name);
+                }
+            }
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -157,7 +195,25 @@ public class PlayerManagerService : IHostedService, IDisposable
             // 10. Store context
             _players[request.Name] = context;
 
-            // 11. Start connection in background
+            // 11. Persist configuration if requested
+            if (request.Persist)
+            {
+                var persistConfig = new PlayerConfiguration
+                {
+                    Name = request.Name,
+                    Device = request.Device ?? "",
+                    Provider = "sendspin",
+                    Autostart = true,
+                    DelayMs = request.DelayMs,
+                    Server = request.ServerUrl,
+                    Volume = request.Volume
+                };
+                _config.SetPlayer(request.Name, persistConfig);
+                _config.Save();
+                _logger.LogDebug("Persisted configuration for player '{Name}'", request.Name);
+            }
+
+            // 12. Start connection in background
             _ = ConnectPlayerAsync(request.Name, context, ct);
 
             return CreateResponse(request.Name, context);
@@ -290,6 +346,23 @@ public class PlayerManagerService : IHostedService, IDisposable
     }
 
     /// <summary>
+    /// Deletes a player completely (stops, removes from runtime, and removes from config).
+    /// </summary>
+    public async Task<bool> DeletePlayerAsync(string name)
+    {
+        var stopped = await StopPlayerAsync(name);
+
+        // Also remove from configuration
+        if (_config.DeletePlayer(name))
+        {
+            _config.Save();
+            _logger.LogInformation("Deleted player configuration: {Name}", name);
+        }
+
+        return stopped;
+    }
+
+    /// <summary>
     /// Restarts a player (stops and recreates with same config).
     /// </summary>
     public async Task<PlayerResponse?> RestartPlayerAsync(string name, CancellationToken ct = default)
@@ -308,7 +381,8 @@ public class PlayerManagerService : IHostedService, IDisposable
             ClientId = config.ClientId,
             ServerUrl = config.ServerUrl,
             Volume = config.Volume,
-            DelayMs = config.DelayMs
+            DelayMs = config.DelayMs,
+            Persist = false // Already persisted
         };
 
         return await CreatePlayerAsync(request, ct);
@@ -457,13 +531,8 @@ public class PlayerManagerService : IHostedService, IDisposable
 
     private static string GenerateClientId(string name)
     {
-        // Generate deterministic client ID from name (matches CLI behavior)
-        var hash = name.GetHashCode().ToString("x8");
-        var safeName = new string(name.ToLower()
-            .Where(c => char.IsLetterOrDigit(c) || c == '-')
-            .ToArray());
-
-        return $"sendspin-{safeName}-{hash[..4]}";
+        // Use the ClientIdGenerator utility for consistent MD5-based IDs
+        return ClientIdGenerator.Generate(name);
     }
 
     private static List<AudioFormat> GetDefaultFormats()

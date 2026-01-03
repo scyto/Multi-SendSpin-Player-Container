@@ -14,6 +14,12 @@ public class PlayerCreateRequest
     public string LogLevel { get; set; } = "INFO";
     public string Codec { get; set; } = "opus";
     public int BufferSizeMs { get; set; } = 100;
+
+    /// <summary>
+    /// Whether to persist the player configuration to disk.
+    /// Persisted players will autostart on next launch.
+    /// </summary>
+    public bool Persist { get; set; } = true;
 }
 
 /// <summary>
