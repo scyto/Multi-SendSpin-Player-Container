@@ -146,7 +146,8 @@ public class PortAudioPlayer : IAudioPlayer
     {
         lock (_lock)
         {
-            if (_stream == null) return;
+            if (_stream == null)
+                return;
 
             try
             {
@@ -166,7 +167,8 @@ public class PortAudioPlayer : IAudioPlayer
     {
         lock (_lock)
         {
-            if (_stream == null) return;
+            if (_stream == null)
+                return;
 
             try
             {
@@ -328,7 +330,8 @@ public class PortAudioPlayer : IAudioPlayer
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {

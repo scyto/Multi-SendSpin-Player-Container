@@ -1,5 +1,5 @@
-using PortAudioSharp;
 using MultiRoomAudio.Models;
+using PortAudioSharp;
 
 namespace MultiRoomAudio.Audio;
 

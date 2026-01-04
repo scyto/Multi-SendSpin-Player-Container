@@ -1,16 +1,16 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.SignalR;
+using MultiRoomAudio.Audio;
+using MultiRoomAudio.Hubs;
+using MultiRoomAudio.Models;
+using MultiRoomAudio.Utilities;
 using Sendspin.SDK.Audio;
 using Sendspin.SDK.Client;
 using Sendspin.SDK.Connection;
 using Sendspin.SDK.Discovery;
 using Sendspin.SDK.Models;
 using Sendspin.SDK.Synchronization;
-using MultiRoomAudio.Audio;
-using MultiRoomAudio.Hubs;
-using MultiRoomAudio.Models;
-using MultiRoomAudio.Utilities;
 
 namespace MultiRoomAudio.Services;
 
@@ -724,7 +724,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         foreach (var context in _players.Values)
@@ -760,7 +761,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         foreach (var context in _players.Values)
