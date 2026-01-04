@@ -138,7 +138,31 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 // Enable Swagger with relative paths for ingress compatibility
-app.UseSwagger();
+app.UseSwagger(c =>
+{
+    // Make Swagger use relative server URLs so it works behind HA ingress proxy
+    c.PreSerializeFilters.Add((swaggerDoc, httpReq) =>
+    {
+        // Check for X-Ingress-Path header (set by HAOS ingress proxy)
+        var ingressPath = httpReq.Headers["X-Ingress-Path"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(ingressPath))
+        {
+            // Use the ingress path as the server base URL
+            swaggerDoc.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+            {
+                new() { Url = ingressPath }
+            };
+        }
+        else
+        {
+            // For direct access, use relative URL (empty = same origin)
+            swaggerDoc.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+            {
+                new() { Url = "/" }
+            };
+        }
+    });
+});
 app.UseSwaggerUI(c =>
 {
     // Use relative path so it works behind HA ingress proxy
