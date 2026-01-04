@@ -7,8 +7,9 @@ description: >-
 url: https://github.com/chrisuthe/Multi-SendSpin-Player-Container
 image: ghcr.io/chrisuthe/multiroom-audio-hassio:test
 startup: services
+# Testing only - aarch64 will be added after merge to main
 arch:
-  - amd64  # Testing only - aarch64 will be added after merge to main
+  - amd64
 
 # Hardware access
 audio: true
@@ -42,6 +43,6 @@ schema:
 # Watchdog - auto-restart if health check fails
 watchdog: http://[HOST]:[PORT:8096]/api/health
 
-# Build stage
-stage: experimental
+# Build stage - use 'stable' for visibility, 'experimental' hides unless enabled
+stage: stable
 init: false
