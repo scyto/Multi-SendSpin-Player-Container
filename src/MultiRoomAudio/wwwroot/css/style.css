@@ -152,12 +152,55 @@
     }
 
     .bg-light {
-        background-color: #1a1a1a !important;
+        background-color: #2a2a2a !important;
+        color: #ffffff !important;
     }
 
     .modal-content {
         background-color: #1e1e1e;
         color: #ffffff;
+    }
+
+    .modal-header {
+        border-color: #333;
+    }
+
+    .modal-footer {
+        border-color: #333;
+    }
+
+    /* Table styling for dark mode */
+    .table {
+        color: #ffffff;
+    }
+
+    .table td, .table th {
+        border-color: #333;
+        color: #ffffff;
+    }
+
+    .table td strong {
+        color: #adb5bd;
+    }
+
+    /* Code element in dark mode */
+    code {
+        background-color: #2d2d2d;
+        color: #e83e8c;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+    }
+
+    /* Metric badges in dark mode */
+    .metric-badge.bg-light {
+        background-color: #2a2a2a !important;
+        color: #ffffff !important;
+        border-color: #444 !important;
+    }
+
+    /* Close button for dark mode */
+    .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
     }
 
     .form-control, .form-select {
@@ -166,8 +209,19 @@
         color: #ffffff;
     }
 
+    .form-control:focus, .form-select:focus {
+        background-color: #2d2d2d;
+        border-color: #667eea;
+        color: #ffffff;
+    }
+
     .volume-control {
         background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Form labels */
+    .form-label, label {
+        color: #ffffff;
     }
 }
 
