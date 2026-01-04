@@ -125,9 +125,17 @@ var app = builder.Build();
 // Configure middleware pipeline
 app.UseCors("AllowAll");
 
-// Serve static files (wwwroot)
+// Serve static files (wwwroot) with no-cache to ensure UI updates are seen
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Disable caching for local static files to ensure UI updates are seen immediately
+        // This is appropriate for an admin UI with infrequent access
+        ctx.Context.Response.Headers.CacheControl = "no-cache, must-revalidate";
+    }
+});
 
 // Enable Swagger with relative paths for ingress compatibility
 app.UseSwagger();
