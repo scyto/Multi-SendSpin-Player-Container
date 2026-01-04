@@ -349,18 +349,19 @@ public class PortAudioPlayer : IAudioPlayer
                     _stream = null;
                 }
 
-                // Decrement reference count and terminate only when last player is disposed
+                // Decrement reference count but DON'T terminate PortAudio
+                // PortAudio should stay initialized for device enumeration to work
+                // The library will be cleaned up when the process exits
                 lock (_portAudioLock)
                 {
                     _portAudioRefCount--;
                     _logger.LogDebug("PortAudio reference count: {RefCount}", _portAudioRefCount);
-
-                    if (_portAudioRefCount <= 0)
+                    if (_portAudioRefCount < 0)
                     {
                         _portAudioRefCount = 0; // Ensure non-negative
-                        PortAudio.Terminate();
-                        _logger.LogDebug("PortAudio library terminated");
                     }
+                    // Note: We intentionally don't call PortAudio.Terminate() here
+                    // as it breaks device enumeration for other players/API calls
                 }
 
                 _logger.LogInformation("PortAudio player disposed");
