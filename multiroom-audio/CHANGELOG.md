@@ -1,5 +1,58 @@
 # Changelog
 
+## [2.0.11] - Volume Stability & SDK 3.0.1
+
+### Fixed
+- **Volume change crash**: Fixed critical issue where adjusting volume from Music Assistant would crash the player
+- **Volume reset on playback**: Fixed volume being reset to 100% when playback starts - player now pushes configured volume to server after connecting
+
+### Changed
+- **Sendspin.SDK 3.0.1**: Includes hysteresis fix for sync correction (entry: 2ms, exit: 0.5ms) preventing resampler oscillation
+
+---
+
+## [2.0.10] - Connection & Lifecycle Fixes
+
+### Fixed
+- **Connection cancelled on second player**: Fixed bug where creating a second player would cancel the first player's connection (was using HTTP request token instead of player's own token)
+- **Volume control when disconnected**: Setting volume on a stopped player no longer throws 500 error
+- **No way to start stopped player**: Added `/api/players/{name}/start` endpoint to restart stopped players
+
+### Changed
+- Improved error handling throughout player lifecycle
+- Better state management for player start/stop operations
+
+---
+
+## [2.0.9] - SDK 3.0.0 & Faster Startup
+
+### Changed
+- **Sendspin.SDK 3.0.0**: Uses `HasMinimalSync` (2 measurements) instead of full convergence for much faster playback start
+- Reduced convergence timeout from 5000ms to 1000ms
+- Typical startup time now 300-500ms instead of several seconds
+
+---
+
+## [2.0.8] - Resampler Transition Fix
+
+### Fixed
+- **Audio glitch on sync correction start**: Fixed discontinuity when transitioning from bypass to resampling mode by resetting fractional position
+
+---
+
+## [2.0.7] - Tiered Sync Correction
+
+### Added
+- **Resampling-based sync correction**: Smooth playback rate adjustment (±4%) using linear interpolation
+- **ResamplingAudioSampleSource**: New audio source wrapper that subscribes to SDK's `TargetPlaybackRateChanged` event
+- **Diagnostic logging**: Resampler mode changes (BYPASS/SPEEDUP/SLOWDOWN) logged for debugging
+
+### Changed
+- **Sendspin.SDK 2.2.1**: Tiered sync correction with deadband → resampling → frame drop/insert
+- Sync correction now uses gradual rate changes before resorting to sample dropping/insertion
+
+---
+
 ## [2.0.0] - Complete C# Rewrite
 
 ### Breaking Changes
