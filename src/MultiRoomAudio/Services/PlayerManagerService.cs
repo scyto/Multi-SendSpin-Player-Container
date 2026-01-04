@@ -26,6 +26,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     private readonly ConfigurationService _config;
     private readonly EnvironmentService _environment;
     private readonly IHubContext<PlayerStatusHub> _hubContext;
+    private readonly AlsaCommandRunner _alsaRunner;
     private readonly ConcurrentDictionary<string, PlayerContext> _players = new();
     private readonly MdnsServerDiscovery _serverDiscovery;
     private bool _disposed;
@@ -93,13 +94,15 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         ILoggerFactory loggerFactory,
         ConfigurationService config,
         EnvironmentService environment,
-        IHubContext<PlayerStatusHub> hubContext)
+        IHubContext<PlayerStatusHub> hubContext,
+        AlsaCommandRunner alsaRunner)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
         _config = config;
         _environment = environment;
         _hubContext = hubContext;
+        _alsaRunner = alsaRunner;
         _serverDiscovery = new MdnsServerDiscovery(
             loggerFactory.CreateLogger<MdnsServerDiscovery>());
     }
@@ -304,7 +307,11 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // 10. Store context
             _players[request.Name] = context;
 
-            // 11. Persist configuration if requested
+            // 11. Apply initial volume (software volume scaling)
+            var normalizedVolume = request.Volume / 100f;
+            player.Volume = normalizedVolume * normalizedVolume;
+
+            // 13. Persist configuration if requested
             if (request.Persist)
             {
                 var persistConfig = new PlayerConfiguration
@@ -322,10 +329,10 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _logger.LogDebug("Persisted configuration for player '{Name}'", request.Name);
             }
 
-            // 12. Start connection in background with proper error handling
+            // 14. Start connection in background with proper error handling
             _ = ConnectPlayerWithErrorHandlingAsync(request.Name, context, ct);
 
-            // 13. Broadcast status update to all clients
+            // 15. Broadcast status update to all clients
             _ = BroadcastStatusAsync();
 
             return CreateResponse(request.Name, context);
@@ -392,6 +399,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
     /// <summary>
     /// Sets the volume for a player (0-100).
+    /// Updates local config, notifies server, and applies to audio output.
     /// </summary>
     public async Task<bool> SetVolumeAsync(string name, int volume, CancellationToken ct = default)
     {
@@ -403,10 +411,35 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
         try
         {
+            // 1. Notify server of volume change
             await context.Client.SetVolumeAsync(volume);
+
+            // 2. Update local config
             context.Config.Volume = volume;
 
-            // Broadcast status update to all clients
+            // 3. Apply software volume to audio player (0-100 -> 0.0-1.0)
+            // Using squared scaling for perceived loudness (volume 50 sounds half as loud)
+            var normalizedVolume = volume / 100f;
+            context.Player.Volume = normalizedVolume * normalizedVolume;
+
+            // 4. Optionally set hardware/OS volume via ALSA/PulseAudio
+            // Only if we have a specific device (not default)
+            if (!string.IsNullOrEmpty(context.Config.DeviceId))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _alsaRunner.SetVolumeAsync(context.Config.DeviceId, volume, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Hardware volume control not available for '{Name}'", name);
+                    }
+                }, ct);
+            }
+
+            // 5. Broadcast status update to all clients
             _ = BroadcastStatusAsync();
 
             return true;
@@ -724,6 +757,26 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Auto-stop player on audio error (e.g., device unavailable)
             _logger.LogWarning("Auto-stopping player '{Name}' due to audio error", name);
             _ = StopPlayerInternalAsync(name, "Audio error: " + error.Message);
+        };
+
+        // Handle volume changes from server (Music Assistant UI, etc.)
+        context.Client.GroupStateChanged += (_, group) =>
+        {
+            // Update volume if changed
+            if (group.Volume != context.Config.Volume)
+            {
+                _logger.LogDebug("Player '{Name}' volume changed by server: {OldVol} -> {NewVol}",
+                    name, context.Config.Volume, group.Volume);
+
+                context.Config.Volume = group.Volume;
+
+                // Apply software volume (squared for perceived loudness)
+                var normalizedVolume = group.Volume / 100f;
+                context.Player.Volume = normalizedVolume * normalizedVolume;
+
+                // Broadcast to UI so slider updates
+                _ = BroadcastStatusAsync();
+            }
         };
     }
 
