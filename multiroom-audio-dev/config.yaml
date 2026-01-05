@@ -1,5 +1,5 @@
 name: Multi-Room Audio (Dev)
-version: dev
+version: "sha-e66854b"
 slug: multiroom-audio-dev
 description: >-
   Development builds - may be unstable. Sendspin-powered multi-room audio
@@ -15,6 +15,9 @@ audio: true
 full_access: true
 host_network: true
 udev: true
+# TODO: Remove if full_access: true is sufficient for audio access
+devices:
+  - "/dev/snd:/dev/snd"
 
 # Permissions for audio processing
 privileged:

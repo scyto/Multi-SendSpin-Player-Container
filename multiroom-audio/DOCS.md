@@ -1,5 +1,16 @@
 # Multi-Room Audio Controller
 
+<!-- VERSION_INFO_START -->
+## Latest Release: 2.1.0
+
+
+
+
+[View full changelog](https://github.com/chrisuthe/Multi-SendSpin-Player-Container/blob/main/multiroom-audio/CHANGELOG.md)
+<!-- VERSION_INFO_END -->
+
+---
+
 Manage Sendspin audio players for Music Assistant. Create whole-home audio with
 USB DACs connected to your Home Assistant server.
 
