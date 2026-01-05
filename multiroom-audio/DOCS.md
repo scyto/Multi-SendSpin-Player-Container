@@ -1,11 +1,11 @@
 # Multi-Room Audio Controller
 
 <!-- VERSION_INFO_START -->
-## 🚧 Development Build: sha-570a492
+## 🚧 Development Build: sha-83439b5
 
 **Current Dev Build Changes** (recent)
 
-- feat: auto-update DOCS.md with release/dev version info
+- fix: enable timer-based PulseAudio scheduling (tsched=1)
 
 > ⚠️ This is a development build. For stable releases, use the `latest` tag.
 <!-- VERSION_INFO_END -->
