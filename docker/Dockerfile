@@ -11,19 +11,19 @@ EXPOSE 8096
 
 # Audio dependencies:
 # - pulseaudio: Full daemon for standalone Docker mode
-# - alsa-utils: ALSA tools for device detection
+# - alsa-utils: ALSA tools for device detection and /proc/asound/cards
 # - libasound2: ALSA library
 # - libasound2-plugins: ALSA plugins including PulseAudio bridge
-# - udev: Required for module-udev-detect to enumerate ALSA devices
-# Cache bust: 2026-01-05
+# Note: udev removed - doesn't work in containers, we enumerate /proc/asound/cards directly
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pulseaudio \
     alsa-utils \
     libasound2 \
     libasound2-plugins \
-    udev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && usermod -a -G audio pulse 2>/dev/null || true \
+    && usermod -a -G audio root 2>/dev/null || true
 
 # Build stage - using Debian SDK for consistent glibc builds
 FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build

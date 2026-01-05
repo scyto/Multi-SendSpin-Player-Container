@@ -51,27 +51,43 @@ else
 fi
 echo ""
 
-# Initialize udev for PulseAudio device detection
-echo "Initializing udev..."
-if command -v udevd >/dev/null 2>&1; then
-    # Start udevd daemon
-    udevd --daemon 2>/dev/null || true
-    # Trigger device detection for sound devices
-    udevadm trigger --subsystem-match=sound 2>/dev/null || true
-    udevadm settle --timeout=5 2>/dev/null || true
-    echo "udev initialized"
-else
-    echo "Warning: udev not available, device detection may be limited"
+# Generate dynamic PulseAudio config by reading /proc/asound/cards directly
+# (udev doesn't work in Docker containers)
+PULSE_CONFIG="/tmp/pulse-dynamic.pa"
+echo "Generating PulseAudio config from /proc/asound/cards..."
+
+cat > "$PULSE_CONFIG" << 'EOF'
+# Dynamic PulseAudio config - generated at container startup
+load-module module-native-protocol-unix auth-anonymous=1
+load-module module-device-restore
+load-module module-stream-restore
+load-module module-card-restore
+load-module module-default-device-restore
+load-module module-switch-on-connect
+EOF
+
+# Load module-alsa-card for each card found in /proc/asound/cards
+if [ -f /proc/asound/cards ]; then
+    grep -E '^\s*[0-9]+' /proc/asound/cards | while read -r line; do
+        card_num=$(echo "$line" | awk '{print $1}')
+        card_name=$(echo "$line" | sed -n 's/.*\[\([^]]*\)\].*/\1/p' | tr -d ' ')
+        if [ -n "$card_num" ]; then
+            echo "Found ALSA card $card_num: $card_name"
+            echo ".nofail" >> "$PULSE_CONFIG"
+            echo "load-module module-alsa-card device_id=$card_num tsched=0" >> "$PULSE_CONFIG"
+            echo ".fail" >> "$PULSE_CONFIG"
+        fi
+    done
 fi
+
+echo "load-module module-always-sink" >> "$PULSE_CONFIG"
+
+echo ""
+echo "Generated PulseAudio config:"
+cat "$PULSE_CONFIG"
 echo ""
 
-# Start PulseAudio in system mode (no user session required)
-# --system: Run as system-wide daemon
-# --disallow-exit: Don't exit when last client disconnects
-# --disallow-module-loading: Security - prevent runtime module loading
-# --daemonize: Run in background
-# --log-target=stderr: Log to container output
-# --use-pid-file=false: Don't create PID file (avoids stale PID issues in containers)
+# Start PulseAudio with our dynamic config
 echo "Starting PulseAudio daemon..."
 pulseaudio \
     --system \
@@ -80,7 +96,8 @@ pulseaudio \
     --daemonize=false \
     --use-pid-file=false \
     --log-target=stderr \
-    --log-level=notice &
+    --log-level=notice \
+    --file="$PULSE_CONFIG" &
 
 PA_PID=$!
 
@@ -113,6 +130,31 @@ echo ""
 # List available sinks
 echo "Available audio sinks:"
 pactl list sinks short 2>/dev/null || echo "  (none)"
+
+# If no real sinks detected, manually load ALSA sinks
+SINK_COUNT=$(pactl list sinks short 2>/dev/null | grep -v "module-null-sink" | wc -l)
+if [ "$SINK_COUNT" -eq 0 ]; then
+    echo ""
+    echo "No sinks auto-detected, manually loading ALSA devices..."
+
+    # Parse aplay -l output and load sinks for each playback device
+    aplay -l 2>/dev/null | grep "^card" | while read line; do
+        CARD=$(echo "$line" | sed -n 's/^card \([0-9]*\):.*/\1/p')
+        DEVICE=$(echo "$line" | sed -n 's/.*device \([0-9]*\):.*/\1/p')
+        NAME=$(echo "$line" | sed -n 's/^card [0-9]*: \([^,]*\).*/\1/p' | tr ' ' '_')
+
+        if [ -n "$CARD" ] && [ -n "$DEVICE" ]; then
+            SINK_NAME="alsa_output.hw_${CARD}_${DEVICE}"
+            echo "  Loading sink for hw:${CARD},${DEVICE} (${NAME})..."
+            pactl load-module module-alsa-sink device="hw:${CARD},${DEVICE}" sink_name="${SINK_NAME}" sink_properties="device.description='${NAME}'" 2>/dev/null || \
+                echo "    Warning: Failed to load hw:${CARD},${DEVICE}"
+        fi
+    done
+
+    echo ""
+    echo "Sinks after manual loading:"
+    pactl list sinks short 2>/dev/null || echo "  (none)"
+fi
 echo ""
 
 echo "========================================="
