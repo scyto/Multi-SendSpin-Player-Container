@@ -1,11 +1,14 @@
 using System.Text.Json.Serialization;
+using MultiRoomAudio.Audio;
 using MultiRoomAudio.Controllers;
 using MultiRoomAudio.Hubs;
 using MultiRoomAudio.Services;
 using MultiRoomAudio.Utilities;
 
-// Application version - update this for releases
-const string AppVersion = "2.0.0";
+// Application version from build environment (set by Docker build args)
+var appVersion = Environment.GetEnvironmentVariable("APP_VERSION") ?? "dev";
+var buildSha = Environment.GetEnvironmentVariable("APP_BUILD_SHA");
+var buildDate = Environment.GetEnvironmentVariable("APP_BUILD_DATE");
 const string AppName = "Multi-Room Audio Controller";
 
 var builder = WebApplication.CreateBuilder(args);
@@ -87,6 +90,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton<EnvironmentService>();
 builder.Services.AddSingleton<ConfigurationService>();
 builder.Services.AddSingleton<VolumeCommandRunner>();
+builder.Services.AddSingleton<BackendFactory>();
 
 // Add PlayerManagerService as singleton and hosted service
 builder.Services.AddSingleton<PlayerManagerService>();
@@ -185,7 +189,8 @@ app.MapGet("/api", () => Results.Ok(new
 {
     service = "multi-room-audio",
     description = "Sendspin-only Multi-Room Audio Controller",
-    version = AppVersion,
+    version = appVersion,
+    build = buildSha,
     endpoints = new
     {
         health = "/api/health",
@@ -203,7 +208,15 @@ var environmentService = app.Services.GetRequiredService<EnvironmentService>();
 
 // Startup banner - visible in HAOS supervisor logs
 logger.LogInformation("========================================");
-logger.LogInformation("{AppName} v{Version}", AppName, AppVersion);
+logger.LogInformation("{AppName} v{Version}", AppName, appVersion);
+if (!string.IsNullOrEmpty(buildSha) && buildSha != "unknown")
+{
+    logger.LogInformation("Build: {BuildSha}", buildSha);
+}
+if (!string.IsNullOrEmpty(buildDate) && buildDate != "unknown")
+{
+    logger.LogInformation("Built: {BuildDate}", buildDate);
+}
 logger.LogInformation("========================================");
 logger.LogInformation("Environment: {Environment}", environmentService.EnvironmentName);
 logger.LogInformation("Log level: {LogLevel}", logLevelStr);

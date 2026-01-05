@@ -4,6 +4,11 @@
 # Build arguments for multi-arch support
 ARG TARGETARCH
 
+# Build arguments for version info (passed from CI)
+ARG BUILD_VERSION=dev
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
+
 # Base: Debian-slim for glibc compatibility
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS base
 WORKDIR /app
@@ -49,6 +54,17 @@ RUN case ${TARGETARCH} in \
 
 # Final image
 FROM base AS final
+
+# Re-declare build args (they don't persist across FROM)
+ARG BUILD_VERSION
+ARG VCS_REF
+ARG BUILD_DATE
+
+# Set version info as environment variables for the application
+ENV APP_VERSION=${BUILD_VERSION}
+ENV APP_BUILD_SHA=${VCS_REF}
+ENV APP_BUILD_DATE=${BUILD_DATE}
+
 WORKDIR /app
 COPY --from=build /app/publish .
 
