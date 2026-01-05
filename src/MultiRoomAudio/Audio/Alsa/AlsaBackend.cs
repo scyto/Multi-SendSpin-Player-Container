@@ -162,7 +162,8 @@ public partial class AlsaBackend : IBackend
             };
 
             using var process = Process.Start(psi);
-            if (process == null) return -1;
+            if (process == null)
+                return -1;
 
             var output = process.StandardOutput.ReadToEnd();
             process.WaitForExit(5000);
@@ -209,7 +210,8 @@ public partial class AlsaBackend : IBackend
             psi.ArgumentList.Add($"{volume}%");
 
             using var process = Process.Start(psi);
-            if (process == null) return false;
+            if (process == null)
+                return false;
 
             await process.WaitForExitAsync(cancellationToken);
             return process.ExitCode == 0;
