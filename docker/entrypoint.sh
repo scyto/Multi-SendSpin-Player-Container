@@ -23,12 +23,19 @@ fi
 
 echo "Standalone Docker mode - starting embedded PulseAudio"
 
+# Disable D-Bus integration entirely - we don't have D-Bus in the container
+export DBUS_SESSION_BUS_ADDRESS=/dev/null
+export PULSE_SYSTEM=1
+
 # Ensure runtime directory exists and clean up stale files
 mkdir -p /run/pulse
 chmod 755 /run/pulse
 
-# Clean up stale PID file and kill any lingering PulseAudio from previous runs
-rm -f /run/pulse/pid /var/run/pulse/pid 2>/dev/null || true
+# Clean up stale PID files and locks from previous runs
+rm -f /run/pulse/pid /var/run/pulse/pid /var/run/pulse/.pid 2>/dev/null || true
+rm -f /run/pulse/*.pid /var/run/pulse/*.pid 2>/dev/null || true
+rm -f /tmp/pulse-* /run/pulse/native /var/run/pulse/native 2>/dev/null || true
+rm -rf /root/.config/pulse 2>/dev/null || true
 pkill -9 pulseaudio 2>/dev/null || true
 sleep 0.5
 
@@ -48,12 +55,14 @@ echo ""
 # --disallow-module-loading: Security - prevent runtime module loading
 # --daemonize: Run in background
 # --log-target=stderr: Log to container output
+# --use-pid-file=false: Don't create PID file (avoids stale PID issues in containers)
 echo "Starting PulseAudio daemon..."
 pulseaudio \
     --system \
     --disallow-exit \
     --disallow-module-loading=false \
     --daemonize=false \
+    --use-pid-file=false \
     --log-target=stderr \
     --log-level=notice &
 
