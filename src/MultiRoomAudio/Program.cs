@@ -60,6 +60,10 @@ builder.Services.AddSignalR()
     });
 
 // Add CORS for web UI and external access
+// Note: Wide-open CORS is acceptable here because:
+// 1. This runs on a local network or as a Home Assistant add-on (trusted environment)
+// 2. The API manages local audio devices with no external authentication
+// 3. Restricting CORS would break Home Assistant ingress and local network access
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -93,8 +97,7 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<PlayerManagerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<PlayerManagerService>());
 
-// Serve static files from wwwroot
-builder.Services.AddDirectoryBrowser();
+// Static files are served via UseStaticFiles() middleware below
 
 // Configure Kestrel to listen on port 8096 (or PORT env var)
 const int DefaultPort = 8096;
@@ -187,7 +190,7 @@ app.MapGet("/api", () => Results.Ok(new
 {
     service = "multi-room-audio",
     description = "Sendspin-only Multi-Room Audio Controller",
-    version = "2.0.0",
+    version = AppVersion,
     endpoints = new
     {
         health = "/api/health",

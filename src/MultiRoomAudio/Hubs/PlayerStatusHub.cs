@@ -8,6 +8,11 @@ namespace MultiRoomAudio.Hubs;
 /// SignalR hub for real-time player status updates.
 /// Clients can connect to receive live player state changes.
 /// </summary>
+/// <remarks>
+/// Response Structure: All status updates wrap the players array in an object: { players: [...] }
+/// This matches the frontend JavaScript expectation in wwwroot/js/app.js (line ~58) where
+/// the handler accesses data.players. Do not simplify to send the array directly.
+/// </remarks>
 public class PlayerStatusHub : Hub
 {
     private readonly ILogger<PlayerStatusHub> _logger;

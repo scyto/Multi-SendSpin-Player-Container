@@ -8,6 +8,13 @@ namespace MultiRoomAudio.Utilities;
 /// Generates deterministic client IDs from player names using MD5 hashing.
 /// Provides consistent identifiers across restarts for the Sendspin SDK.
 /// </summary>
+/// <remarks>
+/// MD5 is used instead of SHA256 because:
+/// 1. MD5 produces shorter output (32 hex chars vs 64), making IDs more compact
+/// 2. MD5 is faster to compute
+/// 3. Cryptographic strength is not relevant here - we're generating deterministic IDs
+///    from public data (hostname + device name), not protecting secrets
+/// </remarks>
 public static class ClientIdGenerator
 {
     private const string Prefix = "sendspin";

@@ -214,11 +214,22 @@ public class AlsaCommandRunner
         return devices;
     }
 
+    /// <summary>
+    /// Extracts the ALSA card parameter from a device string.
+    /// For example, "hw:0,0" returns "-c 0", "hw:2" returns "-c 2".
+    /// Returns empty string if no card number can be extracted.
+    /// </summary>
+    /// <param name="device">The ALSA device string (e.g., "hw:0,0").</param>
+    /// <returns>The amixer card parameter (e.g., "-c 0") or empty string.</returns>
+    private static string ExtractCardParameter(string device)
+    {
+        var cardMatch = Regex.Match(device, @"hw:(\d+)");
+        return cardMatch.Success ? $"-c {cardMatch.Groups[1].Value}" : "";
+    }
+
     private async Task<int?> GetAlsaVolumeAsync(string device, CancellationToken cancellationToken)
     {
-        // Extract card number from device (hw:0,0 -> 0)
-        var cardMatch = Regex.Match(device, @"hw:(\d+)");
-        var card = cardMatch.Success ? $"-c {cardMatch.Groups[1].Value}" : "";
+        var card = ExtractCardParameter(device);
 
         var result = await RunCommandAsync("amixer", $"{card} sget Master", cancellationToken);
         if (result.ExitCode != 0)
@@ -241,9 +252,7 @@ public class AlsaCommandRunner
 
     private async Task<bool> SetAlsaVolumeAsync(string device, int volume, CancellationToken cancellationToken)
     {
-        // Extract card number from device
-        var cardMatch = Regex.Match(device, @"hw:(\d+)");
-        var card = cardMatch.Success ? $"-c {cardMatch.Groups[1].Value}" : "";
+        var card = ExtractCardParameter(device);
 
         var result = await RunCommandAsync("amixer", $"{card} sset Master {volume}%", cancellationToken);
         if (result.ExitCode != 0)
@@ -298,8 +307,22 @@ public class AlsaCommandRunner
         try
         {
             process.Start();
-            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+
+            // Read both stdout and stderr concurrently to avoid deadlocks
+            var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+            await Task.WhenAll(outputTask, errorTask);
             await process.WaitForExitAsync(cancellationToken);
+
+            var output = outputTask.Result;
+            var error = errorTask.Result;
+
+            // Log stderr at debug level if present (helps diagnose issues)
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _logger.LogDebug("Command stderr for {Command} {Args}: {Error}", command, arguments, error);
+            }
 
             return (process.ExitCode, output);
         }
@@ -311,6 +334,10 @@ public class AlsaCommandRunner
     }
 }
 
+/// <summary>
+/// Represents an ALSA hardware audio device parsed from aplay/proc output.
+/// Contains card, device, and subdevice numbers along with identification info.
+/// </summary>
 public class AlsaHardwareDevice
 {
     public int Card { get; set; }
