@@ -23,9 +23,14 @@ fi
 
 echo "Standalone Docker mode - starting embedded PulseAudio"
 
-# Ensure runtime directory exists
+# Ensure runtime directory exists and clean up stale files
 mkdir -p /run/pulse
 chmod 755 /run/pulse
+
+# Clean up stale PID file and kill any lingering PulseAudio from previous runs
+rm -f /run/pulse/pid /var/run/pulse/pid 2>/dev/null || true
+pkill -9 pulseaudio 2>/dev/null || true
+sleep 0.5
 
 # List available ALSA devices for diagnostics
 echo ""
