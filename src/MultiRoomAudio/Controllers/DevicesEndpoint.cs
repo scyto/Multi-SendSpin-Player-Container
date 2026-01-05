@@ -1,10 +1,11 @@
-using MultiRoomAudio.Audio.PulseAudio;
+using MultiRoomAudio.Audio;
 using MultiRoomAudio.Models;
 
 namespace MultiRoomAudio.Controllers;
 
 /// <summary>
 /// REST API endpoints for audio device enumeration.
+/// Uses the appropriate backend (ALSA for Docker, PulseAudio for HAOS).
 /// </summary>
 public static class DevicesEndpoint
 {
@@ -15,13 +16,14 @@ public static class DevicesEndpoint
             .WithOpenApi();
 
         // GET /api/devices - List all output devices
-        group.MapGet("/", (ILoggerFactory loggerFactory) =>
+        group.MapGet("/", (BackendFactory backendFactory, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("DevicesEndpoint");
-            logger.LogDebug("API: GET /api/devices - Enumerating audio devices");
+            logger.LogDebug("API: GET /api/devices - Enumerating audio devices via {Backend} backend",
+                backendFactory.BackendName);
             try
             {
-                var devices = PulseAudioDeviceEnumerator.GetOutputDevices().ToList();
+                var devices = backendFactory.GetOutputDevices().ToList();
                 logger.LogInformation("Audio device enumeration found {DeviceCount} output devices", devices.Count);
 
                 if (devices.Count == 0)
@@ -39,12 +41,14 @@ public static class DevicesEndpoint
                 {
                     devices,
                     count = devices.Count,
-                    defaultDevice = devices.FirstOrDefault(d => d.IsDefault)?.Id
+                    defaultDevice = devices.FirstOrDefault(d => d.IsDefault)?.Id,
+                    backend = backendFactory.BackendName
                 });
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to enumerate audio devices. PulseAudio may not be available");
+                logger.LogError(ex, "Failed to enumerate audio devices. {Backend} may not be available",
+                    backendFactory.BackendName);
                 return Results.Problem(
                     detail: ex.Message,
                     statusCode: 500,
@@ -56,13 +60,13 @@ public static class DevicesEndpoint
 
         // GET /api/devices/default - Get default device
         // NOTE: This route must be registered BEFORE /{id} to prevent the parameterized route from intercepting it
-        group.MapGet("/default", (ILoggerFactory loggerFactory) =>
+        group.MapGet("/default", (BackendFactory backendFactory, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("DevicesEndpoint");
             logger.LogDebug("API: GET /api/devices/default");
             try
             {
-                var device = PulseAudioDeviceEnumerator.GetDefaultDevice();
+                var device = backendFactory.GetDefaultDevice();
                 if (device == null)
                 {
                     logger.LogWarning("No default audio output device found");
@@ -86,13 +90,13 @@ public static class DevicesEndpoint
         .WithDescription("Get the default audio output device");
 
         // GET /api/devices/{id} - Get specific device
-        group.MapGet("/{id}", (string id, ILoggerFactory loggerFactory) =>
+        group.MapGet("/{id}", (string id, BackendFactory backendFactory, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("DevicesEndpoint");
             logger.LogDebug("API: GET /api/devices/{DeviceId}", id);
             try
             {
-                var device = PulseAudioDeviceEnumerator.GetDevice(id);
+                var device = backendFactory.GetDevice(id);
                 if (device == null)
                 {
                     logger.LogDebug("Device {DeviceId} not found", id);
@@ -114,15 +118,16 @@ public static class DevicesEndpoint
         .WithDescription("Get details of a specific audio device");
 
         // POST /api/devices/refresh - Refresh device list
-        group.MapPost("/refresh", (ILoggerFactory loggerFactory) =>
+        group.MapPost("/refresh", (BackendFactory backendFactory, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("DevicesEndpoint");
             logger.LogDebug("API: POST /api/devices/refresh");
             try
             {
-                logger.LogInformation("Refreshing audio device list...");
-                PulseAudioDeviceEnumerator.RefreshDevices();
-                var devices = PulseAudioDeviceEnumerator.GetOutputDevices().ToList();
+                logger.LogInformation("Refreshing audio device list via {Backend} backend...",
+                    backendFactory.BackendName);
+                backendFactory.RefreshDevices();
+                var devices = backendFactory.GetOutputDevices().ToList();
 
                 logger.LogInformation("Audio device refresh complete. Found {DeviceCount} devices", devices.Count);
 
@@ -138,7 +143,8 @@ public static class DevicesEndpoint
                 {
                     message = "Device list refreshed",
                     devices,
-                    count = devices.Count
+                    count = devices.Count,
+                    backend = backendFactory.BackendName
                 });
             }
             catch (Exception ex)

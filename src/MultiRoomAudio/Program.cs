@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MultiRoomAudio.Audio;
 using MultiRoomAudio.Controllers;
 using MultiRoomAudio.Hubs;
 using MultiRoomAudio.Services;
@@ -87,6 +88,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton<EnvironmentService>();
 builder.Services.AddSingleton<ConfigurationService>();
 builder.Services.AddSingleton<VolumeCommandRunner>();
+builder.Services.AddSingleton<BackendFactory>();
 
 // Add PlayerManagerService as singleton and hosted service
 builder.Services.AddSingleton<PlayerManagerService>();

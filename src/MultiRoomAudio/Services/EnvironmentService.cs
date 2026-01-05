@@ -53,7 +53,7 @@ public class EnvironmentService
             _haosOptions = null;
             _configPath = Environment.GetEnvironmentVariable("CONFIG_PATH") ?? "/app/config";
             _logPath = Environment.GetEnvironmentVariable("LOG_PATH") ?? "/app/logs";
-            _audioBackend = "pulse"; // Always use PulseAudio
+            _audioBackend = "alsa"; // Use ALSA for Docker mode (supports software-defined devices)
 
             _logger.LogDebug("CONFIG_PATH env: {ConfigPathEnv}",
                 Environment.GetEnvironmentVariable("CONFIG_PATH") ?? "(not set, using default)");
@@ -98,6 +98,12 @@ public class EnvironmentService
     public bool UsePulseAudio => _audioBackend == "pulse";
 
     /// <summary>
+    /// Whether ALSA is the active backend (Docker standalone mode).
+    /// ALSA supports software-defined devices from asound.conf.
+    /// </summary>
+    public bool UseAlsaBackend => _audioBackend == "alsa";
+
+    /// <summary>
     /// Get HAOS option value by key.
     /// </summary>
     public T? GetHaosOption<T>(string key, T? defaultValue = default)
@@ -119,9 +125,9 @@ public class EnvironmentService
     }
 
     /// <summary>
-    /// Get the volume control method (always pactl for PulseAudio).
+    /// Get the volume control method based on backend.
     /// </summary>
-    public string VolumeControlMethod => "pactl";
+    public string VolumeControlMethod => _audioBackend == "alsa" ? "amixer" : "pactl";
 
     /// <summary>
     /// Ensure required directories exist.
