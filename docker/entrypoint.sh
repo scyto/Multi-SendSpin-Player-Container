@@ -14,30 +14,78 @@ echo "========================================="
 if [ -f "/data/options.json" ] || [ -n "$SUPERVISOR_TOKEN" ]; then
     echo "Detected HAOS add-on mode - using system PulseAudio"
 
-    # Wait for PulseAudio to be available (similar to VLC add-on's pulse-monitor)
-    # The supervisor provides PulseAudio but it may not be ready immediately
+    # HAOS supervisor mounts:
+    # - /etc/pulse/client.conf (contains default-server pointing to /run/audio)
+    # - /run/audio (the PulseAudio socket directory)
+    # - /etc/asound.conf (ALSA config)
+
+    # Ensure PULSE_SERVER is set correctly for HAOS
+    # The supervisor's client.conf should handle this, but set explicitly for reliability
+    if [ -S "/run/audio/native" ]; then
+        export PULSE_SERVER="unix:/run/audio/native"
+        echo "Found PulseAudio socket at /run/audio/native"
+    elif [ -d "/run/audio" ]; then
+        export PULSE_SERVER="unix:/run/audio"
+        echo "Found PulseAudio directory at /run/audio"
+    fi
+
+    # Show mounted audio config for diagnostics
+    echo ""
+    if [ -f "/etc/pulse/client.conf" ]; then
+        echo "PulseAudio client.conf (mounted by supervisor):"
+        cat /etc/pulse/client.conf 2>/dev/null | head -20
+        echo ""
+    else
+        echo "WARNING: /etc/pulse/client.conf not found - audio may not work"
+    fi
+
+    # Wait for PulseAudio socket to be available
     echo "Waiting for PulseAudio to become available..."
-    MAX_WAIT=60
+    MAX_WAIT=30
+    WAIT_COUNT=0
+
+    # First wait for the socket file to exist
+    while [ ! -S "/run/audio/native" ] && [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+        WAIT_COUNT=$((WAIT_COUNT + 1))
+        if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
+            echo "Waiting for /run/audio/native socket... (${WAIT_COUNT}s)"
+            ls -la /run/audio/ 2>/dev/null || echo "  /run/audio not mounted yet"
+        fi
+        sleep 1
+    done
+
+    # Then verify pactl can connect
     WAIT_COUNT=0
     while ! pactl info >/dev/null 2>&1; do
         WAIT_COUNT=$((WAIT_COUNT + 1))
         if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
-            echo "WARNING: PulseAudio not available after ${MAX_WAIT}s - starting anyway"
-            echo "Audio devices may not be available. Check HAOS audio configuration."
+            echo ""
+            echo "WARNING: PulseAudio not responding after ${MAX_WAIT}s"
+            echo "Diagnostics:"
+            echo "  PULSE_SERVER=$PULSE_SERVER"
+            echo "  Socket exists: $([ -S /run/audio/native ] && echo yes || echo no)"
+            ls -la /run/audio/ 2>/dev/null || echo "  /run/audio directory not found"
+            echo ""
+            echo "Starting anyway - audio devices may not be available."
+            echo "Check HAOS audio configuration: Settings > System > Audio"
             break
         fi
         if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
-            echo "Still waiting for PulseAudio... (${WAIT_COUNT}s)"
+            echo "Waiting for PulseAudio server... (${WAIT_COUNT}s)"
         fi
         sleep 1
     done
 
     if pactl info >/dev/null 2>&1; then
         echo "PulseAudio is ready!"
-        # Show available sinks for diagnostics
+        echo ""
+        echo "PulseAudio server info:"
+        pactl info 2>/dev/null | grep -E "^(Server|Default Sink|Default Source)" || true
+        echo ""
         echo "Available PulseAudio sinks:"
         pactl list sinks short 2>/dev/null || echo "  (none detected)"
     fi
+    echo ""
 
     exec ./MultiRoomAudio "$@"
 fi
