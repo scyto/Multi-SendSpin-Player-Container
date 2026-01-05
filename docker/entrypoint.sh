@@ -51,6 +51,20 @@ else
 fi
 echo ""
 
+# Initialize udev for PulseAudio device detection
+echo "Initializing udev..."
+if command -v udevd >/dev/null 2>&1; then
+    # Start udevd daemon
+    udevd --daemon 2>/dev/null || true
+    # Trigger device detection for sound devices
+    udevadm trigger --subsystem-match=sound 2>/dev/null || true
+    udevadm settle --timeout=5 2>/dev/null || true
+    echo "udev initialized"
+else
+    echo "Warning: udev not available, device detection may be limited"
+fi
+echo ""
+
 # Start PulseAudio in system mode (no user session required)
 # --system: Run as system-wide daemon
 # --disallow-exit: Don't exit when last client disconnects
