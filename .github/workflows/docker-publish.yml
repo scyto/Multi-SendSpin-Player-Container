@@ -69,6 +69,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine build version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Tagged release: use version from tag (strip 'v' prefix)
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            # Dev branch: use sha-XXXXXXX format
+            VERSION="sha-$(echo ${{ github.sha }} | cut -c1-7)"
+          else
+            # Main branch or other: use 'latest'
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Build version: $VERSION"
+
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
@@ -99,6 +115,7 @@ jobs:
           cache-from: type=gha,scope=docker
           cache-to: type=gha,mode=max,scope=docker
           build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
@@ -123,6 +140,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
