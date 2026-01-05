@@ -1,37 +1,21 @@
 # PulseAudio System Configuration for Multi-Room Audio Container
-# This configuration runs PulseAudio in system mode for headless Docker deployments
+# Minimal config for headless Docker - no dbus/udev required
 
-# Load essential protocol modules
+# Load essential protocol modules (allow anonymous access in container)
 load-module module-native-protocol-unix auth-anonymous=1
 
-# Device detection - use ALSA detect instead of udev (no dbus required)
-load-module module-alsa-card-restore
-.ifexists module-alsa-sink.so
-# Fallback: manually load ALSA sinks if auto-detection fails
-.endif
-
-# Try udev detection (will work if udev is available, gracefully fail if not)
-.ifexists module-udev-detect.so
-load-module module-udev-detect ignore_dbus=1
-.else
-# Fallback to HAL-less ALSA detection
+# ALSA device detection (deprecated but works without udev/dbus)
+# This scans /dev/snd and creates sinks for all ALSA devices
 load-module module-detect
-.endif
 
-# Automatically restore stream volumes
+# Restore modules - store volume/device state in flat files (no dbus needed)
 load-module module-stream-restore
-
-# Automatically restore device volumes
 load-module module-device-restore
-
-# Automatically restore default sink/source
 load-module module-default-device-restore
 
-# Automatically move streams when sinks/sources change
-load-module module-switch-on-connect
-
-# Always keep a sink around, even if it's a null sink
+# Always keep a sink around (creates null sink if no hardware detected)
+# Note: The null sink may log dbus warnings but still works
 load-module module-always-sink
 
-# Position event sounds between streams
-load-module module-position-event-sounds
+# Rescue streams when their sink/source disappears
+load-module module-rescue-streams
