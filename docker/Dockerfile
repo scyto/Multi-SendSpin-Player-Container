@@ -4,19 +4,15 @@
 # Build arguments for multi-arch support
 ARG TARGETARCH
 
-# Base: Debian-slim for glibc compatibility with PortAudioSharp2 native bindings
-# Alpine (musl libc) causes SIGSEGV crashes with PortAudio native libraries
+# Base: Debian-slim for glibc compatibility
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS base
 WORKDIR /app
 EXPOSE 8096
 
-# Audio dependencies for PortAudioSharp2 native bindings
+# Audio dependencies for direct PulseAudio output
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    alsa-utils \
-    libasound2 \
-    libasound2-plugins \
     pulseaudio-utils \
-    libportaudio2 \
+    libpulse0 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -51,11 +47,6 @@ COPY --from=build /app/publish .
 # /app/config, /app/logs - Docker mode
 # /data, /share - HAOS mode
 RUN mkdir -p /app/config /app/logs /data /share
-
-# ALSA→PulseAudio bridge (auto-routes ALSA to PulseAudio when available)
-# This allows the same binary to work with both ALSA (Docker) and PulseAudio (HAOS)
-RUN echo 'pcm.!default { type pulse fallback "sysdefault" }' > /etc/asound.conf && \
-    echo 'ctl.!default { type pulse fallback "sysdefault" }' >> /etc/asound.conf
 
 # Health check - verifies the API is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

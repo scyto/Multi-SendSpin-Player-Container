@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.SignalR;
 using MultiRoomAudio.Audio;
+using MultiRoomAudio.Audio.PulseAudio;
 using MultiRoomAudio.Hubs;
 using MultiRoomAudio.Models;
 using MultiRoomAudio.Utilities;
@@ -26,7 +27,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     private readonly ConfigurationService _config;
     private readonly EnvironmentService _environment;
     private readonly IHubContext<PlayerStatusHub> _hubContext;
-    private readonly AlsaCommandRunner _alsaRunner;
+    private readonly VolumeCommandRunner _volumeRunner;
     private readonly ConcurrentDictionary<string, PlayerContext> _players = new();
     private readonly MdnsServerDiscovery _serverDiscovery;
     private bool _disposed;
@@ -145,14 +146,14 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         ConfigurationService config,
         EnvironmentService environment,
         IHubContext<PlayerStatusHub> hubContext,
-        AlsaCommandRunner alsaRunner)
+        VolumeCommandRunner volumeRunner)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
         _config = config;
         _environment = environment;
         _hubContext = hubContext;
-        _alsaRunner = alsaRunner;
+        _volumeRunner = volumeRunner;
         _serverDiscovery = new MdnsServerDiscovery(
             loggerFactory.CreateLogger<MdnsServerDiscovery>());
     }
@@ -280,7 +281,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         }
 
         // Validate device if specified
-        if (!PortAudioDeviceEnumerator.ValidateDevice(request.Device, out var deviceError))
+        if (!PulseAudioDeviceEnumerator.ValidateDevice(request.Device, out var deviceError))
         {
             throw new ArgumentException(deviceError);
         }
@@ -304,9 +305,9 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             var clockSync = new KalmanClockSynchronizer(
                 _loggerFactory.CreateLogger<KalmanClockSynchronizer>());
 
-            // 3. Create audio player (PortAudio for Linux)
-            var player = new PortAudioPlayer(
-                _loggerFactory.CreateLogger<PortAudioPlayer>(),
+            // 3. Create audio player (PulseAudio for Linux)
+            var player = new PulseAudioPlayer(
+                _loggerFactory.CreateLogger<PulseAudioPlayer>(),
                 request.Device);
 
             // 4. Create audio pipeline with proper factories
@@ -443,7 +444,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             return false;
 
         // Validate new device
-        if (!PortAudioDeviceEnumerator.ValidateDevice(newDeviceId, out var error))
+        if (!PulseAudioDeviceEnumerator.ValidateDevice(newDeviceId, out var error))
         {
             throw new ArgumentException(error);
         }
@@ -501,7 +502,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         // Fire-and-forget with error handling via ContinueWith
         if (!string.IsNullOrEmpty(context.Config.DeviceId))
         {
-            _ = _alsaRunner.SetVolumeAsync(context.Config.DeviceId, volume, ct)
+            _ = _volumeRunner.SetVolumeAsync(context.Config.DeviceId, volume, ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted && t.Exception != null)
