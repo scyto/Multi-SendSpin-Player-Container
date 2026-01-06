@@ -56,7 +56,11 @@ function setupSignalR() {
     connection.on('PlayerStatusUpdate', (data) => {
         console.log('Status update:', data);
         if (data.players) {
-            players = data.players;
+            // Convert array to object keyed by name (same as refreshStatus)
+            players = {};
+            (data.players || []).forEach(p => {
+                players[p.name] = p;
+            });
             renderPlayers();
         }
     });
