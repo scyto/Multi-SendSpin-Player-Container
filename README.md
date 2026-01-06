@@ -61,9 +61,6 @@ This project enables you to run a single centralized server (like a NAS, Raspber
 - **HDMI Audio**: Multi-channel HDMI audio output support
 - **Virtual Devices**: Null devices for testing, software defined ALSA devices
 
-<img width="895" height="616" alt="Screenshot of Multi-Room Audio interface showing a title bar at the top with buttons to view API docs and add a Player in the header and an area of multiple "Cards" containing a configured player each below detailing the name, connection status, output, volume and clock sync status." src="https://github.com/user-attachments/assets/2d679878-83d6-488f-87a0-c9d97d4badfe" />
-
-
 
 ## Docker Hub Images
 
