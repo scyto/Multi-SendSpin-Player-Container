@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d8c011e
+## Development Build: sha-ee3d2ec
 
 **Current Dev Build Changes** (recent)
 
+- Sort Cards alphabetically on server side, assume finer grain sorting on client side later.
 - fix rename
 - Add rename to player menu
 - include note about custom ALSA configs have health and status return proper version
@@ -14,7 +15,6 @@
 - Fix Pulse Starting when It shouldn't
 - feat: show dynamic version/build info on startup
 - fix: push dev HASSIO image with SHA tag for HAOS compatibility
-- Filter more ALSA plugin devices
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
