@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ee3d2ec
+## Development Build: sha-9003370
 
 **Current Dev Build Changes** (recent)
 
+- Initial draft of High Bitrate Support
 - Sort Cards alphabetically on server side, assume finer grain sorting on client side later.
 - fix rename
 - Add rename to player menu
@@ -14,7 +15,6 @@
 - fix pulseAudio on HAOS
 - Fix Pulse Starting when It shouldn't
 - feat: show dynamic version/build info on startup
-- fix: push dev HASSIO image with SHA tag for HAOS compatibility
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
