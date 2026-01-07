@@ -53,15 +53,10 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
     /// <summary>
     /// Sync correction options tuned for PulseAudio's timing characteristics.
-    /// PulseAudio has ~15ms timing jitter, so we use wider deadbands and
-    /// disable frame drop/insert (Tier 3) by setting a high resampling threshold.
+    /// Disables frame drop/insert (Tier 3) by setting a high resampling threshold.
     /// </summary>
     private static readonly SyncCorrectionOptions PulseAudioSyncOptions = new()
     {
-        // Wider deadband for PulseAudio's timing jitter (~15ms)
-        EntryDeadbandMicroseconds = 5_000,      // 5ms entry (vs default 2ms)
-        ExitDeadbandMicroseconds = 2_000,       // 2ms exit (vs default 0.5ms)
-
         // Use 4% max correction (matches CLI) for more responsive adjustment
         MaxSpeedCorrection = 0.04,
 

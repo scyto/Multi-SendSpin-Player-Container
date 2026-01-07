@@ -92,20 +92,35 @@ public class AlsaPlayer : IAudioPlayer
     }
 
     /// <summary>
-    /// Total output latency including buffer latency and measured startup fill time.
-    /// This is the time from when audio is written until it's heard from the speaker.
+    /// Gets the detected output latency in milliseconds (buffer latency).
+    /// This represents the buffer latency of the ALSA output device.
     /// </summary>
-    public int OutputLatencyMs => _bufferLatencyMs + _measuredStartupLatencyMs;
+    /// <remarks>
+    /// This is the buffer latency from ALSA configuration. For the full output delay
+    /// including startup fill time, see <see cref="TotalOutputLatencyMs"/>.
+    /// </remarks>
+    public int OutputLatencyMs => _bufferLatencyMs;
 
     /// <summary>
-    /// Buffer latency only (from ALSA configuration).
+    /// Gets the calibrated startup latency in milliseconds for ALSA push-model backend.
     /// </summary>
-    public int BufferLatencyMs => _bufferLatencyMs;
+    /// <remarks>
+    /// <para>
+    /// This is the measured time from first audio write to actual playback start.
+    /// ALSA must pre-fill its buffer (~75%) before auto-starting playback.
+    /// </para>
+    /// <para>
+    /// This value is used by the SDK's <c>ITimedAudioBuffer</c> to compensate for the
+    /// constant negative sync error caused by buffer prefill.
+    /// </para>
+    /// </remarks>
+    public int CalibratedStartupLatencyMs => _measuredStartupLatencyMs;
 
     /// <summary>
-    /// Measured startup latency (time to fill buffer until RUNNING state).
+    /// Gets the total output latency including buffer latency and startup fill time.
+    /// This is the full delay from when audio is written until it's heard.
     /// </summary>
-    public int StartupLatencyMs => _measuredStartupLatencyMs;
+    public int TotalOutputLatencyMs => _bufferLatencyMs + _measuredStartupLatencyMs;
 
     public event EventHandler<AudioPlayerState>? StateChanged;
     public event EventHandler<AudioPlayerError>? ErrorOccurred;
@@ -257,13 +272,13 @@ public class AlsaPlayer : IAudioPlayer
 
                 _logger.LogInformation(
                     "ALSA calibration complete: startup={StartupMs}ms, buffer={BufferMs}ms, total={TotalMs}ms",
-                    _measuredStartupLatencyMs, _bufferLatencyMs, OutputLatencyMs);
+                    CalibratedStartupLatencyMs, OutputLatencyMs, TotalOutputLatencyMs);
 
                 SetState(AudioPlayerState.Stopped);
 
                 _logger.LogInformation(
                     "ALSA player initialized. Device: {Device}, Format: {Format}, Rate: {Rate}Hz, Total Latency: {Latency}ms",
-                    _deviceName, AlsaNative.GetFormatName(_alsaFormat), actualSampleRate, OutputLatencyMs);
+                    _deviceName, AlsaNative.GetFormatName(_alsaFormat), actualSampleRate, TotalOutputLatencyMs);
             }
             catch (Exception ex)
             {
@@ -832,12 +847,12 @@ public class AlsaPlayer : IAudioPlayer
                     _measuredStartupLatencyMs = CalibrateStartupLatency(_currentFormat.Channels);
                     _logger.LogInformation(
                         "ALSA reconnect calibration: startup={StartupMs}ms, buffer={BufferMs}ms, total={TotalMs}ms",
-                        _measuredStartupLatencyMs, _bufferLatencyMs, OutputLatencyMs);
+                        CalibratedStartupLatencyMs, OutputLatencyMs, TotalOutputLatencyMs);
                 }
 
                 _logger.LogInformation(
                     "ALSA reconnected successfully on attempt {Attempt}, total latency: {Latency}ms",
-                    attempt, OutputLatencyMs);
+                    attempt, TotalOutputLatencyMs);
                 return true;
             }
             catch (Exception ex)
