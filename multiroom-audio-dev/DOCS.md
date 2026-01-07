@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-aea1c7d
+## Development Build: sha-4a83025
 
 **Current Dev Build Changes** (recent)
 
+- Add 20ms additional latency I guess. Plus console cleanup.
 - clear out the console on start
 - Update player details UI after output format removal
 - Remove BitDepthConverter and output format configuration
@@ -14,7 +15,6 @@
 - Use module-alsa-sink for direct PCM device access
 - Add debug output and /proc/asound mount instructions
 - Fix ALSA device detection in Docker standalone mode
-- Fix Docker standalone mode to use PulseAudio
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
