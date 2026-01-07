@@ -155,28 +155,63 @@ echo ""
 # In Docker, udev doesn't work so module-udev-detect won't find devices.
 # Manually detect ALSA cards and load them into PulseAudio.
 echo "Detecting ALSA audio devices..."
+
+# Debug: show what's available
+echo "  Checking /dev/snd:"
+ls -la /dev/snd/ 2>/dev/null || echo "    /dev/snd NOT MOUNTED"
+echo ""
+
+CARDS_LOADED=0
+
 if [ -f /proc/asound/cards ]; then
+    echo "  Reading from /proc/asound/cards:"
+    cat /proc/asound/cards
+    echo ""
+
     # Parse card numbers from /proc/asound/cards
     # Format: " 0 [USB            ]: USB-Audio - USB Audio Device"
-    # Only lines starting with a number are card entries
     grep -E '^ *[0-9]+' /proc/asound/cards | while read -r line; do
-        # First field is the card number
         card_num=$(echo "$line" | awk '{print $1}')
-        # Extract description after "]: "
         card_name=$(echo "$line" | sed 's/.*\]: //')
 
-        echo "  Found ALSA card $card_num: $card_name"
+        echo "  Loading ALSA card $card_num: $card_name"
 
         # Load the card into PulseAudio
         # tsched=0 for better compatibility with USB devices
         if pactl load-module module-alsa-card device=hw:$card_num tsched=0 2>/dev/null; then
             echo "    -> Loaded into PulseAudio"
+            CARDS_LOADED=$((CARDS_LOADED + 1))
         else
             echo "    -> Failed to load (may not support playback)"
         fi
     done
+elif [ -d /dev/snd ]; then
+    # Fallback: detect cards from /dev/snd/controlC* devices
+    echo "  /proc/asound/cards not found, detecting from /dev/snd/"
+    for ctrl in /dev/snd/controlC*; do
+        if [ -e "$ctrl" ]; then
+            # Extract card number from controlC0 -> 0
+            card_num=$(echo "$ctrl" | sed 's/.*controlC//')
+            echo "  Found ALSA card $card_num (from $ctrl)"
+
+            if pactl load-module module-alsa-card device=hw:$card_num tsched=0 2>/dev/null; then
+                echo "    -> Loaded into PulseAudio"
+                CARDS_LOADED=$((CARDS_LOADED + 1))
+            else
+                echo "    -> Failed to load"
+            fi
+        fi
+    done
 else
-    echo "  /proc/asound/cards not found - check /dev/snd mount"
+    echo "  ERROR: /dev/snd not mounted!"
+    echo ""
+    echo "  To use audio devices, run Docker with:"
+    echo "    docker run --device /dev/snd -v /proc/asound:/proc/asound:ro ..."
+    echo "  Or in docker-compose.yml:"
+    echo "    devices:"
+    echo "      - /dev/snd:/dev/snd"
+    echo "    volumes:"
+    echo "      - /proc/asound:/proc/asound:ro"
 fi
 echo ""
 
