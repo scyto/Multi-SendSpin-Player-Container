@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-00a8a40
+## Development Build: sha-aea1c7d
 
 **Current Dev Build Changes** (recent)
 
+- clear out the console on start
 - Update player details UI after output format removal
 - Remove BitDepthConverter and output format configuration
 - cleanup ALSA destruction
@@ -14,7 +15,6 @@
 - Add debug output and /proc/asound mount instructions
 - Fix ALSA device detection in Docker standalone mode
 - Fix Docker standalone mode to use PulseAudio
-- Remove ALSA support, standardize on PulseAudio
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
