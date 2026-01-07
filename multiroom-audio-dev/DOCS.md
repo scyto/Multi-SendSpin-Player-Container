@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-1c05cdf
+## Development Build: sha-552e08d
 
 **Current Dev Build Changes** (recent)
 
+- Remove resampling - use direct passthrough to PulseAudio
 - Load ALSA sinks at higher sample rates when supported
 - Use module-alsa-sink for direct PCM device access
 - Add debug output and /proc/asound mount instructions
@@ -14,7 +15,6 @@
 - Update SendSpin.SDK to v3.5.1
 - add ALSA calibration passing to the SDK, updated to 3.5.0 and removed deadband entry/exit.
 - Fix Native Rate Option
-- add alsa calibration
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
