@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-029411b
+## Development Build: sha-a6af6e0
 
 **Current Dev Build Changes** (recent)
 
+- add ALSA calibration passing to the SDK, updated to 3.5.0 and removed deadband entry/exit.
 - Fix Native Rate Option
 - add alsa calibration
 - test another theroy
@@ -14,7 +15,6 @@
 - Attempt to diagnose timing issues by adding native rate option
 - Fix ALSA latency detection and delay offset functionality
 - Add Stats for Nerds feature to CHANGELOG
-- Update documentation for unified resampler and Stats for Nerds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
