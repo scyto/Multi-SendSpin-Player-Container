@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-479e765
+## Development Build: sha-a0f29bd
 
 **Current Dev Build Changes** (recent)
 
+- Fix ALSA device detection in Docker standalone mode
 - Fix Docker standalone mode to use PulseAudio
 - Remove ALSA support, standardize on PulseAudio
 - Update SendSpin.SDK to v3.5.1
@@ -14,7 +15,6 @@
 - test another theroy
 - test theory on clock timing
 - Testing Theory on Sync Error
-- Add capability to use legacy timing to do A/B Testing
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
