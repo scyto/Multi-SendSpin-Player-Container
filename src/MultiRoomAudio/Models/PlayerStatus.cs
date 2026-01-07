@@ -35,7 +35,9 @@ public record PlayerResponse(
     bool IsClockSynced,
     PlayerMetrics? Metrics,
     AudioOutputFormat? OutputFormat = null,
-    DeviceCapabilities? DeviceCapabilities = null
+    DeviceCapabilities? DeviceCapabilities = null,
+    bool NativeRate = false,
+    bool UseSimpleResampler = false
 );
 
 /// <summary>

@@ -196,18 +196,10 @@ async function openEditPlayerModal(playerName) {
         document.getElementById('initialVolume').value = player.volume;
         document.getElementById('initialVolumeValue').textContent = player.volume + '%';
 
-        // Set native rate and simple resampler (need to get from config)
-        // For now, we'll get these from the stats endpoint which has more details
-        const statsResponse = await fetch(`./api/players/${encodeURIComponent(playerName)}/stats`);
-        if (statsResponse.ok) {
-            const stats = await statsResponse.json();
-            // Native rate is when input rate == output rate
-            const isNativeRate = stats.resampler?.inputRate === stats.resampler?.outputRate;
-            document.getElementById('nativeRate').checked = isNativeRate;
-            document.getElementById('useSimpleResampler').disabled = !isNativeRate;
-            // Simple resampler info isn't in stats, default to false
-            document.getElementById('useSimpleResampler').checked = false;
-        }
+        // Set native rate and simple resampler from the player config
+        document.getElementById('nativeRate').checked = player.nativeRate || false;
+        document.getElementById('useSimpleResampler').checked = player.useSimpleResampler || false;
+        document.getElementById('useSimpleResampler').disabled = !player.nativeRate;
 
         // Set device dropdown
         await refreshDevices();

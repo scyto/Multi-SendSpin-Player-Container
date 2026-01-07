@@ -1196,7 +1196,9 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 Overruns: bufferStats.OverrunCount
             ) : null,
             OutputFormat: context.Config.OutputFormat,
-            DeviceCapabilities: context.DeviceCapabilities
+            DeviceCapabilities: context.DeviceCapabilities,
+            NativeRate: context.Config.NativeRate,
+            UseSimpleResampler: context.Config.UseSimpleResampler
         );
     }
 
