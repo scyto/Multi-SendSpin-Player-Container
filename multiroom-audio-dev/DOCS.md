@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-08fd44b
+## Development Build: sha-029411b
 
 **Current Dev Build Changes** (recent)
 
+- Fix Native Rate Option
 - add alsa calibration
 - test another theroy
 - test theory on clock timing
@@ -14,7 +15,6 @@
 - Fix ALSA latency detection and delay offset functionality
 - Add Stats for Nerds feature to CHANGELOG
 - Update documentation for unified resampler and Stats for Nerds
-- Add Stats for Nerds real-time diagnostics panel
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
