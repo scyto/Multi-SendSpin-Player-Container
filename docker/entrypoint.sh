@@ -115,9 +115,10 @@ chmod 755 /run/pulse
 
 # Start PulseAudio in system mode (daemon)
 # Using --disallow-exit to prevent auto-shutdown, --exit-idle-time=-1 to never exit
+# Note: We intentionally allow module loading (no --disallow-module-loading) to load ALSA sinks dynamically
 echo "Starting PulseAudio daemon..."
 pulseaudio --system --disallow-exit --exit-idle-time=-1 --daemonize=yes \
-    --log-target=stderr --log-level=notice 2>&1 || {
+    --log-target=stderr --log-level=error 2>&1 || {
     echo "ERROR: Failed to start PulseAudio daemon"
     echo "Trying with verbose logging..."
     pulseaudio --system --disallow-exit --exit-idle-time=-1 --daemonize=no \
@@ -181,7 +182,7 @@ if [ -f /proc/asound/cards ]; then
 
         # Load the card into PulseAudio
         # tsched=0 for better compatibility with USB devices
-        if pactl load-module module-alsa-card device=hw:$card_num tsched=0 2>/dev/null; then
+        if pactl load-module module-alsa-card device=hw:$card_num tsched=0 >/dev/null 2>&1; then
             echo "    -> Loaded into PulseAudio"
             CARDS_LOADED=$((CARDS_LOADED + 1))
         else
@@ -208,7 +209,7 @@ elif [ -d /dev/snd ]; then
             LOADED=0
             for rate in 192000 96000 48000; do
                 if [ $LOADED -eq 0 ]; then
-                    if pactl load-module module-alsa-sink device=hw:$card_num,$dev_num sink_name="$sink_name" rate=$rate tsched=0 2>/dev/null; then
+                    if pactl load-module module-alsa-sink device=hw:$card_num,$dev_num sink_name="$sink_name" rate=$rate tsched=0 >/dev/null 2>&1; then
                         echo "    -> Loaded as $sink_name @ ${rate}Hz"
                         CARDS_LOADED=$((CARDS_LOADED + 1))
                         LOADED=1

@@ -38,6 +38,12 @@ public class PulseAudioPlayer : IAudioPlayer
     private const int BufferMs = 50;
 
     /// <summary>
+    /// Additional latency estimate for ALSA sink buffer and USB device pipeline.
+    /// This accounts for latency beyond PulseAudio's buffer that pa_simple_get_latency doesn't report.
+    /// </summary>
+    private const int AdditionalPipelineLatencyMs = 20;
+
+    /// <summary>
     /// Frames per write operation. At 48kHz, 1024 frames = ~21ms of audio.
     /// </summary>
     private const int FramesPerWrite = 1024;
@@ -178,24 +184,30 @@ public class PulseAudioPlayer : IAudioPlayer
 
                 _currentFormat = format;
 
-                // Get actual latency
+                // Get actual latency from PulseAudio
+                // Note: pa_simple_get_latency only returns buffer latency, not the full pipeline
+                // We add AdditionalPipelineLatencyMs to account for ALSA sink buffer and USB device latency
                 var latencyUs = SimpleGetLatency(_paHandle, out var latencyError);
                 if (latencyError != 0)
                 {
                     _logger.LogWarning(
-                        "Could not query PulseAudio latency: {Error}. Using fallback {BufferMs}ms",
-                        GetErrorMessage(latencyError), BufferMs);
-                    OutputLatencyMs = BufferMs;
+                        "Could not query PulseAudio latency: {Error}. Using fallback {BufferMs}ms + {Additional}ms",
+                        GetErrorMessage(latencyError), BufferMs, AdditionalPipelineLatencyMs);
+                    OutputLatencyMs = BufferMs + AdditionalPipelineLatencyMs;
                 }
                 else
                 {
-                    OutputLatencyMs = (int)(latencyUs / 1000);
-                    if (OutputLatencyMs <= 0)
+                    var paLatencyMs = (int)(latencyUs / 1000);
+                    if (paLatencyMs <= 0)
                     {
                         _logger.LogDebug(
-                            "PulseAudio reported invalid latency {Latency}μs. Using fallback {BufferMs}ms",
-                            latencyUs, BufferMs);
-                        OutputLatencyMs = BufferMs;
+                            "PulseAudio reported invalid latency {Latency}μs. Using fallback {BufferMs}ms + {Additional}ms",
+                            latencyUs, BufferMs, AdditionalPipelineLatencyMs);
+                        OutputLatencyMs = BufferMs + AdditionalPipelineLatencyMs;
+                    }
+                    else
+                    {
+                        OutputLatencyMs = paLatencyMs + AdditionalPipelineLatencyMs;
                     }
                 }
 
