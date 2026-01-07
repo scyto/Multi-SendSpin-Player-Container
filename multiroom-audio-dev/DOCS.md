@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5138ff9
+## Development Build: sha-24613ce
 
 **Current Dev Build Changes** (recent)
 
+- Update documentation for unified resampler and Stats for Nerds
+- Add Stats for Nerds real-time diagnostics panel
+- Update SendSpin.SDK to version 3.3.1
+- Add unified polyphase resampler for high-quality sample rate conversion
+- Fix TPDF dithering to use triangular probability distribution
 - Show device capabilities and what is being used
 - Fix 32-bit output
 - Initial draft of High Bitrate Support
 - Sort Cards alphabetically on server side, assume finer grain sorting on client side later.
 - fix rename
-- Add rename to player menu
-- include note about custom ALSA configs have health and status return proper version
-- Fix whitespace for linter
-- fix the fix though for HAOS
-- fix pulseAudio on HAOS
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
