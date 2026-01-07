@@ -546,13 +546,21 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // 11. Apply initial volume (software volume scaling)
             player.Volume = NormalizeVolume(request.Volume);
 
-            // 12. Apply initial delay offset if specified
-            if (request.DelayMs != 0)
+            // 12. Apply delay offset: user offset + output latency compensation
+            // The SDK doesn't account for output buffer latency in sync calculations,
+            // so we compensate by advancing the target playback time by the output latency.
+            // Negative StaticDelayMs = play samples earlier to compensate for buffer delay.
+            var outputLatencyCompensation = -player.OutputLatencyMs;
+            var totalDelayMs = request.DelayMs + outputLatencyCompensation;
+
+            if (totalDelayMs != 0)
             {
-                clockSync.StaticDelayMs = request.DelayMs;
-                _logger.LogDebug("Applied initial delay offset of {DelayMs}ms for '{Name}'",
-                    request.DelayMs, request.Name);
+                clockSync.StaticDelayMs = totalDelayMs;
             }
+
+            _logger.LogInformation(
+                "Delay offset for '{Name}': user={UserDelayMs}ms, latency compensation={LatencyCompMs}ms, total={TotalMs}ms",
+                request.Name, request.DelayMs, outputLatencyCompensation, totalDelayMs);
 
             // 13. Persist configuration if requested
             if (request.Persist)
@@ -728,13 +736,18 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         // Clamp to valid range
         delayMs = Math.Clamp(delayMs, -5000, 5000);
 
-        // Apply to the clock synchronizer - this affects when samples are scheduled to play
-        context.ClockSync.StaticDelayMs = delayMs;
+        // Apply to the clock synchronizer: user delay + output latency compensation
+        // The SDK doesn't account for output buffer latency, so we compensate here.
+        var outputLatencyCompensation = -context.Player.OutputLatencyMs;
+        var totalDelayMs = delayMs + outputLatencyCompensation;
+        context.ClockSync.StaticDelayMs = totalDelayMs;
 
-        // Update the stored config
+        // Update the stored config (user's value only, not the compensation)
         context.Config.DelayMs = delayMs;
 
-        _logger.LogInformation("Set delay offset for '{Name}' to {DelayMs}ms", name, delayMs);
+        _logger.LogInformation(
+            "Set delay offset for '{Name}': user={UserDelayMs}ms, latency compensation={LatencyCompMs}ms, total={TotalMs}ms",
+            name, delayMs, outputLatencyCompensation, totalDelayMs);
 
         return true;
     }
