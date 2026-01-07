@@ -464,14 +464,12 @@ async function showPlayerStats(name) {
         </div>
         <div class="row mt-3">
             <div class="col-md-6">
-                <h6 class="text-muted text-uppercase small">Output Format</h6>
-                ${player.outputFormat ? `
+                <h6 class="text-muted text-uppercase small">Audio Output</h6>
                 <table class="table table-sm">
-                    <tr><td><strong>Sample Rate</strong></td><td>${formatSampleRate(player.outputFormat.sampleRate)}</td></tr>
-                    <tr><td><strong>Bit Depth</strong></td><td>${player.outputFormat.bitDepth}-bit</td></tr>
-                    <tr><td><strong>Channels</strong></td><td>${player.outputFormat.channels}ch (${player.outputFormat.channels === 2 ? 'Stereo' : player.outputFormat.channels === 1 ? 'Mono' : 'Multi-channel'})</td></tr>
+                    <tr><td><strong>Format</strong></td><td>FLOAT32 (32-bit)</td></tr>
+                    <tr><td><strong>Conversion</strong></td><td>PulseAudio (native)</td></tr>
+                    <tr><td><strong>Latency</strong></td><td>${player.outputLatencyMs}ms</td></tr>
                 </table>
-                ` : '<p class="text-muted small">Using default format</p>'}
             </div>
             <div class="col-md-6">
                 <h6 class="text-muted text-uppercase small">Device Capabilities</h6>
