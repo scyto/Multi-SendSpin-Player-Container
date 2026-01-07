@@ -267,9 +267,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                         ServerUrl = playerConfig.Server,
                         Volume = playerConfig.Volume ?? 100,
                         DelayMs = playerConfig.DelayMs,
-                        Persist = false, // Already persisted, don't re-save
-                        OutputSampleRate = playerConfig.OutputSampleRate,
-                        OutputBitDepth = playerConfig.OutputBitDepth
+                        Persist = false // Already persisted, don't re-save
                     };
 
                     await CreatePlayerAsync(request, cancellationToken);
@@ -373,39 +371,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
         try
         {
-            // Probe device capabilities (used for format selection and reporting)
+            // Probe device capabilities (used for reporting in Stats for Nerds)
             var deviceCapabilities = _backendFactory.GetDeviceCapabilities(request.Device);
-
-            // Resolve output format: request > saved config > auto-detect > defaults
-            // PulseAudio handles any necessary format conversion to the device
-            AudioOutputFormat? outputFormat = null;
-            if (request.OutputSampleRate.HasValue || request.OutputBitDepth.HasValue)
-            {
-                // Use explicitly specified values from request
-                outputFormat = new AudioOutputFormat(
-                    SampleRate: request.OutputSampleRate ?? 48000,
-                    BitDepth: request.OutputBitDepth ?? 32,
-                    Channels: 2);
-                _logger.LogInformation("Using requested output format: {SampleRate}Hz/{BitDepth}-bit",
-                    outputFormat.SampleRate, outputFormat.BitDepth);
-            }
-            else if (deviceCapabilities != null)
-            {
-                // Auto-detect from device capabilities
-                outputFormat = new AudioOutputFormat(
-                    SampleRate: deviceCapabilities.PreferredSampleRate,
-                    BitDepth: deviceCapabilities.PreferredBitDepth,
-                    Channels: 2);
-                _logger.LogInformation("Auto-detected output format: {SampleRate}Hz/{BitDepth}-bit (device supports: rates={Rates}, depths={Depths})",
-                    outputFormat.SampleRate, outputFormat.BitDepth,
-                    string.Join(",", deviceCapabilities.SupportedSampleRates),
-                    string.Join(",", deviceCapabilities.SupportedBitDepths));
-            }
-            else
-            {
-                // Fallback to default (48kHz/32-bit)
-                _logger.LogDebug("No device capabilities available, using default output format");
-            }
 
             // 1. Create capabilities with player role
             var clientCapabilities = new ClientCapabilities
@@ -421,8 +388,9 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             var clockSync = new KalmanClockSynchronizer(
                 _loggerFactory.CreateLogger<KalmanClockSynchronizer>());
 
-            // 3. Create audio player using the appropriate backend with output format
-            var player = _backendFactory.CreatePlayer(request.Device, _loggerFactory, outputFormat);
+            // 3. Create audio player using the appropriate backend
+            // PulseAudio handles all format conversion natively (always float32 output)
+            var player = _backendFactory.CreatePlayer(request.Device, _loggerFactory);
 
             // 4. Create audio pipeline with proper factories
             // Uses direct passthrough - PulseAudio handles format conversion to devices
@@ -471,10 +439,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 ClientId = clientCapabilities.ClientId,
                 ServerUrl = request.ServerUrl,
                 Volume = request.Volume,
-                DelayMs = request.DelayMs,
-                OutputSampleRate = outputFormat?.SampleRate,
-                OutputBitDepth = outputFormat?.BitDepth,
-                OutputFormat = outputFormat
+                DelayMs = request.DelayMs
             };
 
             // 8. Create context
@@ -513,9 +478,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     Autostart = true,
                     DelayMs = request.DelayMs,
                     Server = request.ServerUrl,
-                    Volume = request.Volume,
-                    OutputSampleRate = outputFormat?.SampleRate,
-                    OutputBitDepth = outputFormat?.BitDepth
+                    Volume = request.Volume
                 };
                 _config.SetPlayer(request.Name, persistConfig);
                 _config.Save();
@@ -845,9 +808,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             ServerUrl = config.ServerUrl,
             Volume = config.Volume,
             DelayMs = config.DelayMs,
-            Persist = false, // Already persisted
-            OutputSampleRate = config.OutputSampleRate,
-            OutputBitDepth = config.OutputBitDepth
+            Persist = false // Already persisted
         };
 
         return await CreatePlayerAsync(request, ct);
@@ -1139,7 +1100,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 Underruns: bufferStats.UnderrunCount,
                 Overruns: bufferStats.OverrunCount
             ) : null,
-            OutputFormat: context.Config.OutputFormat,
             DeviceCapabilities: context.DeviceCapabilities
         );
     }
@@ -1157,9 +1117,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         var bufferStats = context.Pipeline.BufferStats;
         var clockStatus = context.ClockSync.GetStatus();
         var inputFormat = context.Pipeline.CurrentFormat;
-        // Use SDK's OutputFormat if available (3.3.1+), fall back to config
-        var pipelineOutputFormat = context.Pipeline.OutputFormat;
-        var configOutputFormat = context.Config.OutputFormat;
+        // Use SDK's OutputFormat (always float32, PulseAudio handles device conversion)
+        var outputFormat = context.Pipeline.OutputFormat;
 
         // Audio Format Stats
         var audioFormat = new AudioFormatStats(
@@ -1169,14 +1128,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             InputSampleRate: inputFormat?.SampleRate ?? 0,
             InputChannels: inputFormat?.Channels ?? 0,
             InputBitrate: inputFormat?.Bitrate > 0 ? $"{inputFormat.Bitrate}kbps" : null,
-            OutputFormat: pipelineOutputFormat != null
-                ? $"PCM {pipelineOutputFormat.SampleRate}Hz {pipelineOutputFormat.Channels}ch {pipelineOutputFormat.BitDepth}-bit"
-                : (configOutputFormat != null
-                    ? $"PCM {configOutputFormat.SampleRate}Hz {configOutputFormat.Channels}ch {configOutputFormat.BitDepth}-bit"
-                    : "--"),
-            OutputSampleRate: pipelineOutputFormat?.SampleRate ?? configOutputFormat?.SampleRate ?? 0,
-            OutputChannels: pipelineOutputFormat?.Channels ?? configOutputFormat?.Channels ?? 2,
-            OutputBitDepth: pipelineOutputFormat?.BitDepth ?? configOutputFormat?.BitDepth ?? 32
+            OutputFormat: outputFormat != null
+                ? $"FLOAT32 {outputFormat.SampleRate}Hz {outputFormat.Channels}ch"
+                : "--",
+            OutputSampleRate: outputFormat?.SampleRate ?? 0,
+            OutputChannels: outputFormat?.Channels ?? 2,
+            OutputBitDepth: 32  // Always float32 (PulseAudio converts to device format)
         );
 
         // Sync Stats
@@ -1219,7 +1176,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         // Format Conversion Stats (PulseAudio handles actual conversion)
         // Shows input vs output rates for informational purposes
         var inputRate = inputFormat?.SampleRate ?? 48000;
-        var outputRate = pipelineOutputFormat?.SampleRate ?? configOutputFormat?.SampleRate ?? inputRate;
+        var outputRate = outputFormat?.SampleRate ?? inputRate;
         var effectiveRatio = outputRate / (double)inputRate * (bufferStats?.TargetPlaybackRate ?? 1.0);
 
         var resampler = new ResamplerStats(
