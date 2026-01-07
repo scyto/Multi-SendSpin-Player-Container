@@ -69,6 +69,18 @@ public class AlsaPlayer : IAudioPlayer
     /// </summary>
     private const int ReconnectMaxDelayMs = 10000;
 
+    /// <summary>
+    /// Additional latency from ALSA startup buffering.
+    /// ALSA auto-starts playback after the buffer is partially filled (typically 75%).
+    /// This represents the time from when we start writing until ALSA actually outputs audio.
+    /// Combined with the output buffer latency, this gives total effective latency.
+    /// </summary>
+    /// <remarks>
+    /// Observed sync error of ~200ms with buffer latency of ~50ms suggests ~150ms startup fill time.
+    /// This matches ALSA needing 3-4 periods written before auto-start triggers.
+    /// </remarks>
+    private const int StartupFillLatencyMs = 150;
+
     public AudioPlayerState State { get; private set; } = AudioPlayerState.Uninitialized;
 
     private volatile float _volume = 1.0f;
@@ -212,21 +224,29 @@ public class AlsaPlayer : IAudioPlayer
                 // Query actual buffer size - ALSA may allocate larger buffers than requested
                 // (especially for USB devices, virtual devices, or devices behind dmix/PulseAudio)
                 var getResult = AlsaNative.GetParams(_pcmHandle, out var actualBufferSize, out var actualPeriodSize);
+                int bufferLatencyMs;
                 if (getResult >= 0 && actualBufferSize > 0)
                 {
-                    OutputLatencyMs = AlsaNative.CalculateLatencyMs(actualBufferSize, (uint)actualSampleRate);
+                    bufferLatencyMs = AlsaNative.CalculateLatencyMs(actualBufferSize, (uint)actualSampleRate);
                     _logger.LogInformation(
                         "ALSA actual buffer: {BufferFrames} frames ({LatencyMs}ms), period: {PeriodFrames} frames",
-                        actualBufferSize, OutputLatencyMs, actualPeriodSize);
+                        actualBufferSize, bufferLatencyMs, actualPeriodSize);
                 }
                 else
                 {
                     // Fallback to target if query fails
-                    OutputLatencyMs = (int)(TargetLatencyUs / 1000);
+                    bufferLatencyMs = (int)(TargetLatencyUs / 1000);
                     _logger.LogWarning(
                         "Could not query ALSA buffer size: {Error}. Using target latency {TargetMs}ms",
-                        AlsaNative.GetErrorMessage(getResult), OutputLatencyMs);
+                        AlsaNative.GetErrorMessage(getResult), bufferLatencyMs);
                 }
+
+                // Total latency includes buffer latency + startup fill time
+                // ALSA auto-starts after buffer is partially filled, adding ~150ms before audio output begins
+                OutputLatencyMs = bufferLatencyMs + StartupFillLatencyMs;
+                _logger.LogInformation(
+                    "ALSA total latency: {TotalMs}ms (buffer={BufferMs}ms + startup={StartupMs}ms)",
+                    OutputLatencyMs, bufferLatencyMs, StartupFillLatencyMs);
 
                 // Pre-allocate buffers
                 var samplesPerWrite = FramesPerWrite * format.Channels;
@@ -788,10 +808,11 @@ public class AlsaPlayer : IAudioPlayer
                 var getResult = AlsaNative.GetParams(newHandle, out var actualBufferSize, out var actualPeriodSize);
                 if (getResult >= 0 && actualBufferSize > 0)
                 {
-                    OutputLatencyMs = AlsaNative.CalculateLatencyMs(actualBufferSize, (uint)actualSampleRate);
+                    var bufferLatencyMs = AlsaNative.CalculateLatencyMs(actualBufferSize, (uint)actualSampleRate);
+                    OutputLatencyMs = bufferLatencyMs + StartupFillLatencyMs;
                     _logger.LogDebug(
-                        "ALSA reconnect buffer: {BufferFrames} frames ({LatencyMs}ms)",
-                        actualBufferSize, OutputLatencyMs);
+                        "ALSA reconnect buffer: {BufferFrames} frames, total latency: {TotalMs}ms (buffer={BufferMs}ms + startup={StartupMs}ms)",
+                        actualBufferSize, OutputLatencyMs, bufferLatencyMs, StartupFillLatencyMs);
                 }
 
                 // Success!
