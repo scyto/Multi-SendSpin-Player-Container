@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-12d70ba
+## Development Build: sha-05b1c2d
 
 **Current Dev Build Changes** (recent)
 
+- Additional logging enhancements and sink creation improvements
 - pulseplayer updates and stats for nerds fix
 - read vs readraw
 - Add sink creation, attempt bugfix of playback.
@@ -14,7 +15,6 @@
 - Add 20ms additional latency I guess. Plus console cleanup.
 - clear out the console on start
 - Update player details UI after output format removal
-- Remove BitDepthConverter and output format configuration
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
