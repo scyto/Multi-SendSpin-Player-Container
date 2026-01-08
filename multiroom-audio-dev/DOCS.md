@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-05b1c2d
+## Development Build: sha-b61a64d
 
 **Current Dev Build Changes** (recent)
 
+- Update to Bootstrap latest, use their dark mode
 - Additional logging enhancements and sink creation improvements
 - pulseplayer updates and stats for nerds fix
 - read vs readraw
@@ -14,7 +15,6 @@
 - try to have the right amount of latency.
 - Add 20ms additional latency I guess. Plus console cleanup.
 - clear out the console on start
-- Update player details UI after output format removal
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
