@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5b40eef
+## Development Build: sha-cd929b2
 
 **Current Dev Build Changes** (recent)
 
+- read vs readraw
+- Add sink creation, attempt bugfix of playback.
 - shift to SDK 5.0.0- correction in app vs in SDK, drop/insert only.
 - Shifted from PA_SimpleAudio to PA_stream.
 - try to have the right amount of latency.
@@ -13,8 +15,6 @@
 - Update player details UI after output format removal
 - Remove BitDepthConverter and output format configuration
 - cleanup ALSA destruction
-- Remove resampling - use direct passthrough to PulseAudio
-- Load ALSA sinks at higher sample rates when supported
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
