@@ -5,17 +5,41 @@ namespace MultiRoomAudio.Audio;
 
 /// <summary>
 /// Bridges <see cref="ITimedAudioBuffer"/> to <see cref="IAudioSampleSource"/>.
-/// Provides current local time to the buffer for timed sample release.
+/// Provides current local time to the buffer for timed sample release and
+/// implements player-controlled sync correction via frame drop/insert.
 /// </summary>
 /// <remarks>
-/// This class is called from PortAudio's audio thread and must be fast and non-blocking.
-/// It provides the current time to the timed buffer so that audio is released
-/// at the correct moment for synchronized playback.
+/// <para>
+/// This class is called from the audio thread and must be fast and non-blocking.
+/// It reads raw samples from the buffer and applies sync correction based on
+/// the buffer's sync error measurements.
+/// </para>
+/// <para>
+/// Correction strategy:
+/// - Within 5ms: no correction (acceptable tolerance)
+/// - Beyond 5ms behind (positive error): drop frames to catch up
+/// - Beyond 5ms ahead (negative error): insert frames to slow down
+/// </para>
 /// </remarks>
 public sealed class BufferedAudioSampleSource : IAudioSampleSource
 {
     private readonly ITimedAudioBuffer _buffer;
     private readonly Func<long> _getCurrentTimeMicroseconds;
+
+    // Correction threshold - within 5ms is acceptable, beyond that we correct
+    private const long CorrectionThresholdMicroseconds = 5_000;  // 5ms deadband
+
+    // Apply correction every N frames to spread out the corrections
+    private const int CorrectionIntervalFrames = 100;
+
+    // Frame tracking for corrections
+    private int _frameCounter;
+    private readonly float[] _lastFrame;
+    private readonly float[] _dropBuffer;
+    private readonly int _channels;
+
+    // Pending insertion - set when we need to insert on next read
+    private bool _pendingInsertion;
 
     /// <inheritdoc/>
     public AudioFormat Format => _buffer.Format;
@@ -39,6 +63,16 @@ public sealed class BufferedAudioSampleSource : IAudioSampleSource
 
         _buffer = buffer;
         _getCurrentTimeMicroseconds = getCurrentTimeMicroseconds;
+        _channels = buffer.Format.Channels;
+
+        if (_channels <= 0)
+        {
+            throw new ArgumentException("Audio format must have at least one channel.", nameof(buffer));
+        }
+
+        // Pre-allocate buffers to avoid GC pressure on audio thread
+        _lastFrame = new float[_channels];
+        _dropBuffer = new float[_channels];
     }
 
     /// <inheritdoc/>
@@ -46,17 +80,123 @@ public sealed class BufferedAudioSampleSource : IAudioSampleSource
     {
         var currentTime = _getCurrentTimeMicroseconds();
 
-        // Read from the timed buffer using the portion we need to fill
-        var span = buffer.AsSpan(offset, count);
-        var read = _buffer.Read(span, currentTime);
-
-        // Fill remainder with silence if underrun
-        if (read < count)
+        // Handle pending frame insertion from previous correction decision
+        int insertedSamples = 0;
+        if (_pendingInsertion && count >= _channels)
         {
-            buffer.AsSpan(offset + read, count - read).Fill(0f);
+            // Insert the saved frame at the start of the buffer
+            Array.Copy(_lastFrame, 0, buffer, offset, _channels);
+            insertedSamples = _channels;
+            _pendingInsertion = false;
+
+            // Notify SDK that we inserted samples (output without consuming)
+            _buffer.NotifyExternalCorrection(0, _channels);
         }
 
-        // Always return requested count to keep audio output happy (silence-filled if needed)
+        // Read remaining samples from the timed buffer
+        var remainingCount = count - insertedSamples;
+        var span = buffer.AsSpan(offset + insertedSamples, remainingCount);
+        var read = _buffer.ReadRaw(span, currentTime);
+
+        // Apply our own frame-based correction if we got samples
+        if (read > 0)
+        {
+            ApplyFrameCorrection(buffer, offset + insertedSamples, read);
+        }
+
+        // Fill remainder with silence if underrun
+        var totalSamples = insertedSamples + read;
+        if (totalSamples < count)
+        {
+            buffer.AsSpan(offset + totalSamples, count - totalSamples).Fill(0f);
+        }
+
+        // Always return requested count to keep audio output happy
         return count;
+    }
+
+    /// <summary>
+    /// Applies frame drop/insert correction based on current sync error.
+    /// </summary>
+    private void ApplyFrameCorrection(float[] buffer, int offset, int sampleCount)
+    {
+        // Get current sync error (smoothed for stable decisions)
+        var syncError = _buffer.SmoothedSyncErrorMicroseconds;
+        var absError = Math.Abs(syncError);
+
+        // Save the last frame for potential insertion
+        SaveLastFrame(buffer, offset, sampleCount);
+
+        // No correction needed if within 5ms deadband
+        if (absError < CorrectionThresholdMicroseconds)
+        {
+            return;
+        }
+
+        // Increment frame counter
+        _frameCounter++;
+
+        // Apply correction periodically (not every frame - spread them out)
+        if (_frameCounter < CorrectionIntervalFrames)
+        {
+            return;
+        }
+        _frameCounter = 0;
+
+        if (syncError > 0)
+        {
+            // Behind schedule (positive error) - DROP a frame to catch up
+            // We'll read and discard an extra frame's worth of samples
+            DropFrame();
+        }
+        else
+        {
+            // Ahead of schedule (negative error) - INSERT a frame to slow down
+            // Schedule insertion for next read (deferred because we already read this buffer)
+            InsertFrame();
+        }
+    }
+
+    /// <summary>
+    /// Saves the last frame for potential insertion.
+    /// </summary>
+    private void SaveLastFrame(float[] buffer, int offset, int sampleCount)
+    {
+        if (sampleCount < _channels)
+        {
+            return;
+        }
+
+        // Save the last frame (last _channels samples)
+        var lastFrameStart = offset + sampleCount - _channels;
+        Array.Copy(buffer, lastFrameStart, _lastFrame, 0, _channels);
+    }
+
+    /// <summary>
+    /// Drops a frame by reading and discarding samples from the buffer.
+    /// </summary>
+    private void DropFrame()
+    {
+        // Read an extra frame's worth into pre-allocated buffer and discard it
+        // This advances the buffer cursor, making us catch up
+        var currentTime = _getCurrentTimeMicroseconds();
+        var dropped = _buffer.ReadRaw(_dropBuffer.AsSpan(), currentTime);
+
+        if (dropped > 0)
+        {
+            // Notify the buffer that we dropped samples
+            _buffer.NotifyExternalCorrection(dropped, 0);
+        }
+    }
+
+    /// <summary>
+    /// Schedules a frame insertion for the next read.
+    /// The insertion is deferred because we've already read this buffer's samples.
+    /// </summary>
+    private void InsertFrame()
+    {
+        // Set flag - next Read() will insert the saved frame before reading
+        // This causes us to output more samples than we consume, slowing playback
+        _pendingInsertion = true;
     }
 }

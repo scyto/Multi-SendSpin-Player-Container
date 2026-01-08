@@ -10,7 +10,7 @@ public record PlayerStatsResponse(
     BufferStatsInfo Buffer,
     ClockSyncStats ClockSync,
     ThroughputStats Throughput,
-    ResamplerStats Resampler
+    SyncCorrectionStats Correction
 );
 
 /// <summary>
@@ -28,12 +28,11 @@ public record AudioFormatStats(
 );
 
 /// <summary>
-/// Sync status and correction information.
+/// Sync status information.
 /// </summary>
 public record SyncStats(
     double SyncErrorMs,
-    string CorrectionMode,
-    double PlaybackRate,
+    bool IsWithinTolerance,
     bool IsPlaybackActive
 );
 
@@ -67,18 +66,16 @@ public record ClockSyncStats(
 public record ThroughputStats(
     long SamplesWritten,
     long SamplesRead,
-    long SamplesDroppedSync,
-    long SamplesInsertedSync,
     long SamplesDroppedOverflow
 );
 
 /// <summary>
-/// Audio format conversion information.
-/// Shows input vs output sample rates. PulseAudio handles format conversion.
+/// Sync correction statistics.
+/// Uses frame drop/insert when sync error exceeds 5ms threshold.
 /// </summary>
-public record ResamplerStats(
-    int InputRate,
-    int OutputRate,
-    string Quality,
-    double EffectiveRatio
+public record SyncCorrectionStats(
+    string Mode,
+    long FramesDropped,
+    long FramesInserted,
+    int ThresholdMs
 );

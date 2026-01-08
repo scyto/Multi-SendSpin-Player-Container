@@ -1136,11 +1136,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             OutputBitDepth: 32  // Always float32 (PulseAudio converts to device format)
         );
 
-        // Sync Stats
+        // Sync Stats (5ms threshold for correction)
+        const double SyncToleranceMs = 5.0;
+        var syncErrorMs = bufferStats?.SyncErrorMs ?? 0;
         var sync = new SyncStats(
-            SyncErrorMs: bufferStats?.SyncErrorMs ?? 0,
-            CorrectionMode: bufferStats?.CurrentCorrectionMode.ToString() ?? "None",
-            PlaybackRate: bufferStats?.TargetPlaybackRate ?? 1.0,
+            SyncErrorMs: syncErrorMs,
+            IsWithinTolerance: Math.Abs(syncErrorMs) < SyncToleranceMs,
             IsPlaybackActive: bufferStats?.IsPlaybackActive ?? false
         );
 
@@ -1168,22 +1169,21 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         var throughput = new ThroughputStats(
             SamplesWritten: bufferStats?.TotalSamplesWritten ?? 0,
             SamplesRead: bufferStats?.TotalSamplesRead ?? 0,
-            SamplesDroppedSync: bufferStats?.SamplesDroppedForSync ?? 0,
-            SamplesInsertedSync: bufferStats?.SamplesInsertedForSync ?? 0,
             SamplesDroppedOverflow: bufferStats?.DroppedSamples ?? 0
         );
 
-        // Format Conversion Stats (PulseAudio handles actual conversion)
-        // Shows input vs output rates for informational purposes
-        var inputRate = inputFormat?.SampleRate ?? 48000;
-        var outputRate = outputFormat?.SampleRate ?? inputRate;
-        var effectiveRatio = outputRate / (double)inputRate * (bufferStats?.TargetPlaybackRate ?? 1.0);
+        // Sync Correction Stats (frame drop/insert based on 5ms threshold)
+        var framesDropped = bufferStats?.SamplesDroppedForSync ?? 0;
+        var framesInserted = bufferStats?.SamplesInsertedForSync ?? 0;
+        var correctionMode = framesDropped > 0 || framesInserted > 0
+            ? (framesDropped > framesInserted ? "Dropping" : "Inserting")
+            : "None";
 
-        var resampler = new ResamplerStats(
-            InputRate: inputRate,
-            OutputRate: outputRate,
-            Quality: "PulseAudio", // PulseAudio handles format conversion
-            EffectiveRatio: effectiveRatio
+        var correction = new SyncCorrectionStats(
+            Mode: correctionMode,
+            FramesDropped: framesDropped,
+            FramesInserted: framesInserted,
+            ThresholdMs: 5  // Our 5ms threshold
         );
 
         return new PlayerStatsResponse(
@@ -1193,7 +1193,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             Buffer: buffer,
             ClockSync: clockSync,
             Throughput: throughput,
-            Resampler: resampler
+            Correction: correction
         );
     }
 

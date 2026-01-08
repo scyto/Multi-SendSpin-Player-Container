@@ -721,8 +721,8 @@ function renderStatsPanel(stats) {
                 <span class="stats-value ${getSyncErrorClass(stats.sync.syncErrorMs)}">${formatMs(stats.sync.syncErrorMs)}</span>
             </div>
             <div class="stats-row">
-                <span class="stats-label">Correction Mode</span>
-                <span class="stats-value ${getCorrectionModeClass(stats.sync.correctionMode)}">${escapeHtml(stats.sync.correctionMode)}</span>
+                <span class="stats-label">Status</span>
+                <span class="stats-value ${stats.sync.isWithinTolerance ? 'good' : 'warning'}">${stats.sync.isWithinTolerance ? 'Within tolerance' : 'Correcting'}</span>
             </div>
             <div class="stats-row">
                 <span class="stats-label">Playback Active</span>
@@ -751,16 +751,20 @@ function renderStatsPanel(stats) {
         <div class="stats-section">
             <div class="stats-section-header">Sync Correction</div>
             <div class="stats-row">
-                <span class="stats-label">Playback Rate</span>
-                <span class="stats-value ${getPlaybackRateClass(stats.sync.playbackRate)}">${stats.sync.playbackRate.toFixed(4)}x</span>
+                <span class="stats-label">Mode</span>
+                <span class="stats-value ${getCorrectionModeClass(stats.correction.mode)}">${escapeHtml(stats.correction.mode)}</span>
             </div>
             <div class="stats-row">
-                <span class="stats-label">Dropped (Sync)</span>
-                <span class="stats-value ${stats.throughput.samplesDroppedSync > 0 ? 'warning' : ''}">${formatSampleCount(stats.throughput.samplesDroppedSync)}</span>
+                <span class="stats-label">Threshold</span>
+                <span class="stats-value">${stats.correction.thresholdMs}ms</span>
             </div>
             <div class="stats-row">
-                <span class="stats-label">Inserted (Sync)</span>
-                <span class="stats-value ${stats.throughput.samplesInsertedSync > 0 ? 'warning' : ''}">${formatSampleCount(stats.throughput.samplesInsertedSync)}</span>
+                <span class="stats-label">Frames Dropped</span>
+                <span class="stats-value ${stats.correction.framesDropped > 0 ? 'warning' : ''}">${formatSampleCount(stats.correction.framesDropped)}</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Frames Inserted</span>
+                <span class="stats-value ${stats.correction.framesInserted > 0 ? 'warning' : ''}">${formatSampleCount(stats.correction.framesInserted)}</span>
             </div>
             <div class="stats-row">
                 <span class="stats-label">Dropped (Overflow)</span>
@@ -818,23 +822,6 @@ function renderStatsPanel(stats) {
                 <span class="stats-value">${formatSampleCount(stats.throughput.samplesRead)}</span>
             </div>
         </div>
-
-        <!-- Format Conversion Section -->
-        <div class="stats-section">
-            <div class="stats-section-header">Format Conversion</div>
-            <div class="stats-row">
-                <span class="stats-label">Rate</span>
-                <span class="stats-value info">${formatSampleRate(stats.resampler.inputRate)} → ${formatSampleRate(stats.resampler.outputRate)}</span>
-            </div>
-            <div class="stats-row">
-                <span class="stats-label">Handler</span>
-                <span class="stats-value">${escapeHtml(stats.resampler.quality)}</span>
-            </div>
-            <div class="stats-row">
-                <span class="stats-label">Effective Ratio</span>
-                <span class="stats-value">${stats.resampler.effectiveRatio.toFixed(6)}</span>
-            </div>
-        </div>
     `;
 }
 
@@ -864,16 +851,9 @@ function getSyncErrorClass(errorMs) {
 
 function getCorrectionModeClass(mode) {
     switch (mode) {
-        case 'None': return '';
-        case 'Resampling': return 'info';
+        case 'None': return 'good';
         case 'Dropping': return 'warning';
         case 'Inserting': return 'warning';
         default: return '';
     }
-}
-
-function getPlaybackRateClass(rate) {
-    if (rate === 1.0) return '';
-    if (rate > 1.0) return 'info';  // speeding up
-    return 'info';  // slowing down
 }
