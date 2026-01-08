@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7d23ad2
+## Development Build: sha-0003636
 
 **Current Dev Build Changes** (recent)
 
+- Fix Card Detection (Drop /asound)
 - don't crap the bed when cards fail to load
 - Add additional device level logging
 - add linear interpolation and dynamic correction rate with some tracking
@@ -14,7 +15,6 @@
 - Fix a couple styling issues, card playing status and apply offset after being changed.
 - fix _disposed handling and checkbox rendering
 - Update to Bootstrap latest, use their dark mode
-- Additional logging enhancements and sink creation improvements
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
