@@ -145,6 +145,11 @@ public class PulseAudioPlayer : IAudioPlayer
 
         lock (_lock)
         {
+            // Reset disposed flag to allow re-initialization of the same instance.
+            // The SDK reuses player instances via playerFactory, so we must support
+            // being re-initialized after a previous disposal.
+            _disposed = false;
+
             try
             {
                 // Clean up any existing resources
