@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-9bbb047
+## Development Build: sha-b4fc51c
 
 **Current Dev Build Changes** (recent)
 
+- Add additional device level logging
 - add linear interpolation and dynamic correction rate with some tracking
 - swap from read to readraw
 - Fix bug in stats for nerds display
@@ -14,7 +15,6 @@
 - Update to Bootstrap latest, use their dark mode
 - Additional logging enhancements and sink creation improvements
 - pulseplayer updates and stats for nerds fix
-- read vs readraw
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
