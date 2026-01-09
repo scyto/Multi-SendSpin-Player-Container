@@ -219,6 +219,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         }
     }
 
+    /// <summary>
+    /// Hardware volume percentage used for all audio outputs.
+    /// Set to 80% to avoid clipping while allowing server to control actual volume.
+    /// </summary>
+    private const int HardwareVolumePercent = 80;
+
     #endregion
 
     /// <summary>
@@ -263,9 +269,66 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             loggerFactory.CreateLogger<MdnsServerDiscovery>());
     }
 
+    /// <summary>
+    /// Initializes all audio device hardware volumes to a fixed level.
+    /// This is called once at container startup to set a safe volume level
+    /// that avoids clipping. The server (Music Assistant) then controls the
+    /// actual volume level via its own volume control.
+    /// </summary>
+    private async Task InitializeHardwareVolumesAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Initializing hardware volumes to {Volume}%...", HardwareVolumePercent);
+
+        try
+        {
+            var devices = _backendFactory.GetOutputDevices().ToList();
+
+            if (devices.Count == 0)
+            {
+                _logger.LogWarning("No audio output devices found for volume initialization");
+                return;
+            }
+
+            _logger.LogInformation("Found {Count} audio output device(s)", devices.Count);
+
+            foreach (var device in devices)
+            {
+                try
+                {
+                    var success = await _backendFactory.SetVolumeAsync(device.Id, HardwareVolumePercent, cancellationToken);
+                    if (success)
+                    {
+                        _logger.LogInformation("VOLUME [Init] Device '{Name}' ({Id}): set to {Volume}%",
+                            device.Name, device.Id, HardwareVolumePercent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("VOLUME [Init] Device '{Name}' ({Id}): failed to set volume",
+                            device.Name, device.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "VOLUME [Init] Device '{Name}' ({Id}): error setting volume",
+                        device.Name, device.Id);
+                }
+            }
+
+            _logger.LogInformation("Hardware volume initialization complete");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to initialize hardware volumes (non-fatal)");
+        }
+    }
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("PlayerManagerService starting...");
+
+        // Initialize all audio device hardware volumes to 80% to avoid clipping
+        // Server (Music Assistant) controls the actual volume level
+        await InitializeHardwareVolumesAsync(cancellationToken);
 
         // Autostart configured players
         var autostartPlayers = _config.GetAutostartPlayers();
@@ -486,14 +549,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // 10. Store context
             _players[request.Name] = context;
 
-            // 11. Apply initial volume via hardware (software volume bypassed)
-            player.Volume = 1.0f;  // Hardware handles volume via pactl
-            _logger.LogInformation("VOLUME [Create] Player '{Name}': {Volume}% (Device: {Device})",
-                request.Name, request.Volume, request.Device ?? "(default)");
-            if (!string.IsNullOrEmpty(request.Device))
-            {
-                _ = _backendFactory.SetVolumeAsync(request.Device, request.Volume, default);
-            }
+            // 11. Software volume stays at 1.0 (passthrough)
+            // Hardware volume is set to 80% on container startup to avoid clipping
+            // Server (Music Assistant) controls the actual volume level
+            player.Volume = 1.0f;
+            _logger.LogInformation("VOLUME [Create] Player '{Name}': initial volume {Volume}% (sent to server)",
+                request.Name, request.Volume);
 
             // 12. Apply delay offset from user configuration
             clockSync.StaticDelayMs = request.DelayMs;
@@ -593,7 +654,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
     /// <summary>
     /// Sets the volume for a player (0-100).
-    /// Updates local config, notifies server (if connected), and applies to audio output.
+    /// Updates local config and notifies server. Hardware volume is fixed at 80% on startup.
     /// </summary>
     public async Task<bool> SetVolumeAsync(string name, int volume, CancellationToken ct = default)
     {
@@ -601,16 +662,16 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             return false;
 
         volume = Math.Clamp(volume, 0, 100);
-        _logger.LogInformation("VOLUME [Set] Player '{Name}': {Volume}% (Device: {Device})",
-            name, volume, context.Config.DeviceId ?? "(default)");
+        _logger.LogInformation("VOLUME [Set] Player '{Name}': {Volume}%", name, volume);
 
         // 1. Update local config (always)
         context.Config.Volume = volume;
 
-        // 2. Bypass software volume (hardware handles it via pactl)
+        // 2. Software volume stays at 1.0 (passthrough) - server controls actual volume
         context.Player.Volume = 1.0f;
 
         // 3. Notify server of volume change (only if in an active state)
+        // Server (Music Assistant) handles the actual volume control
         if (IsPlayerInActiveState(context.State))
         {
             try
@@ -624,23 +685,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             }
         }
 
-        // 4. Set hardware/OS volume via PulseAudio pactl
-        // Only if we have a specific device (not default)
-        // Fire-and-forget with error handling via ContinueWith
-        if (!string.IsNullOrEmpty(context.Config.DeviceId))
-        {
-            _ = _backendFactory.SetVolumeAsync(context.Config.DeviceId, volume, ct)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted && t.Exception != null)
-                    {
-                        _logger.LogDebug(t.Exception.InnerException ?? t.Exception,
-                            "Hardware volume control not available for '{Name}'", name);
-                    }
-                }, TaskScheduler.Default);
-        }
-
-        // 5. Broadcast status update to all clients
+        // 4. Broadcast status update to all clients
         _ = BroadcastStatusAsync();
 
         return true;
@@ -1080,6 +1125,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         };
 
         // Handle volume changes from server (Music Assistant UI, etc.)
+        // We just update our display value - hardware volume is fixed at 80%
         context.Client.GroupStateChanged += (_, group) =>
         {
             // Clamp volume to valid range
@@ -1091,30 +1137,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _logger.LogInformation("VOLUME [ServerSync] Player '{Name}': {OldVol}% → {NewVol}%",
                     name, context.Config.Volume, serverVolume);
 
+                // Just update our config to reflect server state - no hardware adjustment
                 context.Config.Volume = serverVolume;
-
-                // Only apply volume if player is in an active state
-                if (IsPlayerInActiveState(context.State))
-                {
-                    try
-                    {
-                        // Bypass software volume (hardware handles it)
-                        context.Player.Volume = 1.0f;
-
-                        // Sync hardware volume with server
-                        if (!string.IsNullOrEmpty(context.Config.DeviceId))
-                        {
-                            _ = _backendFactory.SetVolumeAsync(
-                                context.Config.DeviceId,
-                                serverVolume,
-                                default);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to apply volume change from server for player '{Name}'", name);
-                    }
-                }
 
                 // Broadcast to UI so slider updates
                 _ = BroadcastStatusAsync();
