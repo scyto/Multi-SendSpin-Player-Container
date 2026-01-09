@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-db7ff36
+## Development Build: sha-5b13a2a
 
 **Current Dev Build Changes** (recent)
 
+- Bump SDK version to allow initial volume setting, set volume.
 - attempt to fix volume issue
 - Add startup logging for discovered sound cards
 - support loading by card
@@ -14,7 +15,6 @@
 - don't crap the bed when cards fail to load
 - Add additional device level logging
 - add linear interpolation and dynamic correction rate with some tracking
-- swap from read to readraw
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
