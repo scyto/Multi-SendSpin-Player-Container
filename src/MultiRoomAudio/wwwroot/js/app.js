@@ -1551,3 +1551,287 @@ async function setSoundCardProfile(cardName, profileName, cardIndex) {
         if (select) select.disabled = false;
     }
 }
+
+// ============================================
+// LOGS VIEWER
+// ============================================
+
+let logsData = [];
+let logsSkip = 0;
+const logsPageSize = 100;
+let logsConnection = null;
+let logsAutoScroll = true;
+let logsLiveStream = true;
+let logSearchTimeout = null;
+
+// Switch to logs view
+function showLogsView() {
+    document.getElementById('playersView').classList.add('d-none');
+    document.getElementById('logsView').classList.remove('d-none');
+
+    // Initialize logs
+    logsData = [];
+    logsSkip = 0;
+    refreshLogs();
+    setupLogsSignalR();
+}
+
+// Switch back to players view
+function showPlayersView() {
+    document.getElementById('logsView').classList.add('d-none');
+    document.getElementById('playersView').classList.remove('d-none');
+
+    // Cleanup SignalR connection
+    if (logsConnection) {
+        logsConnection.stop();
+        logsConnection = null;
+    }
+}
+
+// Setup SignalR for log streaming
+function setupLogsSignalR() {
+    if (typeof signalR === 'undefined' || logsConnection) return;
+
+    logsConnection = new signalR.HubConnectionBuilder()
+        .withUrl('./hubs/logs')
+        .withAutomaticReconnect()
+        .build();
+
+    logsConnection.on('LogEntry', (entry) => {
+        if (!logsLiveStream) return;
+
+        // Check filters
+        const levelFilter = document.getElementById('logLevelFilter').value;
+        const categoryFilter = document.getElementById('logCategoryFilter').value;
+        const searchFilter = document.getElementById('logSearchInput').value.toLowerCase();
+
+        if (levelFilter && entry.level.toLowerCase() !== levelFilter) return;
+        if (categoryFilter && entry.category !== categoryFilter) return;
+        if (searchFilter && !entry.message.toLowerCase().includes(searchFilter)) return;
+
+        // Add to top of list (newest first)
+        logsData.unshift(entry);
+        prependLogEntry(entry);
+        updateLogsCount();
+
+        // Auto-scroll to top if enabled
+        if (logsAutoScroll) {
+            document.getElementById('logsContainer').scrollTop = 0;
+        }
+    });
+
+    logsConnection.on('InitialLogs', (entries) => {
+        // Initial logs are sent on connection, but we already load via API
+        // This is just for quick population if needed
+    });
+
+    logsConnection.start().catch(err => {
+        console.log('Logs SignalR connection failed:', err);
+    });
+}
+
+// Debounced search
+function debouncedLogSearch() {
+    if (logSearchTimeout) {
+        clearTimeout(logSearchTimeout);
+    }
+    logSearchTimeout = setTimeout(refreshLogs, 300);
+}
+
+// Refresh logs (reset and reload)
+async function refreshLogs() {
+    logsSkip = 0;
+    logsData = [];
+
+    const container = document.getElementById('logsContainer');
+    container.innerHTML = `
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+            <p>Loading logs...</p>
+        </div>
+    `;
+
+    await loadLogs();
+}
+
+// Load logs from API
+async function loadLogs() {
+    const level = document.getElementById('logLevelFilter').value;
+    const category = document.getElementById('logCategoryFilter').value;
+    const search = document.getElementById('logSearchInput').value;
+
+    const params = new URLSearchParams({
+        skip: logsSkip,
+        take: logsPageSize,
+        newestFirst: true
+    });
+
+    if (level) params.append('level', level);
+    if (category) params.append('category', category);
+    if (search) params.append('search', search);
+
+    try {
+        const response = await fetch(`./api/logs?${params}`);
+        if (!response.ok) throw new Error('Failed to fetch logs');
+
+        const data = await response.json();
+
+        if (logsSkip === 0) {
+            logsData = data.entries;
+            renderLogs();
+        } else {
+            logsData = [...logsData, ...data.entries];
+            appendLogEntries(data.entries);
+        }
+
+        // Show/hide load more button
+        const loadMore = document.getElementById('logsLoadMore');
+        if (logsData.length < data.totalCount) {
+            loadMore.classList.remove('d-none');
+        } else {
+            loadMore.classList.add('d-none');
+        }
+
+        updateLogsCount(data.totalCount);
+
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        const container = document.getElementById('logsContainer');
+        container.innerHTML = `
+            <div class="text-center py-5 text-danger">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Failed to load logs</p>
+            </div>
+        `;
+    }
+}
+
+// Load more logs (pagination)
+function loadMoreLogs() {
+    logsSkip += logsPageSize;
+    loadLogs();
+}
+
+// Render all logs
+function renderLogs() {
+    const container = document.getElementById('logsContainer');
+
+    if (logsData.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted empty-state">
+                <i class="fas fa-scroll fa-3x mb-3 opacity-50"></i>
+                <h5>No logs found</h5>
+                <p>Logs will appear here as the application runs.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = logsData.map(entry => createLogEntryHtml(entry)).join('');
+}
+
+// Create HTML for a single log entry
+function createLogEntryHtml(entry, isNew = false) {
+    const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+
+    const levelClass = entry.level.toLowerCase();
+
+    return `
+        <div class="log-entry${isNew ? ' new' : ''}">
+            <span class="log-timestamp">${escapeHtml(time)}</span>
+            <span class="log-level ${levelClass}">${escapeHtml(entry.level)}</span>
+            <span class="log-category">${escapeHtml(entry.category)}</span>
+            <div class="log-message">
+                ${escapeHtml(entry.message)}
+                ${entry.exception ? `<div class="log-exception">${escapeHtml(entry.exception)}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Prepend a single log entry (for live streaming)
+function prependLogEntry(entry) {
+    const container = document.getElementById('logsContainer');
+    const emptyState = container.querySelector('.empty-state');
+    if (emptyState) {
+        container.innerHTML = '';
+    }
+
+    const html = createLogEntryHtml(entry, true);
+    container.insertAdjacentHTML('afterbegin', html);
+
+    // Limit displayed entries for performance
+    const entries = container.querySelectorAll('.log-entry');
+    if (entries.length > 500) {
+        entries[entries.length - 1].remove();
+    }
+}
+
+// Append log entries (for pagination)
+function appendLogEntries(entries) {
+    const container = document.getElementById('logsContainer');
+    const html = entries.map(e => createLogEntryHtml(e)).join('');
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+// Update the logs count badge
+function updateLogsCount(total) {
+    const countBadge = document.getElementById('logsCount');
+    countBadge.textContent = (total !== undefined ? total : logsData.length).toLocaleString();
+}
+
+// Clear all logs
+async function clearLogs() {
+    if (!confirm('Clear all logs? This cannot be undone.')) return;
+
+    try {
+        const response = await fetch('./api/logs', { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to clear logs');
+
+        logsData = [];
+        logsSkip = 0;
+        renderLogs();
+        updateLogsCount(0);
+        showAlert('Logs cleared', 'success');
+    } catch (error) {
+        showAlert('Failed to clear logs', 'danger');
+    }
+}
+
+// Download logs as text file
+function downloadLogs() {
+    const content = logsData.map(e =>
+        `${e.timestamp}|${e.level}|${e.category}|${e.message}${e.exception ? '|' + e.exception : ''}`
+    ).join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `multiroom-audio-logs-${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Toggle handlers for switches
+document.addEventListener('DOMContentLoaded', () => {
+    const autoScrollSwitch = document.getElementById('logAutoScroll');
+    const liveStreamSwitch = document.getElementById('logLiveStream');
+
+    if (autoScrollSwitch) {
+        autoScrollSwitch.addEventListener('change', (e) => {
+            logsAutoScroll = e.target.checked;
+        });
+    }
+
+    if (liveStreamSwitch) {
+        liveStreamSwitch.addEventListener('change', (e) => {
+            logsLiveStream = e.target.checked;
+        });
+    }
+});
