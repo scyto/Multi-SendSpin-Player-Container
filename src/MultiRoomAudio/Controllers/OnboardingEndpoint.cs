@@ -177,6 +177,13 @@ public static class OnboardingEndpoint
                         continue;
                     }
 
+                    // Validate player name format (alphanumeric, spaces, hyphens, underscores only)
+                    if (!PlayerManagerService.ValidatePlayerName(playerReq.Name, out var nameError))
+                    {
+                        failed.Add(new { name = playerReq.Name, error = nameError });
+                        continue;
+                    }
+
                     if (config.PlayerExists(playerReq.Name))
                     {
                         failed.Add(new { name = playerReq.Name, error = "Player already exists" });

@@ -4,6 +4,22 @@
 // This module handles the first-time setup wizard for Multi-Room Audio.
 // It guides users through device discovery, identification, naming, and player creation.
 
+// Sanitize a string to be a valid player name
+// Player names can only contain: alphanumeric, spaces, hyphens, underscores
+// This matches the backend validation in PlayerManagerService.ValidatePlayerName()
+function sanitizePlayerName(name) {
+    if (!name) return '';
+
+    // Remove any characters that aren't alphanumeric, space, hyphen, or underscore
+    let sanitized = name.replace(/[^a-zA-Z0-9\s\-_]/g, '');
+
+    // Collapse multiple spaces into one
+    sanitized = sanitized.replace(/\s+/g, ' ').trim();
+
+    // Limit length to 100 characters (backend limit)
+    return sanitized.substring(0, 100);
+}
+
 // Parse bus_path into user-friendly USB port hint
 // Handles Linux sysfs format: /devices/pci.../usb3/3-2/3-2.4/3-2.4:1.0/sound/card1
 // e.g., "3-2.4" → "Port 4"
@@ -1275,8 +1291,8 @@ const Wizard = {
 
     // Suggest a name for a device
     suggestName(device) {
-        // Use alias if available
-        if (device.alias) return device.alias;
+        // Use alias if available (already user-provided, assume valid)
+        if (device.alias) return sanitizePlayerName(device.alias);
 
         // Try to create a friendly name from the device name
         let name = device.name || device.id;
@@ -1292,7 +1308,9 @@ const Wizard = {
             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
         ).join(' ');
 
-        return name.substring(0, 30);  // Limit length
+        // Sanitize to remove invalid characters (like parentheses)
+        // and limit length for player name compatibility
+        return sanitizePlayerName(name);
     },
 
     // Save aliases to server
@@ -1323,8 +1341,18 @@ const Wizard = {
             const volumeInput = document.getElementById(`volume-${deviceId}`);
             const volume = volumeInput ? parseInt(volumeInput.value) : 75;
 
+            // Sanitize the player name to ensure it's valid
+            // (removes parentheses and other invalid characters)
+            const sanitizedName = sanitizePlayerName(deviceName);
+
+            // Skip if sanitized name is empty (unlikely but possible)
+            if (!sanitizedName) {
+                console.warn(`Skipping player with invalid name from device: ${deviceId}`);
+                return;
+            }
+
             this.playersToCreate.push({
-                name: deviceName,
+                name: sanitizedName,
                 device: deviceId,
                 volume: volume,
                 autostart: true
