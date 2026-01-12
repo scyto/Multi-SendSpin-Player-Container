@@ -582,10 +582,18 @@ const Wizard = {
                         </span>
                         <small class="text-muted d-block">${escapeHtml(sink.description || '')}</small>
                     </div>
-                    <button class="btn btn-outline-danger btn-sm"
-                            onclick="Wizard.removeCustomSink('${escapeHtml(sink.id)}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary"
+                                id="sink-tone-btn-${escapeHtml(sink.name)}"
+                                onclick="Wizard.playTestToneForSink('${escapeHtml(sink.name)}')"
+                                title="Play test tone">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <button class="btn btn-outline-danger"
+                                onclick="Wizard.removeCustomSink('${escapeHtml(sink.id)}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             `).join('')
             : '<div class="list-group-item text-center text-muted py-3">No custom sinks created yet</div>';
@@ -1197,6 +1205,35 @@ const Wizard = {
             btn.innerHTML = originalContent;
             btn.disabled = false;
             btn.classList.remove('playing');
+        }
+    },
+
+    // Play test tone on custom sink
+    async playTestToneForSink(sinkName) {
+        const btn = document.getElementById(`sink-tone-btn-${sinkName}`);
+        if (!btn) return;
+
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`./api/sinks/${encodeURIComponent(sinkName)}/test-tone`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ frequencyHz: 1000, durationMs: 1500 })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to play test tone');
+            }
+        } catch (error) {
+            console.error('Failed to play test tone for sink:', error);
+            showAlert(`Test tone failed: ${error.message}`, 'danger');
+        } finally {
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
         }
     },
 

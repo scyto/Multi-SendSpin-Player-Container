@@ -1022,6 +1022,7 @@ function renderSinks() {
         const typeIcon = sink.type === 'Combine' ? 'fa-layer-group' : 'fa-random';
         const typeBadgeClass = sink.type === 'Combine' ? 'bg-info' : 'bg-secondary';
         const stateBadgeClass = getSinkStateBadgeClass(sink.state);
+        const isLoaded = sink.state === 'Loaded';
 
         return `
             <div class="col-md-6 mb-3">
@@ -1032,17 +1033,26 @@ function renderSinks() {
                                 <i class="fas ${typeIcon} me-2 text-muted"></i>
                                 ${escapeHtml(sink.name)}
                             </h6>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
-                                    <i class="fas fa-ellipsis-v"></i>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary"
+                                        id="sink-test-btn-${escapeHtml(name)}"
+                                        onclick="playTestToneForSink('${escapeHtml(name)}')"
+                                        title="Play test tone"
+                                        ${!isLoaded ? 'disabled' : ''}>
+                                    <i class="fas fa-volume-up"></i>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#" onclick="reloadSink('${escapeHtml(name)}'); return false;">
-                                        <i class="fas fa-sync me-2"></i>Reload</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteSink('${escapeHtml(name)}'); return false;">
-                                        <i class="fas fa-trash me-2"></i>Delete</a></li>
-                                </ul>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" onclick="reloadSink('${escapeHtml(name)}'); return false;">
+                                            <i class="fas fa-sync me-2"></i>Reload</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteSink('${escapeHtml(name)}'); return false;">
+                                            <i class="fas fa-trash me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
 
@@ -1333,6 +1343,34 @@ async function reloadSink(name) {
         showAlert(`Sink "${name}" reloaded`, 'success');
     } catch (error) {
         showAlert(error.message, 'danger');
+    }
+}
+
+// Play test tone for custom sink
+async function playTestToneForSink(name) {
+    const btn = document.getElementById(`sink-test-btn-${name}`);
+    if (!btn) return;
+
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`./api/sinks/${encodeURIComponent(name)}/test-tone`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frequencyHz: 1000, durationMs: 1500 })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to play test tone');
+        }
+    } catch (error) {
+        showAlert(`Test tone failed: ${error.message}`, 'danger');
+    } finally {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
     }
 }
 
