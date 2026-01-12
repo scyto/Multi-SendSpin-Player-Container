@@ -428,15 +428,24 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     await CreatePlayerAsync(request, cancellationToken);
                     _logger.LogInformation("Player {PlayerName} autostarted successfully", playerConfig.Name);
                 }
+                catch (ArgumentException ex)
+                {
+                    // Device validation failed - don't auto-reconnect, let user fix config
+                    _logger.LogError(ex,
+                        "Player {PlayerName} failed to start due to configuration error: {Message}. " +
+                        "Player will remain in error state until manually fixed.",
+                        playerConfig.Name, ex.Message);
+                    // Don't queue for reconnection - player stays in Error state
+                }
                 catch (Exception ex)
                 {
+                    // Network/server issues - queue for reconnection
                     _logger.LogWarning(ex,
                         "Failed to autostart player {PlayerName}, queuing for reconnection. Device: {Device}, Server: {Server}",
                         playerConfig.Name,
                         playerConfig.Device ?? "(default)",
                         playerConfig.Server ?? "(auto-discover)");
 
-                    // Queue for reconnection instead of giving up
                     QueueForReconnection(playerConfig, isInitialFailure: true);
                 }
             }
@@ -1933,6 +1942,15 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Player was created by another path, remove from queue
             _pendingReconnections.TryRemove(name, out _);
             _logger.LogDebug("Player '{Name}' already exists, removing from reconnection queue", name);
+        }
+        catch (ArgumentException ex)
+        {
+            // Device validation failed - stop reconnecting, let user fix config
+            _pendingReconnections.TryRemove(name, out _);
+            _logger.LogError(ex,
+                "Reconnection stopped for player '{Name}': {Message}. " +
+                "Player will remain in error state until manually fixed.",
+                name, ex.Message);
         }
         catch (Exception ex)
         {
