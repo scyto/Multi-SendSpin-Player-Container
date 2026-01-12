@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c6a954b
+## Development Build: sha-5666e03
 
 **Current Dev Build Changes** (recent)
 
+- Fix Linter Errors
 - Merge pull request #41 from chrisuthe/onboarding
 - Merge origin/dev into onboarding
 - Remove HTML pattern attributes to fix Chrome v flag regex errors
@@ -14,7 +15,6 @@
 - Add automatic player reconnection on server unavailability
 - pull back dev changes (logging, tests)
 - Restructure Menus
-- Add Logging and Testing
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
