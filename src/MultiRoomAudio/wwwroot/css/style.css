@@ -565,6 +565,37 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
 }
 
+/* Sink card button consistency */
+.sink-card .btn-group .btn {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Channel mapping display for remap sinks */
+.channel-mapping {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.channel-mapping-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    gap: 0.5rem;
+}
+
+/* Device badges in sink cards */
+.sink-device-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
 /* Channel Picker */
 .channel-picker {
     background: var(--bs-tertiary-bg);

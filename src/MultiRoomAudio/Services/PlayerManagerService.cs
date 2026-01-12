@@ -797,6 +797,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     ClientId: ClientIdGenerator.Generate(name),
                     ServerUrl: config.Server,
                     Volume: config.Volume ?? 100,
+                    HardwareVolumeLimit: 80, // Default for non-running players
                     IsMuted: false,
                     DelayMs: config.DelayMs,
                     OutputLatencyMs: 0,
@@ -884,6 +885,59 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         }
 
         // 4. Broadcast status update to all clients
+        _ = BroadcastStatusAsync();
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sets the hardware volume limit for a player's audio device.
+    /// This controls the PulseAudio sink volume, which sets the physical output level.
+    /// Note: If multiple players use the same device, they share the hardware volume.
+    /// </summary>
+    /// <param name="name">Player name.</param>
+    /// <param name="maxVolume">Hardware volume limit (0-100%).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if successful, false if player not found or device not set.</returns>
+    public async Task<bool> SetHardwareVolumeLimitAsync(string name, int maxVolume, CancellationToken ct = default)
+    {
+        if (!_players.TryGetValue(name, out var context))
+            return false;
+
+        // Clamp to valid range
+        maxVolume = Math.Clamp(maxVolume, 0, 100);
+
+        // Update config
+        context.Config.HardwareVolumeLimit = maxVolume;
+
+        // Apply to device if one is assigned
+        if (!string.IsNullOrEmpty(context.Config.DeviceId))
+        {
+            try
+            {
+                var success = await _backendFactory.SetVolumeAsync(context.Config.DeviceId, maxVolume, ct);
+                if (success)
+                {
+                    _logger.LogInformation("VOLUME [Hardware] Player '{Name}' device '{Device}': set to {Volume}%",
+                        name, context.Config.DeviceId, maxVolume);
+                }
+                else
+                {
+                    _logger.LogWarning("VOLUME [Hardware] Player '{Name}' device '{Device}': failed to set volume",
+                        name, context.Config.DeviceId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set hardware volume for player '{Name}'", name);
+                // Don't fail - config is saved even if hardware change fails
+            }
+        }
+
+        // Persist configuration
+        _config.Save();
+
+        // Broadcast status update
         _ = BroadcastStatusAsync();
 
         return true;
@@ -1540,6 +1594,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             ClientId: context.Capabilities.ClientId,
             ServerUrl: context.Config.ServerUrl,
             Volume: context.Config.Volume,
+            HardwareVolumeLimit: context.Config.HardwareVolumeLimit,
             IsMuted: context.Player.IsMuted,
             DelayMs: context.Config.DelayMs,
             OutputLatencyMs: context.Player.OutputLatencyMs,

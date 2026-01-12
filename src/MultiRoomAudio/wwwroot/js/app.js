@@ -36,6 +36,22 @@ function formatSampleRate(rate) {
     return rate + 'Hz';
 }
 
+/**
+ * Format a channel name for display (e.g., "front-left" → "Front L")
+ * @param {string} channel - The channel name from PulseAudio
+ * @returns {string} Human-readable channel name
+ */
+function formatChannelName(channel) {
+    const map = {
+        'front-left': 'Front L', 'front-right': 'Front R',
+        'rear-left': 'Rear L', 'rear-right': 'Rear R',
+        'front-center': 'Center', 'lfe': 'LFE',
+        'side-left': 'Side L', 'side-right': 'Side R',
+        'mono': 'Mono'
+    };
+    return map[channel?.toLowerCase()] || channel || 'Unknown';
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     // Load initial data
@@ -431,6 +447,35 @@ async function setVolume(name, volume) {
     }
 }
 
+/**
+ * Set the hardware volume limit for a player's audio device.
+ * This controls the PulseAudio sink volume (physical output level).
+ */
+async function setHardwareVolumeLimit(name, maxVolume) {
+    try {
+        const response = await fetch(`./api/players/${encodeURIComponent(name)}/hardware-volume`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ maxVolume: parseInt(maxVolume) })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to set hardware volume');
+        }
+
+        // Update local state
+        if (players[name]) {
+            players[name].hardwareVolumeLimit = parseInt(maxVolume);
+        }
+
+        showAlert(`Hardware volume set to ${maxVolume}%`, 'success', 2000);
+    } catch (error) {
+        console.error('Error setting hardware volume:', error);
+        showAlert(error.message, 'danger');
+    }
+}
+
 async function setDelay(name, delayMs) {
     // Clamp value to valid range
     delayMs = Math.max(-5000, Math.min(5000, parseInt(delayMs) || 0));
@@ -660,6 +705,21 @@ function renderPlayers() {
                                 <span class="volume-display ms-2">${player.volume}%</span>
                             </div>
                         </div>
+
+                        <details class="hardware-volume-details mt-2">
+                            <summary class="small text-muted"><i class="fas fa-cog me-1"></i>Hardware Volume: ${player.hardwareVolumeLimit || 80}%</summary>
+                            <div class="mt-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-sliders-h me-2 text-muted small"></i>
+                                    <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
+                                           value="${player.hardwareVolumeLimit || 80}"
+                                           onchange="setHardwareVolumeLimit('${escapeHtml(name)}', this.value)"
+                                           oninput="this.closest('details').querySelector('summary').innerHTML = '<i class=\\'fas fa-cog me-1\\'></i>Hardware Volume: ' + this.value + '%'">
+                                    <span class="volume-display ms-2 small">${player.hardwareVolumeLimit || 80}%</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Physical output level for this device</small>
+                            </div>
+                        </details>
 
                         <div class="player-status-area">
                             ${player.isClockSynced ? `
@@ -1088,15 +1148,31 @@ function renderSinks() {
 
                         ${sink.description ? `<p class="text-muted mt-2 mb-0 small">${escapeHtml(sink.description)}</p>` : ''}
 
-                        ${sink.slaves ? `
+                        ${sink.slaves && sink.slaves.length > 0 ? `
                             <div class="mt-2">
-                                <small class="text-muted"><i class="fas fa-link me-1"></i>${sink.slaves.length} devices combined</small>
+                                <small class="text-muted d-block mb-1"><i class="fas fa-link me-1"></i>Combined devices:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${sink.slaves.map(s => `<span class="sink-device-badge">${escapeHtml(getDeviceDisplayName(s))}</span>`).join('')}
+                                </div>
                             </div>
                         ` : ''}
 
                         ${sink.masterSink ? `
                             <div class="mt-2">
-                                <small class="text-muted"><i class="fas fa-arrow-right me-1"></i>From: ${escapeHtml(sink.masterSink)}</small>
+                                <small class="text-muted"><i class="fas fa-arrow-right me-1"></i>From: ${escapeHtml(getDeviceDisplayName(sink.masterSink))}</small>
+                            </div>
+                        ` : ''}
+
+                        ${sink.channelMap && sink.channelMap.length > 0 ? `
+                            <div class="channel-mapping mt-2">
+                                <small class="text-muted d-block mb-1"><i class="fas fa-random me-1"></i>Channel mapping:</small>
+                                ${sink.channelMap.map(m => `
+                                    <div class="channel-mapping-row">
+                                        <span>${formatChannelName(m.outputChannel)}</span>
+                                        <span class="text-muted">←</span>
+                                        <span>${formatChannelName(m.sourceChannel)}</span>
+                                    </div>
+                                `).join('')}
                             </div>
                         ` : ''}
 
