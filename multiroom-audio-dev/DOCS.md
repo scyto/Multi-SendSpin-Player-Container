@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7f08b90
+## Development Build: sha-901c9dd
 
 **Current Dev Build Changes** (recent)
 
+- Fix sink descriptions with spaces and special characters
 - Make hardware volume slider always visible on player cards
 - Add controller and metadata roles to player registration
 - Update .gitignore
@@ -14,7 +15,6 @@
 - Sprint 2: Player rename hint, card profile unmute, consistent device names
 - Fix Sprint 1 issues: wizard filtering, modal stacking, validation
 - Proper Sink Error handling + sink edit screen
-- Fix Auto-Naming Problems
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
