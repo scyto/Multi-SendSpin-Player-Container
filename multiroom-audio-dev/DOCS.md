@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ee1256b
+## Development Build: sha-b7dc4a3
 
 **Current Dev Build Changes** (recent)
 
+- Update .gitignore
+- Persist hardware volume limit and use custom sink names for display
 - docs: Update wiki documentation for 4.0.0 release
 - Sprint 3: Per-player hardware volume and sink card UI improvements
 - Sprint 2: Player rename hint, card profile unmute, consistent device names
@@ -13,8 +15,6 @@
 - Fix Auto-Naming Problems
 - load things in the right order.
 - Sinks should error out when they can't be created. Don't try to use MDNS more than once at a time.
-- Fix linter formatting errors
-- Fix Player not started during onboarding
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
