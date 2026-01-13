@@ -706,20 +706,19 @@ function renderPlayers() {
                             </div>
                         </div>
 
-                        <details class="hardware-volume-details mt-2">
-                            <summary class="small text-muted"><i class="fas fa-cog me-1"></i>Hardware Volume: ${player.hardwareVolumeLimit || 80}%</summary>
-                            <div class="mt-2">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-sliders-h me-2 text-muted small"></i>
-                                    <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
-                                           value="${player.hardwareVolumeLimit || 80}"
-                                           onchange="setHardwareVolumeLimit('${escapeHtml(name)}', this.value)"
-                                           oninput="this.closest('details').querySelector('summary').innerHTML = '<i class=\\'fas fa-cog me-1\\'></i>Hardware Volume: ' + this.value + '%'">
-                                    <span class="volume-display ms-2 small">${player.hardwareVolumeLimit || 80}%</span>
-                                </div>
-                                <small class="text-muted d-block mt-1">Physical output level for this device</small>
+                        <div class="hardware-volume-section mt-3 pt-2 border-top">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fas fa-cog me-1 text-muted small"></i>
+                                <span class="small text-muted">Hardware Volume</span>
                             </div>
-                        </details>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
+                                       value="${player.hardwareVolumeLimit || 80}"
+                                       onchange="setHardwareVolumeLimit('${escapeHtml(name)}', this.value)"
+                                       oninput="this.nextElementSibling.textContent = this.value + '%'">
+                                <span class="volume-display ms-2 small">${player.hardwareVolumeLimit || 80}%</span>
+                            </div>
+                        </div>
 
                         <div class="player-status-area">
                             ${player.isClockSynced ? `
