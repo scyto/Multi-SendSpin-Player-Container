@@ -39,15 +39,57 @@ jobs:
         run: dotnet build src/MultiRoomAudio/MultiRoomAudio.csproj --no-restore -c Release
 
   # ==========================================================================
-  # Build Once, Push to Multiple Registries (Docker Hub + GHCR + HASSIO)
+  # Registry Logins
+  # ==========================================================================
+  login-dockerhub:
+    needs: build-test
+    runs-on: ubuntu-latest
+    outputs:
+      logged_in: ${{ steps.login_result.outputs.logged_in }}
+    steps:
+      - name: Login to Docker Hub
+        id: login
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Record Docker Hub login result
+        id: login_result
+        run: echo "logged_in=${{ steps.login.outcome == 'success' }}" >> $GITHUB_OUTPUT
+
+  login-ghcr:
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    outputs:
+      logged_in: ${{ steps.login_result.outputs.logged_in }}
+    steps:
+      - name: Login to GitHub Container Registry
+        id: login
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Record GHCR login result
+        id: login_result
+        run: echo "logged_in=${{ steps.login.outcome == 'success' }}" >> $GITHUB_OUTPUT
+
+  # ==========================================================================
+  # Build Once
   # ==========================================================================
   build-docker:
     needs: build-test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+    outputs:
+      dockerhub_tags: ${{ steps.tag_lists.outputs.dockerhub_tags }}
+      ghcr_tags: ${{ steps.tag_lists.outputs.ghcr_tags }}
+      hassio_tags: ${{ steps.tag_lists.outputs.hassio_tags }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -58,29 +100,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ----------------------------------------------------------------------
-      # Registry logins (non-blocking)
-      # ----------------------------------------------------------------------
-      - name: Login to Docker Hub
-        id: login_dockerhub
-        continue-on-error: true
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        id: login_ghcr
-        continue-on-error: true
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # ----------------------------------------------------------------------
-      # Build prep (versioning + metadata)
-      # ----------------------------------------------------------------------
       - name: Determine build version
         id: version
         run: |
@@ -134,9 +153,6 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      # ----------------------------------------------------------------------
-      # Build (no push)
-      # ----------------------------------------------------------------------
       - name: Prepare build output directory
         run: mkdir -p dist
 
@@ -156,13 +172,41 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
-      # ----------------------------------------------------------------------
-      # Push (registry-specific)
-      # ----------------------------------------------------------------------
+      - name: Upload image archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: multiroom-image
+          path: dist/multiroom-image.tar
+          if-no-files-found: error
+
+  # ==========================================================================
+  # Pushes (registry-specific)
+  # ==========================================================================
+  push-dockerhub:
+    needs:
+      - build-docker
+      - login-dockerhub
+    runs-on: ubuntu-latest
+    if: needs.login-dockerhub.outputs.logged_in == 'true'
+    steps:
+      - name: Download image archive
+        uses: actions/download-artifact@v4
+        with:
+          name: multiroom-image
+          path: dist
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Push to Docker Hub
-        if: steps.login_dockerhub.outcome == 'success'
         env:
-          TAGS: ${{ steps.tag_lists.outputs.dockerhub_tags }}
+          TAGS: ${{ needs.build-docker.outputs.dockerhub_tags }}
         run: |
           if [ -z "$TAGS" ]; then
             echo "No Docker Hub tags to push."
@@ -176,10 +220,34 @@ jobs:
             $tag_args \
             oci-archive:dist/multiroom-image.tar
 
+  push-ghcr:
+    needs:
+      - build-docker
+      - login-ghcr
+    runs-on: ubuntu-latest
+    if: needs.login-ghcr.outputs.logged_in == 'true'
+    permissions:
+      packages: write
+    steps:
+      - name: Download image archive
+        uses: actions/download-artifact@v4
+        with:
+          name: multiroom-image
+          path: dist
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Push to GHCR
-        if: steps.login_ghcr.outcome == 'success'
         env:
-          TAGS: ${{ steps.tag_lists.outputs.ghcr_tags }}
+          TAGS: ${{ needs.build-docker.outputs.ghcr_tags }}
         run: |
           if [ -z "$TAGS" ]; then
             echo "No GHCR tags to push."
@@ -193,10 +261,34 @@ jobs:
             $tag_args \
             oci-archive:dist/multiroom-image.tar
 
+  push-hassio:
+    needs:
+      - build-docker
+      - login-ghcr
+    runs-on: ubuntu-latest
+    if: needs.login-ghcr.outputs.logged_in == 'true'
+    permissions:
+      packages: write
+    steps:
+      - name: Download image archive
+        uses: actions/download-artifact@v4
+        with:
+          name: multiroom-image
+          path: dist
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Push to HASSIO (GHCR)
-        if: steps.login_ghcr.outcome == 'success'
         env:
-          TAGS: ${{ steps.tag_lists.outputs.hassio_tags }}
+          TAGS: ${{ needs.build-docker.outputs.hassio_tags }}
         run: |
           if [ -z "$TAGS" ]; then
             echo "No HASSIO tags to push."
@@ -210,15 +302,36 @@ jobs:
             $tag_args \
             oci-archive:dist/multiroom-image.tar
 
-      # Get short SHA for dev image tag (must match what's set in config.yaml)
+  push-hassio-dev:
+    needs:
+      - build-docker
+      - login-ghcr
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && needs.login-ghcr.outputs.logged_in == 'true'
+    permissions:
+      packages: write
+    steps:
+      - name: Download image archive
+        uses: actions/download-artifact@v4
+        with:
+          name: multiroom-image
+          path: dist
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Get short SHA
-        if: github.ref == 'refs/heads/dev'
         id: short_sha
         run: echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      # Push to separate HASSIO dev image with SHA tag (HAOS uses version as image tag)
       - name: Push to HASSIO dev image
-        if: github.ref == 'refs/heads/dev' && steps.login_ghcr.outcome == 'success'
         run: |
           docker buildx imagetools create \
             --tag "${{ env.HASSIO_DEV_IMAGE }}:latest" \
@@ -230,7 +343,7 @@ jobs:
   # ==========================================================================
   update-readme:
     runs-on: ubuntu-latest
-    needs: build-docker
+    needs: push-dockerhub
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository
