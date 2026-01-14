@@ -47,7 +47,7 @@ public class CardProfileService : IHostedService
     /// <summary>
     /// Restore saved card profiles on startup.
     /// </summary>
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("CardProfileService starting...");
 
@@ -79,7 +79,8 @@ public class CardProfileService : IHostedService
         if (savedProfiles.Count == 0)
         {
             _logger.LogInformation("No saved card profiles to restore");
-            return Task.CompletedTask;
+            await UnmuteHardwareSinksAsync(cards, cancellationToken);
+            return;
         }
         var restoredCount = 0;
         var failedCount = 0;
@@ -161,7 +162,7 @@ public class CardProfileService : IHostedService
             "CardProfileService started: {Restored} profiles restored, {Failed} failed",
             restoredCount, failedCount);
 
-        return Task.CompletedTask;
+        await UnmuteHardwareSinksAsync(cards, cancellationToken);
     }
 
     /// <summary>
@@ -171,6 +172,51 @@ public class CardProfileService : IHostedService
     {
         _logger.LogInformation("CardProfileService stopped");
         return Task.CompletedTask;
+    }
+
+    private async Task UnmuteHardwareSinksAsync(IEnumerable<PulseAudioCard> cards, CancellationToken cancellationToken)
+    {
+        if (!cards.Any())
+        {
+            _logger.LogInformation("No sound cards available for hardware sink unmute");
+            return;
+        }
+
+        await Task.Delay(500, cancellationToken);
+
+        var sinkNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var card in cards)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var cardSinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+            foreach (var sinkName in cardSinks)
+            {
+                sinkNames.Add(sinkName);
+            }
+        }
+
+        if (sinkNames.Count == 0)
+        {
+            _logger.LogInformation("No hardware sinks found to unmute after profile restore");
+            return;
+        }
+
+        _logger.LogInformation("Unmuting {Count} hardware sink(s) after profile restore", sinkNames.Count);
+        foreach (var sinkName in sinkNames)
+        {
+            try
+            {
+                var unmuted = await _volumeRunner.SetMuteAsync(sinkName, false, cancellationToken);
+                if (unmuted)
+                {
+                    _logger.LogDebug("Unmuted hardware sink '{Sink}' after profile restore", sinkName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to unmute hardware sink '{Sink}' after profile restore", sinkName);
+            }
+        }
     }
 
     /// <summary>
