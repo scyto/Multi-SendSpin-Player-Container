@@ -137,14 +137,17 @@ jobs:
       # ----------------------------------------------------------------------
       # Build (no push)
       # ----------------------------------------------------------------------
-      - name: Build image (cache only)
+      - name: Prepare build output directory
+        run: mkdir -p dist
+
+      - name: Build image (OCI archive)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
-          outputs: type=cacheonly
+          outputs: type=oci,dest=dist/multiroom-image.tar
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           cache-to: type=gha,mode=max,scope=docker
@@ -158,51 +161,54 @@ jobs:
       # ----------------------------------------------------------------------
       - name: Push to Docker Hub
         if: steps.login_dockerhub.outcome == 'success'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.tag_lists.outputs.dockerhub_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=docker
-          build-args: |
-            BUILD_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
+        env:
+          TAGS: ${{ steps.tag_lists.outputs.dockerhub_tags }}
+        run: |
+          if [ -z "$TAGS" ]; then
+            echo "No Docker Hub tags to push."
+            exit 0
+          fi
+          tag_args=""
+          while IFS= read -r tag; do
+            tag_args="$tag_args --tag $tag"
+          done <<< "$TAGS"
+          docker buildx imagetools create \
+            $tag_args \
+            oci-archive:dist/multiroom-image.tar
 
       - name: Push to GHCR
         if: steps.login_ghcr.outcome == 'success'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.tag_lists.outputs.ghcr_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=docker
-          build-args: |
-            BUILD_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
+        env:
+          TAGS: ${{ steps.tag_lists.outputs.ghcr_tags }}
+        run: |
+          if [ -z "$TAGS" ]; then
+            echo "No GHCR tags to push."
+            exit 0
+          fi
+          tag_args=""
+          while IFS= read -r tag; do
+            tag_args="$tag_args --tag $tag"
+          done <<< "$TAGS"
+          docker buildx imagetools create \
+            $tag_args \
+            oci-archive:dist/multiroom-image.tar
 
       - name: Push to HASSIO (GHCR)
         if: steps.login_ghcr.outcome == 'success'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.tag_lists.outputs.hassio_tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=docker
-          build-args: |
-            BUILD_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
+        env:
+          TAGS: ${{ steps.tag_lists.outputs.hassio_tags }}
+        run: |
+          if [ -z "$TAGS" ]; then
+            echo "No HASSIO tags to push."
+            exit 0
+          fi
+          tag_args=""
+          while IFS= read -r tag; do
+            tag_args="$tag_args --tag $tag"
+          done <<< "$TAGS"
+          docker buildx imagetools create \
+            $tag_args \
+            oci-archive:dist/multiroom-image.tar
 
       # Get short SHA for dev image tag (must match what's set in config.yaml)
       - name: Get short SHA
@@ -213,21 +219,11 @@ jobs:
       # Push to separate HASSIO dev image with SHA tag (HAOS uses version as image tag)
       - name: Push to HASSIO dev image
         if: github.ref == 'refs/heads/dev' && steps.login_ghcr.outcome == 'success'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.HASSIO_DEV_IMAGE }}:latest
-            ${{ env.HASSIO_DEV_IMAGE }}:sha-${{ steps.short_sha.outputs.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=docker
-          build-args: |
-            BUILD_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
+        run: |
+          docker buildx imagetools create \
+            --tag "${{ env.HASSIO_DEV_IMAGE }}:latest" \
+            --tag "${{ env.HASSIO_DEV_IMAGE }}:sha-${{ steps.short_sha.outputs.sha }}" \
+            oci-archive:dist/multiroom-image.tar
 
   # ==========================================================================
   # Update Docker Hub README
