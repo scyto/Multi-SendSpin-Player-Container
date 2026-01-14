@@ -89,43 +89,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Build version: $VERSION"
 
-      - name: Extract metadata (tags, labels) for GHCR
-        id: meta_ghcr
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.GHCR_IMAGE }}
-          flavor: |
-            latest=false
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
-            type=sha,prefix=sha-,format=short
-
-      - name: Extract metadata (tags, labels) for Docker Hub
-        id: meta_dockerhub
+      - name: Extract metadata (tags, labels)
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ${{ env.DOCKERHUB_IMAGE }}
-          flavor: |
-            latest=false
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
-            type=sha,prefix=sha-,format=short
-
-      - name: Extract metadata (tags, labels) for HASSIO
-        id: meta_hassio
-        uses: docker/metadata-action@v5
-        with:
-          images: |
+            ${{ env.GHCR_IMAGE }}
             ${{ env.HASSIO_IMAGE }}
           flavor: |
             latest=false
@@ -144,8 +114,8 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta_ghcr.outputs.tags }}
-          labels: ${{ steps.meta_ghcr.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           cache-to: type=gha,mode=max,scope=docker
           build-args: |
@@ -161,8 +131,8 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta_dockerhub.outputs.tags }}
-          labels: ${{ steps.meta_dockerhub.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           cache-to: type=gha,mode=max,scope=docker
           build-args: |
@@ -178,8 +148,8 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta_hassio.outputs.tags }}
-          labels: ${{ steps.meta_hassio.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           cache-to: type=gha,mode=max,scope=docker
           build-args: |
@@ -206,7 +176,7 @@ jobs:
           tags: |
             ${{ env.HASSIO_DEV_IMAGE }}:latest
             ${{ env.HASSIO_DEV_IMAGE }}:sha-${{ steps.short_sha.outputs.sha }}
-          labels: ${{ steps.meta_hassio.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
