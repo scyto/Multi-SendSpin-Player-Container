@@ -59,6 +59,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
+        id: dockerhub_login
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -105,7 +107,41 @@ jobs:
             type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
             type=sha,prefix=sha-,format=short
 
-      - name: Build and push to all registries
+      - name: Build and push to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=docker
+          cache-to: type=gha,mode=max,scope=docker
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Build and push to Docker Hub
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=docker
+          cache-to: type=gha,mode=max,scope=docker
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Build and push to HASSIO
+        continue-on-error: true
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -130,6 +166,7 @@ jobs:
       # Push to separate HASSIO dev image with SHA tag (HAOS uses version as image tag)
       - name: Push to HASSIO dev image
         if: github.ref == 'refs/heads/dev'
+        continue-on-error: true
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -153,6 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-docker
     if: github.ref == 'refs/heads/main'
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -172,6 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-docker
     if: github.ref == 'refs/heads/dev'
+    continue-on-error: true
     permissions:
       contents: write
     steps:
@@ -253,6 +292,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-docker
     if: startsWith(github.ref, 'refs/tags/v')
+    continue-on-error: true
     permissions:
       contents: write
     steps:
