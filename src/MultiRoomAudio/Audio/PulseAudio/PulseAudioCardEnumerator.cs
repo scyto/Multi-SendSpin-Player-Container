@@ -278,31 +278,28 @@ public static partial class PulseAudioCardEnumerator
             if (string.IsNullOrEmpty(output))
                 return sinks;
 
-            // Parse sink blocks to find ones with matching Card index
-            string? currentSinkName = null;
+            var sinkBlocks = output.Split(new[] { "Sink #" }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (var line in output.Split('\n'))
+            foreach (var block in sinkBlocks)
             {
-                var trimmed = line.Trim();
+                var nameMatch = Regex.Match(block, @"Name:\s*(.+)$", RegexOptions.Multiline);
+                if (!nameMatch.Success)
+                    continue;
 
-                // Check for sink name
-                if (trimmed.StartsWith("Name:"))
+                var cardMatch = Regex.Match(block, @"alsa\.card\s*=\s*""(\d+)""");
+                if (!cardMatch.Success)
                 {
-                    currentSinkName = trimmed.Substring(5).Trim();
+                    cardMatch = Regex.Match(block, @"device\.card\s*=\s*""(\d+)""");
                 }
-                // Check for card association
-                else if (trimmed.StartsWith("Card:") && currentSinkName != null)
-                {
-                    var cardStr = trimmed.Substring(5).Trim();
-                    // Card field may include "#" prefix (e.g., "Card: #0" or "Card: 0")
-                    cardStr = cardStr.TrimStart('#');
 
-                    if (int.TryParse(cardStr, out var sinkCard) && sinkCard == cardIndex)
-                    {
-                        sinks.Add(currentSinkName);
-                        _logger?.LogDebug("Found sink '{Sink}' belonging to card {Card}", currentSinkName, cardIndex);
-                    }
-                    currentSinkName = null; // Reset for next sink block
+                if (!cardMatch.Success)
+                    continue;
+
+                if (int.TryParse(cardMatch.Groups[1].Value, out var sinkCard) && sinkCard == cardIndex)
+                {
+                    var sinkName = nameMatch.Groups[1].Value.Trim();
+                    sinks.Add(sinkName);
+                    _logger?.LogDebug("Found sink '{Sink}' belonging to card {Card}", sinkName, cardIndex);
                 }
             }
 
@@ -329,23 +326,18 @@ public static partial class PulseAudioCardEnumerator
             if (string.IsNullOrEmpty(output))
                 return muteStates;
 
-            string? currentSinkName = null;
+            var sinkBlocks = output.Split(new[] { "Sink #" }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (var line in output.Split('\n'))
+            foreach (var block in sinkBlocks)
             {
-                var trimmed = line.Trim();
+                var nameMatch = Regex.Match(block, @"Name:\s*(.+)$", RegexOptions.Multiline);
+                var muteMatch = Regex.Match(block, @"Mute:\s*(yes|no)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                if (!nameMatch.Success || !muteMatch.Success)
+                    continue;
 
-                if (trimmed.StartsWith("Name:"))
-                {
-                    currentSinkName = trimmed.Substring(5).Trim();
-                }
-                else if (trimmed.StartsWith("Mute:") && currentSinkName != null)
-                {
-                    var muteValue = trimmed.Substring(5).Trim();
-                    var isMuted = muteValue.Equals("yes", StringComparison.OrdinalIgnoreCase);
-                    muteStates[currentSinkName] = isMuted;
-                    currentSinkName = null;
-                }
+                var sinkName = nameMatch.Groups[1].Value.Trim();
+                var isMuted = muteMatch.Groups[1].Value.Equals("yes", StringComparison.OrdinalIgnoreCase);
+                muteStates[sinkName] = isMuted;
             }
         }
         catch (Exception ex)
