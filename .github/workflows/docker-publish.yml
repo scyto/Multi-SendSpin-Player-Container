@@ -58,19 +58,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ----------------------------------------------------------------------
+      # Registry logins (non-blocking)
+      # ----------------------------------------------------------------------
       - name: Login to Docker Hub
+        id: login_dockerhub
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
+        id: login_ghcr
+        continue-on-error: true
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------------------------------------------------
+      # Build prep (versioning + metadata)
+      # ----------------------------------------------------------------------
       - name: Determine build version
         id: version
         run: |
@@ -105,17 +115,90 @@ jobs:
             type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
             type=sha,prefix=sha-,format=short
 
-      - name: Build and push to all registries
+      - name: Collect registry-specific tags
+        id: tag_lists
+        run: |
+          tag_json='${{ steps.meta.outputs.json }}'
+          dockerhub_tags=$(echo "$tag_json" | jq -r '.tags[] | select(startswith("${{ env.DOCKERHUB_IMAGE }}:"))')
+          ghcr_tags=$(echo "$tag_json" | jq -r '.tags[] | select(startswith("${{ env.GHCR_IMAGE }}:"))')
+          hassio_tags=$(echo "$tag_json" | jq -r '.tags[] | select(startswith("${{ env.HASSIO_IMAGE }}:"))')
+          {
+            echo "dockerhub_tags<<EOF"
+            echo "$dockerhub_tags"
+            echo "EOF"
+            echo "ghcr_tags<<EOF"
+            echo "$ghcr_tags"
+            echo "EOF"
+            echo "hassio_tags<<EOF"
+            echo "$hassio_tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------------------
+      # Build (no push)
+      # ----------------------------------------------------------------------
+      - name: Build image (cache only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          outputs: type=cacheonly
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=docker
+          cache-to: type=gha,mode=max,scope=docker
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # ----------------------------------------------------------------------
+      # Push (registry-specific)
+      # ----------------------------------------------------------------------
+      - name: Push to Docker Hub
+        if: steps.login_dockerhub.outcome == 'success'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.tag_lists.outputs.dockerhub_tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker
-          cache-to: type=gha,mode=max,scope=docker
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Push to GHCR
+        if: steps.login_ghcr.outcome == 'success'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tag_lists.outputs.ghcr_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=docker
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      - name: Push to HASSIO (GHCR)
+        if: steps.login_ghcr.outcome == 'success'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tag_lists.outputs.hassio_tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=docker
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
@@ -129,7 +212,7 @@ jobs:
 
       # Push to separate HASSIO dev image with SHA tag (HAOS uses version as image tag)
       - name: Push to HASSIO dev image
-        if: github.ref == 'refs/heads/dev'
+        if: github.ref == 'refs/heads/dev' && steps.login_ghcr.outcome == 'success'
         uses: docker/build-push-action@v6
         with:
           context: .
