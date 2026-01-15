@@ -1550,27 +1550,19 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Update volume if changed
             if (serverVolume != context.Config.Volume)
             {
-                // Detect and ignore spurious resets to initial volume during track transitions
-                // MA resets to player's initial volume (from InitialVolume capability) when starting new tracks
-                // We want to preserve the user's chosen volume instead
-                var isPlaying = context.State == PlayerState.Playing || context.State == PlayerState.Buffering;
-                var isResetToInitial = serverVolume == context.InitialVolume; // Initial volume from player creation
+                // Check if this is a spurious reset during track transition
+                // MA sometimes resets volume when starting new tracks - ignore these
+                var isStable = context.State == PlayerState.Playing || context.State == PlayerState.Idle;
 
-                if (!isPlaying && isResetToInitial)
-                {
-                    _logger.LogDebug("VOLUME [Ignored] Player '{Name}': {OldVol}% -> {NewVol}% (reset to initial during transition)",
-                        name, context.Config.Volume, serverVolume);
-                    return;
-                }
+                _logger.LogInformation("VOLUME [ServerSync] Player '{Name}': {OldVol}% -> {NewVol}% (state={State}, persist={Persist})",
+                    name, context.Config.Volume, serverVolume, context.State, isStable);
 
-                _logger.LogInformation("VOLUME [ServerSync] Player '{Name}': {OldVol}% -> {NewVol}%",
-                    name, context.Config.Volume, serverVolume);
-
-                // Update our config to reflect server state
+                // Always update runtime config (affects current playback)
                 context.Config.Volume = serverVolume;
 
-                // Persist the volume change so it survives restarts and track changes
-                if (_config.Players.TryGetValue(name, out var persistedConfig))
+                // Only persist when player is in a stable state (not transitioning between tracks)
+                // This prevents MA's spurious resets during track changes from being saved
+                if (isStable && _config.Players.TryGetValue(name, out var persistedConfig))
                 {
                     persistedConfig.Volume = serverVolume;
                     try
@@ -1583,6 +1575,11 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     {
                         _logger.LogWarning(ex, "Failed to persist volume change for player '{Name}'", name);
                     }
+                }
+                else if (!isStable)
+                {
+                    _logger.LogDebug("VOLUME [Skip Persist] Player '{Name}': skipped save during state={State}",
+                        name, context.State);
                 }
 
                 // Broadcast to UI so slider updates
