@@ -1567,24 +1567,21 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 // The config file volume is only the INITIAL volume sent on connection
                 context.Config.Volume = serverVolume;
 
-                // CRITICAL: Send client/state back to server to update MA's stored preference
-                // This is required by the Sendspin protocol - when MA sends a volume change,
-                // the player must acknowledge it by sending back the new state.
-                // Without this, MA won't update its stored preference and will keep resetting
-                // to the old volume on track changes.
+                // Send player state back to MA to update its stored preference
+                // This uses SendPlayerStateAsync which is fire-and-forget and doesn't trigger GroupStateChanged
                 FireAndForget(async () =>
                 {
                     try
                     {
-                        await context.Client.SetVolumeAsync(serverVolume);
-                        _logger.LogDebug("VOLUME [StateSync] Player '{Name}': sent client/state with {Volume}%",
+                        await context.Client.SendPlayerStateAsync(serverVolume, context.Player.IsMuted);
+                        _logger.LogDebug("VOLUME [StateEcho] Player '{Name}': echoed client/state with {Volume}%",
                             name, serverVolume);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to send volume state update for '{Name}'", name);
+                        _logger.LogWarning(ex, "Failed to echo player state for '{Name}'", name);
                     }
-                }, $"Volume state sync for '{name}'");
+                }, $"Player state echo for '{name}'");
 
                 // Broadcast to UI so slider updates
                 _ = BroadcastStatusAsync();
