@@ -448,12 +448,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
                     await CreatePlayerAsync(request, cancellationToken);
 
-                    // Apply hardware volume limit if configured
-                    if (playerConfig.HardwareVolumeLimit.HasValue)
-                    {
-                        await SetHardwareVolumeLimitAsync(playerConfig.Name, playerConfig.HardwareVolumeLimit.Value, cancellationToken);
-                    }
-
                     _logger.LogInformation("Player {PlayerName} autostarted successfully", playerConfig.Name);
                 }
                 catch (ArgumentException ex)
@@ -831,7 +825,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     ServerUrl: config.Server,
                     Volume: volume,
                     StartupVolume: volume, // For non-running players, startup volume = config volume
-                    HardwareVolumeLimit: 80, // Default for non-running players
                     IsMuted: false,
                     DelayMs: config.DelayMs,
                     OutputLatencyMs: 0,
@@ -924,58 +917,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         return true;
     }
 
-    /// <summary>
-    /// Sets the hardware volume limit for a player's audio device.
-    /// This controls the PulseAudio sink volume, which sets the physical output level.
-    /// Note: If multiple players use the same device, they share the hardware volume.
-    /// </summary>
-    /// <param name="name">Player name.</param>
-    /// <param name="maxVolume">Hardware volume limit (0-100%).</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>True if successful, false if player not found or device not set.</returns>
-    public async Task<bool> SetHardwareVolumeLimitAsync(string name, int maxVolume, CancellationToken ct = default)
-    {
-        if (!_players.TryGetValue(name, out var context))
-            return false;
-
-        // Clamp to valid range
-        maxVolume = Math.Clamp(maxVolume, 0, 100);
-
-        // Update runtime config
-        context.Config.HardwareVolumeLimit = maxVolume;
-
-        // Apply to device if one is assigned
-        if (!string.IsNullOrEmpty(context.Config.DeviceId))
-        {
-            try
-            {
-                var success = await _backendFactory.SetVolumeAsync(context.Config.DeviceId, maxVolume, ct);
-                if (success)
-                {
-                    _logger.LogInformation("VOLUME [Hardware] Player '{Name}' device '{Device}': set to {Volume}%",
-                        name, context.Config.DeviceId, maxVolume);
-                }
-                else
-                {
-                    _logger.LogWarning("VOLUME [Hardware] Player '{Name}' device '{Device}': failed to set volume",
-                        name, context.Config.DeviceId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to set hardware volume for player '{Name}'", name);
-                // Don't fail - config is saved even if hardware change fails
-            }
-        }
-
-        // Persist configuration (update the YAML model)
-        _config.UpdatePlayerField(name, p => p.HardwareVolumeLimit = maxVolume);
-
-        // Broadcast status update
-        _ = BroadcastStatusAsync();
-
-        return true;
-    }
 
     /// <summary>
     /// Sets the mute state for a player.
@@ -1658,7 +1599,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             ServerUrl: context.Config.ServerUrl,
             Volume: context.Config.Volume, // Runtime volume (synced with MA)
             StartupVolume: startupVolume,   // Startup volume (from persisted config)
-            HardwareVolumeLimit: context.Config.HardwareVolumeLimit,
             IsMuted: context.Player.IsMuted,
             DelayMs: context.Config.DelayMs,
             OutputLatencyMs: context.Player.OutputLatencyMs,

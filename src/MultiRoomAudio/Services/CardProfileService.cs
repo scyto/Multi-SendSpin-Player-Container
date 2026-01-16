@@ -1,3 +1,4 @@
+using MultiRoomAudio.Audio;
 using MultiRoomAudio.Audio.PulseAudio;
 using MultiRoomAudio.Models;
 using MultiRoomAudio.Utilities;
@@ -15,6 +16,8 @@ public class CardProfileService : IHostedService
     private readonly ILogger<CardProfileService> _logger;
     private readonly EnvironmentService _environment;
     private readonly VolumeCommandRunner _volumeRunner;
+    private readonly ConfigurationService _config;
+    private readonly BackendFactory _backend;
     private readonly string _configPath;
     private readonly IDeserializer _deserializer;
     private readonly ISerializer _serializer;
@@ -23,11 +26,15 @@ public class CardProfileService : IHostedService
     public CardProfileService(
         ILogger<CardProfileService> logger,
         EnvironmentService environment,
-        VolumeCommandRunner volumeRunner)
+        VolumeCommandRunner volumeRunner,
+        ConfigurationService config,
+        BackendFactory backend)
     {
         _logger = logger;
         _environment = environment;
         _volumeRunner = volumeRunner;
+        _config = config;
+        _backend = backend;
         _configPath = Path.Combine(environment.ConfigPath, "card-profiles.yaml");
 
         // Configure logger for the enumerator
@@ -162,6 +169,9 @@ public class CardProfileService : IHostedService
         _logger.LogInformation(
             "CardProfileService started: {Restored} profiles restored, {Failed} failed",
             restoredCount, failedCount);
+
+        // Apply saved device volume limits after profile restoration
+        await ApplyDeviceVolumeLimitsAsync();
 
         await Task.CompletedTask;
     }
@@ -708,5 +718,74 @@ public class CardProfileService : IHostedService
     private static string GetCardDisplayName(PulseAudioCard card)
     {
         return string.IsNullOrWhiteSpace(card.Description) ? card.Name : card.Description;
+    }
+
+    /// <summary>
+    /// Applies saved device volume limits from configuration.
+    /// Called at startup after card profiles are restored.
+    /// </summary>
+    private async Task ApplyDeviceVolumeLimitsAsync()
+    {
+        try
+        {
+            // Get all devices from backend
+            var devices = _backend.GetOutputDevices();
+            if (!devices.Any())
+            {
+                _logger.LogDebug("No devices found for volume limit application");
+                return;
+            }
+
+            // Get all device configurations
+            var deviceConfigs = _config.GetAllDeviceConfigurations();
+            if (deviceConfigs.Count == 0)
+            {
+                _logger.LogDebug("No device configurations with volume limits found");
+                return;
+            }
+
+            var appliedCount = 0;
+            var failedCount = 0;
+
+            foreach (var device in devices)
+            {
+                try
+                {
+                    // Generate device key to look up configuration
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    if (!deviceConfigs.TryGetValue(deviceKey, out var config))
+                    {
+                        continue;
+                    }
+
+                    // Apply max volume if configured
+                    if (config.MaxVolume.HasValue)
+                    {
+                        await _backend.SetVolumeAsync(device.Id, config.MaxVolume.Value, CancellationToken.None);
+                        _logger.LogInformation(
+                            "Applied volume limit {Volume}% to device '{Device}'",
+                            config.MaxVolume.Value,
+                            device.Name);
+                        appliedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to apply volume limit for device '{Device}'", device.Name);
+                    failedCount++;
+                }
+            }
+
+            if (appliedCount > 0 || failedCount > 0)
+            {
+                _logger.LogInformation(
+                    "Device volume limits applied: {Applied} succeeded, {Failed} failed",
+                    appliedCount, failedCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error applying device volume limits at startup");
+        }
     }
 }
