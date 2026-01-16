@@ -1083,7 +1083,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
             try
             {
-                await context.Client.DisconnectAsync("Player stopped").WaitAsync(DisposalTimeout);
+                await context.Client.DisconnectAsync("user_request").WaitAsync(DisposalTimeout);
             }
             catch (TimeoutException)
             {
@@ -1131,7 +1131,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
             context.Cts.Cancel();
 
-            await context.Client.DisconnectAsync("Player removed").WaitAsync(DisposalTimeout);
+            await context.Client.DisconnectAsync("user_request").WaitAsync(DisposalTimeout);
             await context.Pipeline.StopAsync().WaitAsync(DisposalTimeout);
             await DisposePlayerContextAsync(context);
 
@@ -1876,7 +1876,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Disconnect from server gracefully
             try
             {
-                await context.Client.DisconnectAsync("Audio error: " + reason).WaitAsync(DisposalTimeout);
+                await context.Client.DisconnectAsync("restart").WaitAsync(DisposalTimeout);
             }
             catch (TimeoutException)
             {
