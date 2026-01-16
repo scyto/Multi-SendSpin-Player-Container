@@ -174,6 +174,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     /// </summary>
     private const int MaxReconnectAttempts = 0; // Unlimited - keep trying forever
 
+    /// <summary>
+    /// Grace period after connection during which volume updates from MA are ignored.
+    /// This allows the startup volume to "win" the initial sync battle with Music Assistant.
+    /// </summary>
+    private static readonly TimeSpan VolumeGracePeriod = TimeSpan.FromSeconds(5);
+
     #endregion
 
     #region Helper Methods
@@ -1420,10 +1426,13 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _ => context.State
             };
 
-            // Push initial volume to server when connected
+            // Record connection time and push initial volume to server when connected
             // This ensures MA shows the correct startup volume immediately
             if (args.NewState == ConnectionState.Connected)
             {
+                context.ConnectedAt = DateTime.UtcNow;
+                _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': grace period started for {Duration}s",
+                    name, VolumeGracePeriod.TotalSeconds);
                 _ = PushVolumeToServerAsync(name, context);
             }
 
@@ -1517,9 +1526,40 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Clamp volume to valid range
             var serverVolume = Math.Clamp(group.Volume, 0, 100);
 
+            // Check if we're within the grace period after connection
+            var isWithinGracePeriod = context.ConnectedAt.HasValue &&
+                                     (DateTime.UtcNow - context.ConnectedAt.Value) < VolumeGracePeriod;
+
             // Update volume if changed
             if (serverVolume != context.Config.Volume)
             {
+                // During grace period, ignore MA's volume updates and push our startup volume back
+                if (isWithinGracePeriod)
+                {
+                    var gracePeriodRemaining = VolumeGracePeriod - (DateTime.UtcNow - context.ConnectedAt!.Value);
+                    _logger.LogInformation(
+                        "VOLUME [GracePeriod] Player '{Name}': ignoring MA volume {NewVol}% (within grace period, keeping startup volume {OldVol}%, {Remaining:F1}s remaining)",
+                        name, serverVolume, context.Config.Volume, gracePeriodRemaining.TotalSeconds);
+
+                    // Push our startup volume back to MA aggressively
+                    FireAndForget(async () =>
+                    {
+                        try
+                        {
+                            await context.Client.SetVolumeAsync(context.Config.Volume);
+                            _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': pushed startup volume {Volume}% back to MA",
+                                name, context.Config.Volume);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to push startup volume for '{Name}'", name);
+                        }
+                    }, $"Grace period volume push for '{name}'");
+
+                    return; // Don't update local volume or broadcast
+                }
+
+                // Outside grace period - accept MA's volume updates normally
                 _logger.LogInformation("VOLUME [ServerSync] Player '{Name}': {OldVol}% -> {NewVol}%",
                     name, context.Config.Volume, serverVolume);
 
