@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5413f0e
+## Development Build: sha-722d8c0
 
 **Current Dev Build Changes** (recent)
 
+- Update SendSpin.SDK to v5.2.0
+- Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
 - Merge pull request #66 from scyto/dev
 - Merge pull request #68 from scyto/feature/fix-goodbye-reason-protocol
 - Merge pull request #67 from scyto/feature/autostart-reconnection-fix
@@ -13,8 +15,6 @@
 - Fix: Queue failed autostart players for automatic reconnection
 - more readme.md OCD
 - one real change, rest is my vscode OCD
-- Fix health endpoint, was on ./health not ./api/health as documented
-- Remove reference to Multi-SendSpin-Player-Container/tests/MultiRoomAudio.Tests/MultiRoomAudio.Tests.csproj as my vscode was objecting on a dotnet build
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
