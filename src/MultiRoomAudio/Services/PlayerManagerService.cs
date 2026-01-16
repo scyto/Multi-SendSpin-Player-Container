@@ -362,6 +362,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     /// This is called once at container startup to set a safe volume level
     /// that avoids clipping. The server (Music Assistant) then controls the
     /// actual volume level via its own volume control.
+    /// Devices with configured MaxVolume limits in devices.yaml are skipped.
     /// </summary>
     private async Task InitializeHardwareVolumesAsync(CancellationToken cancellationToken)
     {
@@ -379,10 +380,23 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
             _logger.LogInformation("Found {Count} audio output device(s)", devices.Count);
 
+            // Get device configurations to check for volume limits
+            var deviceConfigs = _config.GetAllDeviceConfigurations();
+
             foreach (var device in devices)
             {
                 try
                 {
+                    // Check if device has a configured max volume limit
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    if (deviceConfigs.TryGetValue(deviceKey, out var config) && config.MaxVolume.HasValue)
+                    {
+                        _logger.LogDebug("VOLUME [Init] Device '{Name}' ({Id}): skipping, has configured limit of {Limit}%",
+                            device.Name, device.Id, config.MaxVolume.Value);
+                        continue;
+                    }
+
+                    // No configured limit - apply default hardware volume
                     var success = await _backendFactory.SetVolumeAsync(device.Id, HardwareVolumePercent, cancellationToken);
                     if (success)
                     {
