@@ -738,11 +738,14 @@ function renderPlayers() {
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fas fa-volume-up me-1"></i>
                                 <span class="small fw-semibold">Current Volume</span>
-                                <i class="fas fa-info-circle ms-1 text-muted small" title="Current playback volume (syncs with Music Assistant)" style="cursor: help;"></i>
+                                <i class="fas fa-info-circle ms-1 text-muted small volume-tooltip"
+                                   data-bs-toggle="tooltip"
+                                   data-bs-placement="top"
+                                   data-bs-title="Current playback volume (syncs with Music Assistant)"></i>
                             </div>
                             <div class="d-flex align-items-center">
                                 <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100" value="${player.volume}"
-                                    data-player-name="${escapeHtml(name)}"
+                                    onchange="setVolume('${escapeHtml(name)}', this.value)"
                                     oninput="this.nextElementSibling.textContent = this.value + '%'">
                                 <span class="volume-display ms-2 small">${player.volume}%</span>
                             </div>
@@ -752,13 +755,15 @@ function renderPlayers() {
                             <div class="d-flex align-items-center mb-1">
                                 <i class="fas fa-power-off me-1 text-muted small"></i>
                                 <span class="small text-muted">Startup Volume</span>
-                                <i class="fas fa-info-circle ms-1 text-muted small" title="Initial volume sent when player connects (on container or player restart)" style="cursor: help;"></i>
+                                <i class="fas fa-info-circle ms-1 text-muted small volume-tooltip"
+                                   data-bs-toggle="tooltip"
+                                   data-bs-placement="top"
+                                   data-bs-title="Initial volume sent when player connects (on container or player restart)"></i>
                             </div>
                             <div class="d-flex align-items-center">
                                 <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
                                        value="${player.startupVolume || player.volume}"
-                                       data-player-name="${escapeHtml(name)}"
-                                       data-volume-type="startup"
+                                       onchange="setStartupVolume('${escapeHtml(name)}', this.value)"
                                        oninput="this.nextElementSibling.textContent = this.value + '%'">
                                 <span class="volume-display ms-2 small">${player.startupVolume || player.volume}%</span>
                             </div>
@@ -778,42 +783,17 @@ function renderPlayers() {
         `;
     }).join('');
 
-    // Attach volume slider event listeners after rendering
-    attachVolumeSliderListeners();
+    // Initialize Bootstrap tooltips for the rendered elements
+    initializeTooltips();
 }
 
 /**
- * Attaches mouseup/touchend event listeners to volume sliders.
- * This prevents the sliders from updating the player while dragging.
+ * Initializes Bootstrap tooltips for elements with data-bs-toggle="tooltip"
  */
-function attachVolumeSliderListeners() {
-    const volumeSliders = document.querySelectorAll('input[type="range"][data-player-name]');
-
-    volumeSliders.forEach(slider => {
-        const playerName = slider.getAttribute('data-player-name');
-        const volumeType = slider.getAttribute('data-volume-type');
-
-        // Remove any existing listeners to prevent duplicates
-        slider.removeEventListener('mouseup', slider._mouseupHandler);
-        slider.removeEventListener('touchend', slider._touchendHandler);
-
-        // Create handlers
-        const updateVolume = () => {
-            const value = parseInt(slider.value);
-            if (volumeType === 'startup') {
-                setStartupVolume(playerName, value);
-            } else {
-                setVolume(playerName, value);
-            }
-        };
-
-        // Store handler references so we can remove them later
-        slider._mouseupHandler = updateVolume;
-        slider._touchendHandler = updateVolume;
-
-        // Attach listeners
-        slider.addEventListener('mouseup', slider._mouseupHandler);
-        slider.addEventListener('touchend', slider._touchendHandler);
+function initializeTooltips() {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl);
     });
 }
 
