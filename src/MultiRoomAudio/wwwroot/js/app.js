@@ -513,30 +513,6 @@ async function setStartupVolume(name, volume) {
     }
 }
 
-async function setHardwareVolumeLimit(name, maxVolume) {
-    try {
-        const response = await fetch(`./api/players/${encodeURIComponent(name)}/hardware-volume`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ maxVolume: parseInt(maxVolume) })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to set hardware volume');
-        }
-
-        // Update local state
-        if (players[name]) {
-            players[name].hardwareVolumeLimit = parseInt(maxVolume);
-        }
-
-        showAlert(`Hardware volume set to ${maxVolume}%`, 'success', 2000);
-    } catch (error) {
-        console.error('Error setting hardware volume:', error);
-        showAlert(error.message, 'danger');
-    }
-}
 
 async function setDelay(name, delayMs) {
     // Clamp value to valid range
@@ -784,20 +760,6 @@ function renderPlayers() {
                                        onchange="setStartupVolume('${escapeHtml(name)}', this.value)"
                                        oninput="this.nextElementSibling.textContent = this.value + '%'">
                                 <span class="volume-display ms-2 small">${player.startupVolume || player.volume}%</span>
-                            </div>
-                        </div>
-
-                        <div class="hardware-volume-section pt-2 border-top">
-                            <div class="d-flex align-items-center mb-1">
-                                <i class="fas fa-cog me-1 text-muted small"></i>
-                                <span class="small text-muted">Hardware Volume</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
-                                       value="${player.hardwareVolumeLimit || 80}"
-                                       onchange="setHardwareVolumeLimit('${escapeHtml(name)}', this.value)"
-                                       oninput="this.nextElementSibling.textContent = this.value + '%'">
-                                <span class="volume-display ms-2 small">${player.hardwareVolumeLimit || 80}%</span>
                             </div>
                         </div>
 
@@ -1910,6 +1872,18 @@ function renderSoundCards() {
                         </div>
                     </div>
 
+                    <div class="mb-2">
+                        <label class="form-label small text-muted mb-1">Limit Max. Vol.</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="range" class="form-range flex-grow-1" min="0" max="100" step="1"
+                                   value="${card.maxVolume || 100}"
+                                   id="settings-max-volume-${card.index}"
+                                   oninput="document.getElementById('settings-max-volume-value-${card.index}').textContent = this.value + '%'"
+                                   onchange="setDeviceMaxVolume('${escapeHtml(card.name)}', this.value, ${card.index})">
+                            <span class="text-muted" style="min-width: 45px;" id="settings-max-volume-value-${card.index}">${card.maxVolume || 100}%</span>
+                        </div>
+                    </div>
+
                     ${hasMultipleProfiles ? `
                         <div class="mb-2">
                             <label class="form-label small text-muted mb-1">Audio Profile</label>
@@ -2045,6 +2019,46 @@ async function setSoundCardBootMute(cardName, value, cardIndex) {
         }
     } finally {
         if (select) select.disabled = false;
+    }
+}
+
+async function setDeviceMaxVolume(cardName, maxVolume, cardIndex) {
+    const slider = document.getElementById(`settings-max-volume-${cardIndex}`);
+    if (slider) slider.disabled = true;
+
+    try {
+        const volumeValue = parseInt(maxVolume);
+        const response = await fetch(`./api/devices/${encodeURIComponent(cardName)}/max-volume`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ maxVolume: volumeValue })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to set max volume');
+        }
+
+        const card = soundCards.find(c => c.name === cardName);
+        if (card) {
+            card.maxVolume = volumeValue;
+        }
+
+        showAlert(`Max volume set to ${volumeValue}%`, 'success', 2000);
+    } catch (error) {
+        console.error('Failed to set max volume:', error);
+        showAlert(error.message, 'danger');
+        // Revert slider to previous value
+        const card = soundCards.find(c => c.name === cardName);
+        if (slider && card) {
+            slider.value = card.maxVolume || 100;
+            const valueDisplay = document.getElementById(`settings-max-volume-value-${cardIndex}`);
+            if (valueDisplay) {
+                valueDisplay.textContent = (card.maxVolume || 100) + '%';
+            }
+        }
+    } finally {
+        if (slider) slider.disabled = false;
     }
 }
 

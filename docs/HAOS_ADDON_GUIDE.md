@@ -2,7 +2,7 @@
 
 Complete guide for running Multi-Room Audio Controller on Home Assistant OS.
 
-> **Version 4.0**: Now includes a guided setup wizard, custom sinks for multi-channel DACs, sound card profile management, and per-player hardware volume control. [See what's new](WHATS_NEW_4.0).
+> **Version 4.0**: Now includes a guided setup wizard, custom sinks for multi-channel DACs, sound card profile management, and device-level volume limits. [See what's new](WHATS_NEW_4.0).
 
 ---
 
@@ -252,14 +252,16 @@ Create virtual audio outputs for advanced configurations. Access **Settings > Cu
 
 See [Custom Sinks Guide](CUSTOM_SINKS) for step-by-step instructions.
 
-### Hardware Volume Control
+### Device Volume Limits
 
-Per-player option to use hardware volume instead of software volume:
+Set maximum volume limits per sound card for safety:
 
-- **Software volume** (default): Adjusts audio in the stream
-- **Hardware volume**: Controls the physical DAC volume
+- Navigate to Settings > Sound Cards
+- Use the **Limit Max. Vol.** slider for each card
+- Volume limit is applied at the device level
+- Prevents accidental over-driving of speakers
 
-Enable in player settings for better audio quality on supported devices.
+Settings persist across restarts and are applied automatically at startup.
 
 ---
 
