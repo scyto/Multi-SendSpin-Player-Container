@@ -831,9 +831,26 @@ function renderPlayers() {
 }
 
 /**
+ * Disposes all existing Bootstrap tooltips to prevent memory leaks and conflicts.
+ */
+function disposeTooltips() {
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipElements.forEach(element => {
+        const tooltip = bootstrap.Tooltip.getInstance(element);
+        if (tooltip) {
+            tooltip.dispose();
+        }
+    });
+}
+
+/**
  * Initializes Bootstrap tooltips for elements with data-bs-toggle="tooltip"
  */
 function initializeTooltips() {
+    // First dispose any existing tooltips to prevent conflicts
+    disposeTooltips();
+
+    // Then create new tooltip instances
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipTriggerList.forEach(tooltipTriggerEl => {
         new bootstrap.Tooltip(tooltipTriggerEl);
