@@ -13,38 +13,92 @@ public static class MockCardEnumerator
     private static readonly Dictionary<int, bool> _muteStates = new();
 
     /// <summary>
-    /// Standard surround profiles available on all cards.
-    /// These profiles are needed for the remap sink user flow.
+    /// Profile sets for different card types - based on real PulseAudio profile names.
     /// </summary>
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] StandardSurroundProfiles = new[]
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] IntelHdaProfiles = new[]
     {
-        ("output:analog-stereo", "Analog Stereo Output", 1, 5600, true),
-        ("output:analog-surround-51", "Analog Surround 5.1 Output", 1, 5500, true),
-        ("output:analog-surround-71", "Analog Surround 7.1 Output", 1, 5400, true),
-        ("output:iec958-stereo", "Digital Stereo (IEC958) Output", 1, 5300, true),
+        ("output:analog-stereo+input:analog-stereo", "Analog Stereo Duplex", 1, 6565, true),
+        ("output:analog-stereo", "Analog Stereo Output", 1, 6500, true),
+        ("output:hdmi-stereo", "Digital Stereo (HDMI)", 1, 5900, true),
+        ("output:hdmi-stereo-extra1", "Digital Stereo (HDMI 2)", 1, 5700, true),
+        ("off", "Off", 0, 0, true)
+    };
+
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] XonarProfiles = new[]
+    {
+        ("output:analog-surround-71+input:analog-stereo", "Analog Surround 7.1 Output + Analog Stereo Input", 1, 7171, true),
+        ("output:analog-surround-71", "Analog Surround 7.1 Output", 1, 7100, true),
+        ("output:analog-surround-51", "Analog Surround 5.1 Output", 1, 6100, true),
+        ("output:analog-stereo+input:analog-stereo", "Analog Stereo Duplex", 1, 6065, true),
+        ("output:analog-stereo", "Analog Stereo Output", 1, 6000, true),
+        ("output:iec958-stereo+input:analog-stereo", "Digital Stereo (S/PDIF) Output + Analog Stereo Input", 1, 5565, true),
+        ("output:iec958-stereo", "Digital Stereo (S/PDIF) Output", 1, 5500, true),
+        ("off", "Off", 0, 0, true)
+    };
+
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] UsbDacProfiles = new[]
+    {
+        ("output:analog-stereo", "Analog Stereo Output", 1, 6500, true),
+        ("output:iec958-stereo", "Digital Stereo (IEC958) Output", 1, 5500, true),
+        ("off", "Off", 0, 0, true)
+    };
+
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] UsbMultichannelProfiles = new[]
+    {
+        ("output:analog-surround-71", "Analog Surround 7.1 Output", 1, 7100, true),
+        ("output:analog-surround-51", "Analog Surround 5.1 Output", 1, 6100, true),
+        ("output:analog-stereo", "Analog Stereo Output", 1, 6000, true),
+        ("off", "Off", 0, 0, true)
+    };
+
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] BluetoothA2dpProfiles = new[]
+    {
+        ("a2dp-sink", "High Fidelity Playback (A2DP Sink)", 1, 40, true),
+        ("headset-head-unit", "Headset Head Unit (HSP/HFP)", 1, 30, true),
+        ("off", "Off", 0, 0, true)
+    };
+
+    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] HdmiProfiles = new[]
+    {
+        ("output:hdmi-stereo", "Digital Stereo (HDMI)", 1, 5900, true),
+        ("output:hdmi-surround", "Digital Surround 5.1 (HDMI)", 1, 5800, true),
+        ("output:hdmi-surround71", "Digital Surround 7.1 (HDMI)", 1, 5700, true),
         ("off", "Off", 0, 0, true)
     };
 
     /// <summary>
-    /// Pre-configured mock cards simulating typical USB DAC setups.
-    /// All cards have stereo, 5.1, and 7.1 surround profiles for remap sink testing.
+    /// Pre-configured mock cards simulating real hardware.
+    /// Based on actual ALSA/PulseAudio card names and profiles.
     /// </summary>
     private static readonly List<MockCardConfig> MockCardConfigs = new()
     {
-        new(0, "alsa_card.mock_living_room_dac", "Living Room DAC", StandardSurroundProfiles),
-        new(1, "alsa_card.mock_kitchen_speakers", "Kitchen Speakers", StandardSurroundProfiles),
-        new(2, "alsa_card.mock_bedroom_stereo", "Bedroom Stereo", StandardSurroundProfiles),
-        new(3, "alsa_card.mock_office_speakers", "Office Speakers", StandardSurroundProfiles),
-        new(4, "alsa_card.mock_garage_audio", "Garage Audio", StandardSurroundProfiles),
-        new(5, "alsa_card.mock_patio_speakers", "Patio Speakers", StandardSurroundProfiles),
-        new(6, "alsa_card.mock_basement_system", "Basement System", StandardSurroundProfiles),
-        new(7, "alsa_card.mock_guest_room", "Guest Room Audio", StandardSurroundProfiles),
+        // Intel HDA onboard audio (very common)
+        new(0, "alsa_card.pci-0000_00_1f.3", "Built-in Audio", "module-alsa-card.c", IntelHdaProfiles),
+
+        // ASUS Xonar 7.1 (popular enthusiast card)
+        new(1, "alsa_card.pci-0000_05_04.0", "Xonar DX", "module-alsa-card.c", XonarProfiles),
+
+        // USB DAC - Schiit Modi (popular audiophile DAC)
+        new(2, "alsa_card.usb-Schiit_Audio_Schiit_Modi_3-00", "Schiit Modi 3", "module-alsa-card.c", UsbDacProfiles),
+
+        // USB multichannel - Focusrite Scarlett (popular audio interface)
+        new(3, "alsa_card.usb-Focusrite_Scarlett_2i2_USB-00", "Scarlett 2i2 USB", "module-alsa-card.c", UsbMultichannelProfiles),
+
+        // Bluetooth speaker - JBL (common BT speaker)
+        new(4, "bluez_card.00_1A_7D_DA_71_13", "JBL Flip 5", "module-bluez5-device.c", BluetoothA2dpProfiles),
+
+        // Bluetooth headphones - Sony WH-1000XM4
+        new(5, "bluez_card.38_18_4C_E9_85_B2", "WH-1000XM4", "module-bluez5-device.c", BluetoothA2dpProfiles),
+
+        // HDMI output (NVIDIA GPU)
+        new(6, "alsa_card.pci-0000_01_00.1", "HDA NVidia", "module-alsa-card.c", HdmiProfiles),
     };
 
     private record MockCardConfig(
         int Index,
         string Name,
         string Description,
+        string Driver,
         (string Name, string Description, int Sinks, int Priority, bool Available)[] Profiles
     );
 
@@ -83,7 +137,7 @@ public static class MockCardEnumerator
             return new PulseAudioCard(
                 Index: config.Index,
                 Name: config.Name,
-                Driver: "module-alsa-card.c",
+                Driver: config.Driver,
                 Description: config.Description,
                 Profiles: profiles,
                 ActiveProfile: activeProfile,
