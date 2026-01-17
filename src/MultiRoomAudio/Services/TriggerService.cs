@@ -32,7 +32,7 @@ public class TriggerService : IHostedService, IAsyncDisposable
     private readonly object _configLock = new();
     private readonly object _stateLock = new();
 
-    private FtdiRelayBoard? _relayBoard;
+    private IRelayBoard? _relayBoard;
     private TriggerFeatureConfiguration _config = new();
     private TriggerFeatureState _state = TriggerFeatureState.Disabled;
     private string? _errorMessage;
@@ -380,6 +380,12 @@ public class TriggerService : IHostedService, IAsyncDisposable
     /// </summary>
     public List<FtdiDeviceInfo> GetAvailableDevices()
     {
+        // In mock mode, return mock devices
+        if (_environment.IsMockHardware)
+        {
+            return MockRelayBoard.EnumerateDevices();
+        }
+
         if (!FtdiRelayBoard.IsLibraryAvailable())
         {
             return new List<FtdiDeviceInfo>();
@@ -473,10 +479,44 @@ public class TriggerService : IHostedService, IAsyncDisposable
             _relayBoard = null;
             _errorMessage = null;
 
+            // Use mock relay board in mock hardware mode
+            if (_environment.IsMockHardware)
+            {
+                _logger.LogInformation("Using mock relay board (MOCK_HARDWARE mode)");
+                _relayBoard = new MockRelayBoard(_loggerFactory.CreateLogger<MockRelayBoard>());
+
+                bool mockConnected;
+                if (!string.IsNullOrEmpty(_config.FtdiSerialNumber))
+                {
+                    mockConnected = _relayBoard.OpenBySerial(_config.FtdiSerialNumber);
+                }
+                else
+                {
+                    mockConnected = _relayBoard.Open();
+                }
+
+                if (mockConnected)
+                {
+                    _state = TriggerFeatureState.Connected;
+                    _errorMessage = null;
+                    _logger.LogInformation("Connected to mock relay board");
+                    return true;
+                }
+                else
+                {
+                    _state = TriggerFeatureState.Disconnected;
+                    _errorMessage = "Failed to connect to mock relay board.";
+                    _relayBoard.Dispose();
+                    _relayBoard = null;
+                    return false;
+                }
+            }
+
+            // Real hardware mode
             if (!FtdiRelayBoard.IsLibraryAvailable())
             {
                 _state = TriggerFeatureState.Error;
-                _errorMessage = "FTDI library (libftd2xx) not available. Install the FTDI D2XX driver.";
+                _errorMessage = "FTDI library (libftdi1) not available. Install libftdi1.";
                 _logger.LogWarning("FTDI library not available");
                 return false;
             }

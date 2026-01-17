@@ -1,4 +1,5 @@
 using MultiRoomAudio.Audio;
+using MultiRoomAudio.Audio.Mock;
 using MultiRoomAudio.Audio.PulseAudio;
 using MultiRoomAudio.Models;
 using MultiRoomAudio.Utilities;
@@ -37,8 +38,9 @@ public class CardProfileService : IHostedService
         _backend = backend;
         _configPath = Path.Combine(environment.ConfigPath, "card-profiles.yaml");
 
-        // Configure logger for the enumerator
+        // Configure loggers for the enumerators
         PulseAudioCardEnumerator.SetLogger(logger);
+        MockCardEnumerator.SetLogger(logger);
 
         _deserializer = new DeserializerBuilder()
             .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -59,7 +61,7 @@ public class CardProfileService : IHostedService
         _logger.LogInformation("CardProfileService starting...");
 
         // Always enumerate cards to log what's available
-        var cards = PulseAudioCardEnumerator.GetCards().ToList();
+        var cards = EnumerateCards().ToList();
 
         if (cards.Count == 0)
         {
@@ -142,7 +144,7 @@ public class CardProfileService : IHostedService
                 }
 
                 // Apply the profile
-                if (PulseAudioCardEnumerator.SetCardProfile(card.Name, config.ProfileName, out var error))
+                if (EnumeratorSetCardProfile(card.Name, config.ProfileName, out var error))
                 {
                     _logger.LogInformation(
                         "Restored card '{CardName}' to profile '{Profile}'",
@@ -190,7 +192,7 @@ public class CardProfileService : IHostedService
     /// </summary>
     public IEnumerable<PulseAudioCard> GetCards()
     {
-        var cards = PulseAudioCardEnumerator.GetCards().ToList();
+        var cards = EnumerateCards().ToList();
         var savedProfiles = LoadConfigurations();
 
         return cards.Select(card =>
@@ -216,7 +218,7 @@ public class CardProfileService : IHostedService
     /// </summary>
     public PulseAudioCard? GetCard(string cardNameOrIndex)
     {
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         if (card == null)
         {
             return null;
@@ -243,7 +245,7 @@ public class CardProfileService : IHostedService
     public async Task<CardProfileResponse> SetCardProfileAsync(string cardNameOrIndex, string profileName)
     {
         // Get current card state before change
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         if (card == null)
         {
             return new CardProfileResponse(
@@ -255,7 +257,7 @@ public class CardProfileService : IHostedService
         var previousProfile = card.ActiveProfile;
 
         // Attempt to change the profile
-        if (!PulseAudioCardEnumerator.SetCardProfile(card.Name, profileName, out var error))
+        if (!EnumeratorSetCardProfile(card.Name, profileName, out var error))
         {
             return new CardProfileResponse(
                 Success: false,
@@ -309,7 +311,7 @@ public class CardProfileService : IHostedService
     public bool RemoveSavedProfile(string cardNameOrIndex)
     {
         // Resolve card name if given an index
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         var cardName = card?.Name ?? cardNameOrIndex;
 
         return RemoveProfile(cardName);
@@ -320,7 +322,7 @@ public class CardProfileService : IHostedService
     /// </summary>
     public async Task<CardMuteResponse> SetCardMuteAsync(string cardNameOrIndex, bool muted)
     {
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         if (card == null)
         {
             return new CardMuteResponse(false, $"Card '{cardNameOrIndex}' not found.");
@@ -333,7 +335,7 @@ public class CardProfileService : IHostedService
             displayName,
             muted ? "muted" : "unmuted");
 
-        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        var sinks = EnumeratorGetSinksByCard(card.Index);
         if (sinks.Count == 0)
         {
             return new CardMuteResponse(false, $"No sinks found for card '{card.Name}'.", card.Name);
@@ -383,7 +385,7 @@ public class CardProfileService : IHostedService
     /// </summary>
     public CardBootMuteResponse SetCardBootMute(string cardNameOrIndex, bool muted)
     {
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         if (card == null)
         {
             return new CardBootMuteResponse(false, $"Card '{cardNameOrIndex}' not found.");
@@ -428,14 +430,14 @@ public class CardProfileService : IHostedService
     /// </summary>
     public async Task<CardMaxVolumeResponse> SetCardMaxVolumeAsync(string cardNameOrIndex, int? maxVolume)
     {
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = EnumeratorGetCard(cardNameOrIndex);
         if (card == null)
         {
             return new CardMaxVolumeResponse(false, $"Card '{cardNameOrIndex}' not found.");
         }
 
         // Get all sinks for this card
-        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        var sinks = EnumeratorGetSinksByCard(card.Index);
         if (sinks.Count == 0)
         {
             return new CardMaxVolumeResponse(false, $"No sinks found for card '{card.Name}'.", card.Name);
@@ -679,7 +681,7 @@ public class CardProfileService : IHostedService
 
     private bool? GetCardMuteState(PulseAudioCard card)
     {
-        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        var sinks = EnumeratorGetSinksByCard(card.Index);
         if (sinks.Count == 0)
         {
             return null;
@@ -687,7 +689,7 @@ public class CardProfileService : IHostedService
 
         try
         {
-            var output = PulseAudioCardEnumerator.GetSinksMuteStates();
+            var output = EnumeratorGetSinksMuteStates();
             if (output.Count == 0)
             {
                 return null;
@@ -718,7 +720,7 @@ public class CardProfileService : IHostedService
 
     private int? GetCardMaxVolume(PulseAudioCard card)
     {
-        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        var sinks = EnumeratorGetSinksByCard(card.Index);
         if (sinks.Count == 0)
         {
             return null;
@@ -770,7 +772,7 @@ public class CardProfileService : IHostedService
         }
 
         var desiredMuted = config?.BootMuted ?? false;
-        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        var sinks = EnumeratorGetSinksByCard(card.Index);
         var previousState = logBootAction ? GetCardMuteState(card) : null;
         foreach (var sinkName in sinks)
         {
@@ -825,6 +827,70 @@ public class CardProfileService : IHostedService
     {
         return string.IsNullOrWhiteSpace(card.Description) ? card.Name : card.Description;
     }
+
+    #region Card Enumerator Wrappers
+
+    /// <summary>
+    /// Gets all cards from the appropriate enumerator based on mock mode.
+    /// </summary>
+    private IEnumerable<PulseAudioCard> EnumerateCards()
+    {
+        if (_environment.IsMockHardware)
+        {
+            return MockCardEnumerator.GetCards();
+        }
+        return PulseAudioCardEnumerator.GetCards();
+    }
+
+    /// <summary>
+    /// Gets a specific card by name or index.
+    /// </summary>
+    private PulseAudioCard? EnumeratorGetCard(string cardNameOrIndex)
+    {
+        if (_environment.IsMockHardware)
+        {
+            return MockCardEnumerator.GetCard(cardNameOrIndex);
+        }
+        return PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+    }
+
+    /// <summary>
+    /// Sets the profile for a card.
+    /// </summary>
+    private bool EnumeratorSetCardProfile(string cardName, string profileName, out string? error)
+    {
+        if (_environment.IsMockHardware)
+        {
+            return MockCardEnumerator.SetCardProfile(cardName, profileName, out error);
+        }
+        return PulseAudioCardEnumerator.SetCardProfile(cardName, profileName, out error);
+    }
+
+    /// <summary>
+    /// Gets sinks by card index.
+    /// </summary>
+    private List<string> EnumeratorGetSinksByCard(int cardIndex)
+    {
+        if (_environment.IsMockHardware)
+        {
+            return MockCardEnumerator.GetSinksByCard(cardIndex);
+        }
+        return PulseAudioCardEnumerator.GetSinksByCard(cardIndex);
+    }
+
+    /// <summary>
+    /// Gets mute states for all sinks.
+    /// </summary>
+    private Dictionary<string, bool> EnumeratorGetSinksMuteStates()
+    {
+        if (_environment.IsMockHardware)
+        {
+            return MockCardEnumerator.GetSinksMuteStates();
+        }
+        return PulseAudioCardEnumerator.GetSinksMuteStates();
+    }
+
+    #endregion
 
     /// <summary>
     /// Applies saved device volume limits from configuration.

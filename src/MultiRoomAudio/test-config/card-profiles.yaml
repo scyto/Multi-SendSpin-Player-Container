@@ -1,0 +1,3 @@
+alsa_card.mock_living_room_dac:
+  card_name: alsa_card.mock_living_room_dac
+  profile_name: output:analog-surround-71

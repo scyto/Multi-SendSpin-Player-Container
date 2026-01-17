@@ -4,10 +4,41 @@ using System.Text.RegularExpressions;
 namespace MultiRoomAudio.Utilities;
 
 /// <summary>
+/// Interface for PulseAudio module operations.
+/// Allows mocking for testing without real PulseAudio.
+/// </summary>
+public interface IPaModuleRunner
+{
+    Task<int?> LoadCombineSinkAsync(
+        string sinkName,
+        IEnumerable<string> slaves,
+        string? description = null,
+        CancellationToken cancellationToken = default);
+
+    Task<int?> LoadRemapSinkAsync(
+        string sinkName,
+        string masterSink,
+        int channels,
+        string channelMap,
+        string masterChannelMap,
+        bool remix = false,
+        string? description = null,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UnloadModuleAsync(int moduleIndex, CancellationToken cancellationToken = default);
+
+    Task<bool> IsModuleLoadedAsync(int moduleIndex, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PaModule>> ListModulesAsync(CancellationToken cancellationToken = default);
+
+    Task<bool> SinkExistsAsync(string sinkName, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
 /// Runs PulseAudio (pactl) commands for loading/unloading audio modules.
 /// Provides secure command execution to prevent shell injection attacks.
 /// </summary>
-public partial class PaModuleRunner
+public partial class PaModuleRunner : IPaModuleRunner
 {
     private readonly ILogger<PaModuleRunner> _logger;
 

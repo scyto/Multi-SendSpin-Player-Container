@@ -2,6 +2,10 @@ version: '3.8'
 
 # Docker Compose configuration for environments without audio devices
 # Usage: docker-compose -f docker-compose.no-audio.yml up
+#
+# NOTE: For a better testing experience with simulated hardware,
+# consider using docker-compose.mock.yml instead, which provides
+# 8 mock audio devices and a mock relay board.
 
 services:
   multiroom-audio:

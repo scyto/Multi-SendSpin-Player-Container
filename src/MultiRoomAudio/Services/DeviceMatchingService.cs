@@ -272,9 +272,54 @@ public class DeviceMatchingService
 
     /// <summary>
     /// Get all output devices enriched with their aliases and hidden status.
+    /// In mock mode, also includes custom sinks as pseudo-devices.
     /// </summary>
     public IEnumerable<AudioDevice> GetEnrichedDevices()
     {
-        return _backend.GetOutputDevices().Select(EnrichWithConfig);
+        // Start with backend devices (hardware sinks)
+        var devices = _backend.GetOutputDevices().Select(EnrichWithConfig).ToList();
+
+        // Add custom sinks as additional devices
+        // In real PulseAudio mode, these already appear in the sink list.
+        // In mock mode, we need to add them manually.
+        var customSinks = _customSinks.GetAllSinks();
+        var existingIds = devices.Select(d => d.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sink in customSinks.Sinks)
+        {
+            // Skip if already in the list (real PulseAudio mode)
+            if (existingIds.Contains(sink.Name))
+                continue;
+
+            // Create a pseudo-device for the custom sink
+            var customDevice = new AudioDevice(
+                Index: 1000 + customSinks.Sinks.IndexOf(sink), // High index to avoid collision
+                Id: sink.Name,
+                Name: sink.Description ?? sink.Name,
+                MaxChannels: sink.Channels ?? 2,
+                DefaultSampleRate: 48000,
+                DefaultLowLatencyMs: 20,
+                DefaultHighLatencyMs: 100,
+                IsDefault: false,
+                Capabilities: new DeviceCapabilities(
+                    SupportedSampleRates: new[] { 44100, 48000, 96000, 192000 },
+                    SupportedBitDepths: new[] { 16, 24, 32 },
+                    MaxChannels: sink.Channels ?? 2,
+                    PreferredSampleRate: 48000,
+                    PreferredBitDepth: 24
+                ),
+                Identifiers: new DeviceIdentifiers(
+                    Serial: null,
+                    BusPath: null,
+                    VendorId: null,
+                    ProductId: null,
+                    AlsaLongCardName: $"Custom {sink.Type} Sink"
+                )
+            );
+
+            devices.Add(EnrichWithConfig(customDevice));
+        }
+
+        return devices;
     }
 }

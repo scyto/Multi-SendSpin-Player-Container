@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Mock hardware mode for testing without real audio devices or relay boards.
+# This configuration runs the application with simulated hardware.
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.mock.yml up
+#
+# Or standalone:
+#   docker-compose -f docker-compose.mock.yml up
+#
+# Features:
+#   - 8 mock audio devices (USB DACs with various names)
+#   - 8 mock PulseAudio cards with profiles
+#   - Mock FTDI relay board (8-channel)
+#   - No real audio output (samples are discarded)
+
+services:
+  multiroom-audio:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: multiroom-audio-mock
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    environment:
+      # Enable mock hardware mode
+      - MOCK_HARDWARE=true
+      - ASPNETCORE_ENVIRONMENT=Development
+      - LOG_LEVEL=debug
+    # No devices needed in mock mode
+    # No privileged mode needed
+    # No special capabilities needed
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
