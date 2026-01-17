@@ -222,7 +222,9 @@ public class MockAudioPlayer : IAudioPlayer
     public int OutputLatencyMs { get; private set; } = 50;
 
     public event EventHandler<AudioPlayerState>? StateChanged;
+#pragma warning disable CS0067 // Event is never used (required by IAudioPlayer interface)
     public event EventHandler<AudioPlayerError>? ErrorOccurred;
+#pragma warning restore CS0067
 
     public Task InitializeAsync(AudioFormat format, CancellationToken cancellationToken = default)
     {

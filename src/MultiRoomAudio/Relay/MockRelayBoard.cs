@@ -15,13 +15,11 @@ public sealed class MockRelayBoard : IRelayBoard
     private readonly object _lock = new();
 
     private readonly string _serialNumber;
-    private readonly string _description;
 
     public MockRelayBoard(ILogger<MockRelayBoard>? logger = null, string? serialNumber = null)
     {
         _logger = logger;
         _serialNumber = serialNumber ?? "MOCK-FT245RL-001";
-        _description = "Mock FTDI FT245RL Relay Board";
     }
 
     /// <summary>
