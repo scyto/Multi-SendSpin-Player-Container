@@ -122,6 +122,13 @@ public class MockPaModuleRunner : IPaModuleRunner
         if (!PaModuleRunner.ValidateName(sinkName, out _))
             return Task.FromResult(false);
 
-        return Task.FromResult(_sinkToModule.ContainsKey(sinkName));
+        // Check custom sinks first
+        if (_sinkToModule.ContainsKey(sinkName))
+            return Task.FromResult(true);
+
+        // Check hardware sinks from mock devices
+        var devices = MockAudioBackend.MockDeviceConfigs;
+        return Task.FromResult(devices.Any(d =>
+            d.Id.Equals(sinkName, StringComparison.OrdinalIgnoreCase)));
     }
 }
