@@ -259,38 +259,42 @@ public static class PlayersEndpoint
         .WithName("SetVolume")
         .WithDescription("Set player volume (0-100)");
 
-        // PUT /api/players/{name}/hardware-volume - Set hardware volume limit
-        group.MapPut("/{name}/hardware-volume", async (
+        // PUT /api/players/{name}/startup-volume - Set startup volume
+        group.MapPut("/{name}/startup-volume", async (
             string name,
-            HardwareVolumeLimitRequest request,
+            VolumeRequest request,
             PlayerManagerService manager,
-            ILoggerFactory lf,
+            ConfigurationService config,
+            ILogger<PlayerManagerService> logger,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("PlayersEndpoint");
-            logger.LogDebug("API: PUT /api/players/{PlayerName}/hardware-volume to {Volume}%",
-                name, request.MaxVolume);
-
+            logger.LogInformation("VOLUME [API] PUT /api/players/{Name}/startup-volume: {Volume}%", name, request.Volume);
             try
             {
-                var success = await manager.SetHardwareVolumeLimitAsync(name, request.MaxVolume, ct);
-                if (!success)
-                    return PlayerNotFoundResult(name, logger, "set hardware volume");
+                // Update persisted config only
+                if (!config.Players.TryGetValue(name, out var playerConfig))
+                    return PlayerNotFoundResult(name, logger, "set startup volume");
+
+                playerConfig.Volume = Math.Clamp(request.Volume, 0, 100);
+                config.Save();
+
+                logger.LogInformation("VOLUME [StartupConfig] Player '{Name}': startup volume set to {Volume}%",
+                    name, request.Volume);
 
                 return Results.Ok(new SuccessResponse(true,
-                    $"Hardware volume limit set to {request.MaxVolume}%"));
+                    $"Startup volume set to {request.Volume}% (takes effect on next restart)"));
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "API: Failed to set hardware volume for player {PlayerName}", name);
+                logger.LogError(ex, "API: Failed to set startup volume for player {PlayerName}", name);
                 return Results.Problem(
                     detail: ex.Message,
                     statusCode: 500,
-                    title: "Failed to set hardware volume");
+                    title: "Failed to set startup volume");
             }
         })
-        .WithName("SetHardwareVolumeLimit")
-        .WithDescription("Set hardware volume limit (PulseAudio sink volume) for a player. Note: Players sharing the same device will share this setting.");
+        .WithName("SetStartupVolume")
+        .WithDescription("Set player startup volume (0-100) - takes effect on restart");
 
         // PUT /api/players/{name}/mute - Set mute state
         group.MapPut("/{name}/mute", (

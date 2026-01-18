@@ -1,3 +1,4 @@
+using MultiRoomAudio.Audio;
 using MultiRoomAudio.Audio.PulseAudio;
 using MultiRoomAudio.Models;
 using MultiRoomAudio.Utilities;
@@ -15,6 +16,8 @@ public class CardProfileService : IHostedService
     private readonly ILogger<CardProfileService> _logger;
     private readonly EnvironmentService _environment;
     private readonly VolumeCommandRunner _volumeRunner;
+    private readonly ConfigurationService _config;
+    private readonly BackendFactory _backend;
     private readonly string _configPath;
     private readonly IDeserializer _deserializer;
     private readonly ISerializer _serializer;
@@ -23,11 +26,15 @@ public class CardProfileService : IHostedService
     public CardProfileService(
         ILogger<CardProfileService> logger,
         EnvironmentService environment,
-        VolumeCommandRunner volumeRunner)
+        VolumeCommandRunner volumeRunner,
+        ConfigurationService config,
+        BackendFactory backend)
     {
         _logger = logger;
         _environment = environment;
         _volumeRunner = volumeRunner;
+        _config = config;
+        _backend = backend;
         _configPath = Path.Combine(environment.ConfigPath, "card-profiles.yaml");
 
         // Configure logger for the enumerator
@@ -163,6 +170,9 @@ public class CardProfileService : IHostedService
             "CardProfileService started: {Restored} profiles restored, {Failed} failed",
             restoredCount, failedCount);
 
+        // Apply saved device volume limits after profile restoration
+        await ApplyDeviceVolumeLimitsAsync();
+
         await Task.CompletedTask;
     }
 
@@ -189,12 +199,14 @@ public class CardProfileService : IHostedService
             var isMuted = GetCardMuteState(card);
             var bootMuted = config?.BootMuted;
             var bootMatches = bootMuted.HasValue && isMuted.HasValue && bootMuted.Value == isMuted.Value;
+            var maxVolume = GetCardMaxVolume(card);
 
             return card with
             {
                 IsMuted = isMuted,
                 BootMuted = bootMuted,
-                BootMuteMatchesCurrent = bootMatches
+                BootMuteMatchesCurrent = bootMatches,
+                MaxVolume = maxVolume
             };
         });
     }
@@ -214,12 +226,14 @@ public class CardProfileService : IHostedService
         var isMuted = GetCardMuteState(card);
         var bootMuted = config?.BootMuted;
         var bootMatches = bootMuted.HasValue && isMuted.HasValue && bootMuted.Value == isMuted.Value;
+        var maxVolume = GetCardMaxVolume(card);
 
         return card with
         {
             IsMuted = isMuted,
             BootMuted = bootMuted,
-            BootMuteMatchesCurrent = bootMatches
+            BootMuteMatchesCurrent = bootMatches,
+            MaxVolume = maxVolume
         };
     }
 
@@ -407,6 +421,71 @@ public class CardProfileService : IHostedService
             muted ? "Card will boot muted." : "Card will boot unmuted.",
             card.Name,
             muted);
+    }
+
+    /// <summary>
+    /// Sets the maximum volume limit for a card's sinks and persists it.
+    /// </summary>
+    public async Task<CardMaxVolumeResponse> SetCardMaxVolumeAsync(string cardNameOrIndex, int? maxVolume)
+    {
+        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        if (card == null)
+        {
+            return new CardMaxVolumeResponse(false, $"Card '{cardNameOrIndex}' not found.");
+        }
+
+        // Get all sinks for this card
+        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        if (sinks.Count == 0)
+        {
+            return new CardMaxVolumeResponse(false, $"No sinks found for card '{card.Name}'.", card.Name);
+        }
+
+        var displayName = GetCardDisplayName(card);
+
+        // Apply volume limit to all sinks
+        var failed = new List<string>();
+        foreach (var sinkName in sinks)
+        {
+            try
+            {
+                if (maxVolume.HasValue)
+                {
+                    await _volumeRunner.SetVolumeAsync(sinkName, maxVolume.Value);
+                }
+
+                // Save to device configuration for each sink
+                var devices = _backend.GetOutputDevices();
+                var device = devices.FirstOrDefault(d => d.Id == sinkName);
+                if (device != null)
+                {
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    _config.SetDeviceMaxVolume(deviceKey, maxVolume, device);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set max volume for sink '{Sink}'", sinkName);
+                failed.Add(sinkName);
+            }
+        }
+
+        if (failed.Count > 0)
+        {
+            return new CardMaxVolumeResponse(false,
+                $"Failed to set max volume for {failed.Count} sink(s): {string.Join(", ", failed)}",
+                card.Name);
+        }
+
+        _logger.LogInformation(
+            "Set max volume for card '{Card}' to {MaxVolume}%",
+            displayName,
+            maxVolume?.ToString() ?? "(cleared)");
+
+        return new CardMaxVolumeResponse(true,
+            maxVolume.HasValue ? $"Max volume set to {maxVolume}%." : "Max volume limit cleared (using default 100%).",
+            card.Name,
+            maxVolume);
     }
 
     private Dictionary<string, CardProfileConfiguration> LoadConfigurations()
@@ -637,6 +716,43 @@ public class CardProfileService : IHostedService
         }
     }
 
+    private int? GetCardMaxVolume(PulseAudioCard card)
+    {
+        var sinks = PulseAudioCardEnumerator.GetSinksByCard(card.Index);
+        if (sinks.Count == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            // Get all device configurations
+            var deviceConfigs = _config.GetAllDeviceConfigurations();
+            var devices = _backend.GetOutputDevices();
+
+            // Find the first sink that has a max volume configured
+            foreach (var sinkName in sinks)
+            {
+                var device = devices.FirstOrDefault(d => d.Id == sinkName);
+                if (device != null)
+                {
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    if (deviceConfigs.TryGetValue(deviceKey, out var config) && config.MaxVolume.HasValue)
+                    {
+                        return config.MaxVolume.Value;
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to determine max volume for card {Card}", card.Name);
+            return null;
+        }
+    }
+
     private async Task ApplyBootMutePreferenceAsync(PulseAudioCard card, bool defaultUnmute, bool logBootAction = false)
     {
         var savedProfiles = LoadConfigurations();
@@ -708,5 +824,74 @@ public class CardProfileService : IHostedService
     private static string GetCardDisplayName(PulseAudioCard card)
     {
         return string.IsNullOrWhiteSpace(card.Description) ? card.Name : card.Description;
+    }
+
+    /// <summary>
+    /// Applies saved device volume limits from configuration.
+    /// Called at startup after card profiles are restored.
+    /// </summary>
+    private async Task ApplyDeviceVolumeLimitsAsync()
+    {
+        try
+        {
+            // Get all devices from backend
+            var devices = _backend.GetOutputDevices();
+            if (!devices.Any())
+            {
+                _logger.LogDebug("No devices found for volume limit application");
+                return;
+            }
+
+            // Get all device configurations
+            var deviceConfigs = _config.GetAllDeviceConfigurations();
+            if (deviceConfigs.Count == 0)
+            {
+                _logger.LogDebug("No device configurations with volume limits found");
+                return;
+            }
+
+            var appliedCount = 0;
+            var failedCount = 0;
+
+            foreach (var device in devices)
+            {
+                try
+                {
+                    // Generate device key to look up configuration
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    if (!deviceConfigs.TryGetValue(deviceKey, out var config))
+                    {
+                        continue;
+                    }
+
+                    // Apply max volume if configured
+                    if (config.MaxVolume.HasValue)
+                    {
+                        await _backend.SetVolumeAsync(device.Id, config.MaxVolume.Value, CancellationToken.None);
+                        _logger.LogInformation(
+                            "Applied volume limit {Volume}% to device '{Device}'",
+                            config.MaxVolume.Value,
+                            device.Name);
+                        appliedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to apply volume limit for device '{Device}'", device.Name);
+                    failedCount++;
+                }
+            }
+
+            if (appliedCount > 0 || failedCount > 0)
+            {
+                _logger.LogInformation(
+                    "Device volume limits applied: {Applied} succeeded, {Failed} failed",
+                    appliedCount, failedCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error applying device volume limits at startup");
+        }
     }
 }

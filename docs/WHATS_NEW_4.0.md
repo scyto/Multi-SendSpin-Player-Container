@@ -75,16 +75,18 @@ Your audio interface's full potential, unlocked.
 
 ---
 
-## Hardware Volume Control
+## Device Volume Limits
 
-Volume control in multi-room audio is tricky. Music Assistant sends volume commands, but should the app adjust digital volume (software) or actual hardware volume (the DAC's own volume control)?
+Protect your speakers and ears with per-device volume limits.
 
-4.0 gives you the choice:
+Configure maximum volume limits in the sound card settings:
 
-- **Software volume**: Adjusts audio levels in the stream (always available)
-- **Hardware volume**: Controls the physical DAC/sound card volume (when supported)
+- **Limit Max. Vol.** slider: Set the maximum volume for each sound card
+- Applied at the hardware level for safety
+- Persists across restarts
+- Prevents accidental over-driving of speakers
 
-Configure per-player in player settings. Use hardware volume for better dynamic range. Use software volume for devices without hardware controls.
+Find this control in Settings > Sound Cards, alongside mute options and profile selection.
 
 ---
 
@@ -132,8 +134,8 @@ For the technically curious:
 
 - **SendSpin.SDK 5.1.0** - Latest protocol improvements
 - **Improved PulseAudio integration** - Better card and sink enumeration
-- **New API endpoints** - `/api/sinks`, `/api/cards`, `/api/onboarding`
-- **Per-player hardware volume** - Direct ALSA/PulseAudio control
+- **New API endpoints** - `/api/sinks`, `/api/cards`, `/api/onboarding`, `/api/devices/{id}/max-volume`
+- **Device-level volume limits** - Applied to PulseAudio sinks at startup
 
 ---
 

@@ -155,18 +155,4 @@ public class PlayerConfig
     public int BufferSizeMs { get; set; } = 100;
     public int Volume { get; set; } = 75;
     public bool IsMuted { get; set; }
-
-    /// <summary>
-    /// Hardware volume limit (0-100%). Defaults to 80%.
-    /// This sets the PulseAudio sink volume for the device.
-    /// </summary>
-    public int HardwareVolumeLimit { get; set; } = 80;
 }
-
-/// <summary>
-/// Request to set hardware volume limit for a player.
-/// </summary>
-/// <param name="MaxVolume">Hardware volume limit (0-100%).</param>
-public record HardwareVolumeLimitRequest(
-    [property: Range(0, 100, ErrorMessage = "Hardware volume must be between 0 and 100.")]
-    int MaxVolume);
