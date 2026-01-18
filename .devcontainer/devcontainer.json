@@ -27,7 +27,8 @@
         "eamodio.gitlens",
         "humao.rest-client",
         "editorconfig.editorconfig",
-        "anthropics.claude-code"
+        "anthropic.claude-code",
+        "davidanson.vscode-markdownlint"
       ],
       "settings": {
         "dotnet.defaultSolution": "squeezelite-docker.sln",
