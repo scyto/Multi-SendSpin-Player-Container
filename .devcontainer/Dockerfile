@@ -32,6 +32,13 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install .NET 9 runtime (required by C# Dev Kit extension for IDE tooling)
+# Your app still builds/runs on .NET 8 - this is only for the VS Code extension
+RUN wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 9.0 --runtime aspnetcore --install-dir /usr/share/dotnet \
+    && rm /tmp/dotnet-install.sh
+
 # Install PowerShell via direct download (cross-architecture compatible)
 RUN ARCH=$(dpkg --print-architecture) \
     && if [ "$ARCH" = "amd64" ]; then \

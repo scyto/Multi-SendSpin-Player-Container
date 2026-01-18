@@ -48,7 +48,7 @@
   },
 
   // Run commands after container is created
-  "postCreateCommand": "dotnet restore && dotnet build tests/MultiRoomAudio.E2ETests/MultiRoomAudio.E2ETests.csproj && pwsh tests/MultiRoomAudio.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps || true",
+  "postCreateCommand": "dotnet restore",
 
   // Environment variables for development
   "containerEnv": {
