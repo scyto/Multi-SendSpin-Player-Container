@@ -260,13 +260,12 @@ public static class PlayersEndpoint
         .WithDescription("Set player volume (0-100)");
 
         // PUT /api/players/{name}/startup-volume - Set startup volume
-        group.MapPut("/{name}/startup-volume", async (
+        group.MapPut("/{name}/startup-volume", (
             string name,
             VolumeRequest request,
             PlayerManagerService manager,
             ConfigurationService config,
-            ILogger<PlayerManagerService> logger,
-            CancellationToken ct) =>
+            ILogger<PlayerManagerService> logger) =>
         {
             logger.LogInformation("VOLUME [API] PUT /api/players/{Name}/startup-volume: {Volume}%", name, request.Volume);
             try

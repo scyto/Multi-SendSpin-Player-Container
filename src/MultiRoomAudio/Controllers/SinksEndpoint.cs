@@ -352,7 +352,7 @@ public static class SinksEndpoint
                 try
                 {
                     // Import into app management
-                    await service.ImportSinkAsync(sink, ct);
+                    service.ImportSink(sink);
 
                     // Comment out in default.pa (handles multi-line entries with continuations)
                     if (!parser.CommentOutLines(sink.LineNumber, sink.EndLineNumber))

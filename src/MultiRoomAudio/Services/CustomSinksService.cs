@@ -293,9 +293,7 @@ public class CustomSinksService : IHostedService, IAsyncDisposable
     /// <summary>
     /// Import a sink detected from default.pa.
     /// </summary>
-    public async Task<CustomSinkResponse> ImportSinkAsync(
-        DetectedSink detected,
-        CancellationToken cancellationToken = default)
+    public CustomSinkResponse ImportSink(DetectedSink detected)
     {
         ValidateSinkName(detected.SinkName);
 
