@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d3c7519
+## Development Build: sha-2021cbd
 
 **Current Dev Build Changes** (recent)
 
+- Add YamlFileService and PactlCommandRunner utilities to reduce code duplication
 - Add ApiExceptionHandler utility to reduce duplicated exception handling
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
 - add back aarch64 to the config so it can get the already building images.
@@ -13,7 +14,6 @@
 - Fix hardware volume init to always apply volume, not skip
 - Fix UI slider interaction and tooltip issues
 - Add volume grace period to resolve startup volume sync battle
-- Fix tooltip persistence issues by properly disposing old instances
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
