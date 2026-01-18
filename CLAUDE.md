@@ -244,3 +244,21 @@ The `EnvironmentService` automatically detects the runtime environment:
 - [Implementation Plan](nextgen.md) - Original development roadmap
 - [Home Assistant Add-on Docs](https://developers.home-assistant.io/docs/add-ons/configuration/)
 - [API Documentation](http://localhost:8096/docs) (when running)
+
+---
+
+## Development Workflow Preferences (Added by User)
+
+### Starting the Application
+
+**ALWAYS use `dotnet run` directly in the dev container (not Docker containers) unless explicitly told otherwise.**
+
+Run command:
+```bash
+cd src/MultiRoomAudio && MOCK_HARDWARE=true ASPNETCORE_ENVIRONMENT=Development LOG_LEVEL=debug ASPNETCORE_URLS=http://0.0.0.0:8096 dotnet run
+```
+
+**Important:**
+- Run in background mode so logs can be monitored in real-time
+- Use explicit IPv4 binding (`ASPNETCORE_URLS=http://0.0.0.0:8096`) for Docker Desktop for Mac compatibility
+- Access the application at **http://127.0.0.1:8096** (not localhost) when running in Docker Desktop for Mac
