@@ -26,7 +26,8 @@
         "redhat.vscode-yaml",
         "eamodio.gitlens",
         "humao.rest-client",
-        "editorconfig.editorconfig"
+        "editorconfig.editorconfig",
+        "anthropics.claude-code"
       ],
       "settings": {
         "dotnet.defaultSolution": "squeezelite-docker.sln",
@@ -46,7 +47,7 @@
   },
 
   // Run commands after container is created
-  "postCreateCommand": "dotnet restore && pwsh tests/MultiRoomAudio.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps || true",
+  "postCreateCommand": "dotnet restore && dotnet build tests/MultiRoomAudio.E2ETests/MultiRoomAudio.E2ETests.csproj && pwsh tests/MultiRoomAudio.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps || true",
 
   // Environment variables for development
   "containerEnv": {
@@ -54,9 +55,10 @@
     "MOCK_HARDWARE": "true"
   },
 
-  // Mount local Git credentials
+  // Mount local Git credentials and Claude Code auth (credentials stay local, not in repo)
   "mounts": [
-    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached"
   ],
 
   // Use non-root user

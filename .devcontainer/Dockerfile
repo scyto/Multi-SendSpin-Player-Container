@@ -32,14 +32,15 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PowerShell via Microsoft's package repository (more reliable than dotnet tool)
-RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
-    && apt-get update \
-    && apt-get install -y powershell \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Install PowerShell via direct download (cross-architecture compatible)
+RUN ARCH=$(dpkg --print-architecture) \
+    && if [ "$ARCH" = "amd64" ]; then \
+         wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.7/powershell_7.4.7-1.deb_amd64.deb -O /tmp/powershell.deb; \
+       elif [ "$ARCH" = "arm64" ]; then \
+         wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.7/powershell_7.4.7-1.deb_arm64.deb -O /tmp/powershell.deb; \
+       fi \
+    && dpkg -i /tmp/powershell.deb || apt-get install -f -y \
+    && rm /tmp/powershell.deb
 
 # Add dotnet tools to PATH (for any future dotnet tools)
 ENV PATH="${PATH}:/home/vscode/.dotnet/tools"
