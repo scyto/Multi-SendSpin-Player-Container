@@ -1,19 +1,19 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4e48e80
+## Development Build: sha-5c4310a
 
 **Current Dev Build Changes** (recent)
 
+- Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into feature/rename-initial-volume-to-startup-volume
 - Use FireAndForget helper for async player connection and broadcast
 - Add thread safety to DefaultPaParser with file locking
 - Add YamlFileService and PactlCommandRunner utilities to reduce code duplication
 - Add ApiExceptionHandler utility to reduce duplicated exception handling
+- Rename "Initial Volume" to "Startup Volume" in player edit dialog
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
 - add back aarch64 to the config so it can get the already building images.
 - Merge branch 'main' into dev
-- Merge pull request #69 from scyto/feature/preserve-volume-across-tracks
-- Fix hardware volume init to always apply volume, not skip
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
