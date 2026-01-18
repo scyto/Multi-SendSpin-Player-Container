@@ -509,9 +509,24 @@ public class ConfigurationService
     }
 
     /// <summary>
-    /// Set the hidden status for a device.
+    /// Generic helper method for updating a device property.
+    /// Handles loading/creating the device config, updating the property, and saving.
     /// </summary>
-    public bool SetDeviceHidden(string deviceKey, bool hidden, AudioDevice? currentDevice = null)
+    /// <typeparam name="T">The type of the property value.</typeparam>
+    /// <param name="deviceKey">The device key to update.</param>
+    /// <param name="propertyName">The name of the property (for logging).</param>
+    /// <param name="value">The new value for the property.</param>
+    /// <param name="setter">Action to set the property on the device configuration.</param>
+    /// <param name="currentDevice">Optional current device info to update identifiers.</param>
+    /// <param name="formatValue">Optional function to format the value for logging.</param>
+    /// <returns>True if the configuration was saved successfully.</returns>
+    private bool UpdateDeviceProperty<T>(
+        string deviceKey,
+        string propertyName,
+        T value,
+        Action<DeviceConfiguration, T> setter,
+        AudioDevice? currentDevice = null,
+        Func<T, string>? formatValue = null)
     {
         lock (_lock)
         {
@@ -524,7 +539,7 @@ public class ConfigurationService
                 _devices[deviceKey] = config;
             }
 
-            config.Hidden = hidden;
+            setter(config, value);
             config.LastSeen = DateTime.UtcNow;
 
             // Update from current device info if provided
@@ -534,9 +549,24 @@ public class ConfigurationService
                 config.Identifiers = DeviceIdentifiersConfig.FromModel(currentDevice.Identifiers);
             }
 
-            _logger.LogInformation("Set device hidden: {DeviceKey} = {Hidden}", deviceKey, hidden);
+            var formattedValue = formatValue != null ? formatValue(value) : value?.ToString() ?? "(null)";
+            _logger.LogInformation("Set device {PropertyName}: {DeviceKey} = {Value}",
+                propertyName, deviceKey, formattedValue);
             return SaveDevices();
         }
+    }
+
+    /// <summary>
+    /// Set the hidden status for a device.
+    /// </summary>
+    public bool SetDeviceHidden(string deviceKey, bool hidden, AudioDevice? currentDevice = null)
+    {
+        return UpdateDeviceProperty(
+            deviceKey,
+            "hidden",
+            hidden,
+            (config, value) => config.Hidden = value,
+            currentDevice);
     }
 
     /// <summary>
@@ -544,31 +574,13 @@ public class ConfigurationService
     /// </summary>
     public bool SetDeviceMaxVolume(string deviceKey, int? maxVolume, AudioDevice? currentDevice = null)
     {
-        lock (_lock)
-        {
-            if (!_devices.TryGetValue(deviceKey, out var config))
-            {
-                config = new DeviceConfiguration
-                {
-                    FirstSeen = DateTime.UtcNow
-                };
-                _devices[deviceKey] = config;
-            }
-
-            config.MaxVolume = maxVolume;
-            config.LastSeen = DateTime.UtcNow;
-
-            // Update from current device info if provided
-            if (currentDevice != null)
-            {
-                config.LastKnownSinkName = currentDevice.Id;
-                config.Identifiers = DeviceIdentifiersConfig.FromModel(currentDevice.Identifiers);
-            }
-
-            _logger.LogInformation("Set device max volume: {DeviceKey} = {MaxVolume}%",
-                deviceKey, maxVolume?.ToString() ?? "(cleared)");
-            return SaveDevices();
-        }
+        return UpdateDeviceProperty(
+            deviceKey,
+            "max volume",
+            maxVolume,
+            (config, value) => config.MaxVolume = value,
+            currentDevice,
+            v => v?.ToString() + "%" ?? "(cleared)");
     }
 
     /// <summary>
@@ -576,30 +588,13 @@ public class ConfigurationService
     /// </summary>
     public bool SetDeviceAlias(string deviceKey, string? alias, AudioDevice? currentDevice = null)
     {
-        lock (_lock)
-        {
-            if (!_devices.TryGetValue(deviceKey, out var config))
-            {
-                config = new DeviceConfiguration
-                {
-                    FirstSeen = DateTime.UtcNow
-                };
-                _devices[deviceKey] = config;
-            }
-
-            config.Alias = alias;
-            config.LastSeen = DateTime.UtcNow;
-
-            // Update from current device info if provided
-            if (currentDevice != null)
-            {
-                config.LastKnownSinkName = currentDevice.Id;
-                config.Identifiers = DeviceIdentifiersConfig.FromModel(currentDevice.Identifiers);
-            }
-
-            _logger.LogInformation("Set device alias: {DeviceKey} = '{Alias}'", deviceKey, alias ?? "(cleared)");
-            return SaveDevices();
-        }
+        return UpdateDeviceProperty(
+            deviceKey,
+            "alias",
+            alias,
+            (config, value) => config.Alias = value,
+            currentDevice,
+            v => $"'{v ?? "(cleared)"}'");
     }
 
     /// <summary>
