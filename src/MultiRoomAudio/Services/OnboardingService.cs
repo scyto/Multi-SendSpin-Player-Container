@@ -75,7 +75,8 @@ public class OnboardingService : YamlFileService<OnboardingState>
     /// </summary>
     public void MarkCompleted(int devicesConfigured = 0, int playersCreated = 0)
     {
-        lock (Lock)
+        Lock.EnterWriteLock();
+        try
         {
             Data.Completed = true;
             Data.CompletedAt = DateTime.UtcNow;
@@ -89,6 +90,10 @@ public class OnboardingService : YamlFileService<OnboardingState>
 
             Save();
         }
+        finally
+        {
+            Lock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -96,7 +101,8 @@ public class OnboardingService : YamlFileService<OnboardingState>
     /// </summary>
     public void Reset()
     {
-        lock (Lock)
+        Lock.EnterWriteLock();
+        try
         {
             // Reset by saving a new empty state
             Data.Completed = false;
@@ -108,6 +114,10 @@ public class OnboardingService : YamlFileService<OnboardingState>
             Logger.LogInformation("Onboarding state reset");
             Save();
         }
+        finally
+        {
+            Lock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -116,7 +126,8 @@ public class OnboardingService : YamlFileService<OnboardingState>
     /// </summary>
     public void Skip()
     {
-        lock (Lock)
+        Lock.EnterWriteLock();
+        try
         {
             Data.Completed = true;
             Data.CompletedAt = DateTime.UtcNow;
@@ -126,6 +137,10 @@ public class OnboardingService : YamlFileService<OnboardingState>
 
             Logger.LogInformation("Onboarding skipped");
             Save();
+        }
+        finally
+        {
+            Lock.ExitWriteLock();
         }
     }
 

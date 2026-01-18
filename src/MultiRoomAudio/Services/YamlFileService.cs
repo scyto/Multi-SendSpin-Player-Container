@@ -14,7 +14,7 @@ public abstract class YamlFileService<T> where T : class, new()
     private readonly ILogger _logger;
     private readonly IDeserializer _deserializer;
     private readonly ISerializer _serializer;
-    private readonly object _lock = new();
+    private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.NoRecursion);
 
     protected T Data { get; private set; } = new();
 
@@ -51,8 +51,10 @@ public abstract class YamlFileService<T> where T : class, new()
 
     /// <summary>
     /// Lock object for thread-safe operations. Use this when accessing Data directly.
+    /// For write operations, use Lock.EnterWriteLock()/ExitWriteLock().
+    /// For read operations, use Lock.EnterReadLock()/ExitReadLock().
     /// </summary>
-    protected object Lock => _lock;
+    protected ReaderWriterLockSlim Lock => _lock;
 
     /// <summary>
     /// Load data from the YAML file.
@@ -60,48 +62,85 @@ public abstract class YamlFileService<T> where T : class, new()
     /// <returns>True if data was loaded, false if file doesn't exist or is empty.</returns>
     public virtual bool Load()
     {
-        lock (_lock)
+        // Read file content outside the lock to avoid blocking on slow I/O
+        string? yaml = null;
+        bool fileExists;
+
+        try
         {
-            if (!File.Exists(_filePath))
+            fileExists = File.Exists(_filePath);
+            if (fileExists)
+            {
+                yaml = File.ReadAllText(_filePath);
+            }
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Failed to read {Path}. Check file permissions", _filePath);
+            _lock.EnterWriteLock();
+            try
+            {
+                Data = new T();
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error reading from {Path}", _filePath);
+            _lock.EnterWriteLock();
+            try
+            {
+                Data = new T();
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+            return false;
+        }
+
+        // Process the data under write lock (updating Data)
+        _lock.EnterWriteLock();
+        try
+        {
+            if (!fileExists)
             {
                 _logger.LogDebug("YAML file not found at {Path}, starting with defaults", _filePath);
                 Data = new T();
                 return false;
             }
 
-            try
+            if (string.IsNullOrWhiteSpace(yaml))
             {
-                var yaml = File.ReadAllText(_filePath);
-                if (string.IsNullOrWhiteSpace(yaml))
-                {
-                    _logger.LogDebug("YAML file {Path} is empty, starting with defaults", _filePath);
-                    Data = new T();
-                    return false;
-                }
+                _logger.LogDebug("YAML file {Path} is empty, starting with defaults", _filePath);
+                Data = new T();
+                return false;
+            }
 
-                Data = _deserializer.Deserialize<T>(yaml) ?? new T();
-                OnDataLoaded();
-                _logger.LogDebug("Loaded data from {Path}", _filePath);
-                return true;
-            }
-            catch (YamlDotNet.Core.YamlException ex)
-            {
-                _logger.LogError(ex, "Failed to parse YAML from {Path}. File may be malformed", _filePath);
-                Data = new T();
-                return false;
-            }
-            catch (IOException ex)
-            {
-                _logger.LogError(ex, "Failed to read {Path}. Check file permissions", _filePath);
-                Data = new T();
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error loading from {Path}", _filePath);
-                Data = new T();
-                return false;
-            }
+            Data = _deserializer.Deserialize<T>(yaml) ?? new T();
+            OnDataLoaded();
+            _logger.LogDebug("Loaded data from {Path}", _filePath);
+            return true;
+        }
+        catch (YamlDotNet.Core.YamlException ex)
+        {
+            _logger.LogError(ex, "Failed to parse YAML from {Path}. File may be malformed", _filePath);
+            Data = new T();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error parsing from {Path}", _filePath);
+            Data = new T();
+            return false;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
         }
     }
 
@@ -111,38 +150,47 @@ public abstract class YamlFileService<T> where T : class, new()
     /// <returns>True if saved successfully.</returns>
     public virtual bool Save()
     {
-        lock (_lock)
+        // Serialize under read lock (we're only reading Data)
+        string yaml;
+        _lock.EnterReadLock();
+        try
         {
-            try
-            {
-                // Ensure directory exists
-                var dir = Path.GetDirectoryName(_filePath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
+            yaml = _serializer.Serialize(Data);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
 
-                var yaml = _serializer.Serialize(Data);
-                File.WriteAllText(_filePath, yaml);
-                _logger.LogDebug("Saved data to {Path}", _filePath);
-                return true;
-            }
-            catch (IOException ex)
+        // Write file outside the lock
+        try
+        {
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(_filePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
-                _logger.LogError(ex, "Failed to write {Path}. Check disk space and permissions", _filePath);
-                return false;
+                Directory.CreateDirectory(dir);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error saving to {Path}", _filePath);
-                return false;
-            }
+
+            File.WriteAllText(_filePath, yaml);
+            _logger.LogDebug("Saved data to {Path}", _filePath);
+            return true;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Failed to write {Path}. Check disk space and permissions", _filePath);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error saving to {Path}", _filePath);
+            return false;
         }
     }
 
     /// <summary>
     /// Called after data is successfully loaded. Override to perform post-load processing.
-    /// Called within the lock, so thread-safe access to Data is guaranteed.
+    /// Called within the write lock, so thread-safe access to Data is guaranteed.
     /// </summary>
     protected virtual void OnDataLoaded()
     {
@@ -163,7 +211,7 @@ public abstract class YamlDictionaryService<TKey, TValue>
     private readonly ILogger _logger;
     private readonly IDeserializer _deserializer;
     private readonly ISerializer _serializer;
-    private readonly object _lock = new();
+    private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.NoRecursion);
 
     private Dictionary<TKey, TValue> _data = new();
 
@@ -200,8 +248,10 @@ public abstract class YamlDictionaryService<TKey, TValue>
 
     /// <summary>
     /// Lock object for thread-safe operations.
+    /// For write operations, use Lock.EnterWriteLock()/ExitWriteLock().
+    /// For read operations, use Lock.EnterReadLock()/ExitReadLock().
     /// </summary>
-    protected object Lock => _lock;
+    protected ReaderWriterLockSlim Lock => _lock;
 
     /// <summary>
     /// Number of items in the dictionary.
@@ -210,9 +260,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     {
         get
         {
-            lock (_lock)
+            _lock.EnterReadLock();
+            try
             {
                 return _data.Count;
+            }
+            finally
+            {
+                _lock.ExitReadLock();
             }
         }
     }
@@ -223,50 +278,87 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// <returns>True if data was loaded, false if file doesn't exist or is empty.</returns>
     public virtual bool Load()
     {
-        lock (_lock)
+        // Read file content outside the lock
+        string? yaml = null;
+        bool fileExists;
+
+        try
         {
-            if (!File.Exists(_filePath))
+            fileExists = File.Exists(_filePath);
+            if (fileExists)
+            {
+                yaml = File.ReadAllText(_filePath);
+            }
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Failed to read {Path}. Check file permissions", _filePath);
+            _lock.EnterWriteLock();
+            try
+            {
+                _data = new Dictionary<TKey, TValue>();
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error reading from {Path}", _filePath);
+            _lock.EnterWriteLock();
+            try
+            {
+                _data = new Dictionary<TKey, TValue>();
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+            return false;
+        }
+
+        // Process the data under write lock
+        _lock.EnterWriteLock();
+        try
+        {
+            if (!fileExists)
             {
                 _logger.LogDebug("YAML file not found at {Path}, starting with empty dictionary", _filePath);
                 _data = new Dictionary<TKey, TValue>();
                 return false;
             }
 
-            try
+            if (string.IsNullOrWhiteSpace(yaml))
             {
-                var yaml = File.ReadAllText(_filePath);
-                if (string.IsNullOrWhiteSpace(yaml))
-                {
-                    _logger.LogDebug("YAML file {Path} is empty, starting with empty dictionary", _filePath);
-                    _data = new Dictionary<TKey, TValue>();
-                    return false;
-                }
+                _logger.LogDebug("YAML file {Path} is empty, starting with empty dictionary", _filePath);
+                _data = new Dictionary<TKey, TValue>();
+                return false;
+            }
 
-                _data = _deserializer.Deserialize<Dictionary<TKey, TValue>>(yaml)
-                    ?? new Dictionary<TKey, TValue>();
+            _data = _deserializer.Deserialize<Dictionary<TKey, TValue>>(yaml)
+                ?? new Dictionary<TKey, TValue>();
 
-                OnDataLoaded(_data);
-                _logger.LogDebug("Loaded {Count} items from {Path}", _data.Count, _filePath);
-                return true;
-            }
-            catch (YamlDotNet.Core.YamlException ex)
-            {
-                _logger.LogError(ex, "Failed to parse YAML from {Path}. File may be malformed", _filePath);
-                _data = new Dictionary<TKey, TValue>();
-                return false;
-            }
-            catch (IOException ex)
-            {
-                _logger.LogError(ex, "Failed to read {Path}. Check file permissions", _filePath);
-                _data = new Dictionary<TKey, TValue>();
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error loading from {Path}", _filePath);
-                _data = new Dictionary<TKey, TValue>();
-                return false;
-            }
+            OnDataLoaded(_data);
+            _logger.LogDebug("Loaded {Count} items from {Path}", _data.Count, _filePath);
+            return true;
+        }
+        catch (YamlDotNet.Core.YamlException ex)
+        {
+            _logger.LogError(ex, "Failed to parse YAML from {Path}. File may be malformed", _filePath);
+            _data = new Dictionary<TKey, TValue>();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error parsing from {Path}", _filePath);
+            _data = new Dictionary<TKey, TValue>();
+            return false;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
         }
     }
 
@@ -276,32 +368,43 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// <returns>True if saved successfully.</returns>
     public virtual bool Save()
     {
-        lock (_lock)
+        // Serialize under read lock
+        string yaml;
+        int count;
+        _lock.EnterReadLock();
+        try
         {
-            try
-            {
-                // Ensure directory exists
-                var dir = Path.GetDirectoryName(_filePath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
+            yaml = _serializer.Serialize(_data);
+            count = _data.Count;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
 
-                var yaml = _serializer.Serialize(_data);
-                File.WriteAllText(_filePath, yaml);
-                _logger.LogDebug("Saved {Count} items to {Path}", _data.Count, _filePath);
-                return true;
-            }
-            catch (IOException ex)
+        // Write file outside the lock
+        try
+        {
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(_filePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
-                _logger.LogError(ex, "Failed to write {Path}. Check disk space and permissions", _filePath);
-                return false;
+                Directory.CreateDirectory(dir);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error saving to {Path}", _filePath);
-                return false;
-            }
+
+            File.WriteAllText(_filePath, yaml);
+            _logger.LogDebug("Saved {Count} items to {Path}", count, _filePath);
+            return true;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Failed to write {Path}. Check disk space and permissions", _filePath);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error saving to {Path}", _filePath);
+            return false;
         }
     }
 
@@ -310,9 +413,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public TValue? Get(TKey key)
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return _data.TryGetValue(key, out var value) ? value : default;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -321,7 +429,8 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public bool TryGet(TKey key, out TValue? value)
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             if (_data.TryGetValue(key, out var found))
             {
@@ -331,6 +440,10 @@ public abstract class YamlDictionaryService<TKey, TValue>
             value = default;
             return false;
         }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
     }
 
     /// <summary>
@@ -338,12 +451,19 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public bool Set(TKey key, TValue value, bool save = true)
     {
-        lock (_lock)
+        _lock.EnterWriteLock();
+        try
         {
             _data[key] = value;
             OnItemSet(key, value);
-            return save ? Save() : true;
         }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        // Save outside the lock
+        return save ? Save() : true;
     }
 
     /// <summary>
@@ -351,14 +471,26 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public bool Remove(TKey key, bool save = true)
     {
-        lock (_lock)
+        bool removed;
+        _lock.EnterWriteLock();
+        try
         {
-            if (!_data.Remove(key))
-                return false;
-
-            OnItemRemoved(key);
-            return save ? Save() : true;
+            removed = _data.Remove(key);
+            if (removed)
+            {
+                OnItemRemoved(key);
+            }
         }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        if (!removed)
+            return false;
+
+        // Save outside the lock
+        return save ? Save() : true;
     }
 
     /// <summary>
@@ -366,9 +498,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public bool ContainsKey(TKey key)
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return _data.ContainsKey(key);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -377,9 +514,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public IReadOnlyList<TKey> GetKeys()
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return _data.Keys.ToList();
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -388,9 +530,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public IReadOnlyList<TValue> GetValues()
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return _data.Values.ToList();
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -399,9 +546,14 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public IReadOnlyDictionary<TKey, TValue> GetAll()
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return new Dictionary<TKey, TValue>(_data);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -410,14 +562,21 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public bool Update(TKey key, Action<TValue> updateAction, bool save = true)
     {
-        lock (_lock)
+        _lock.EnterWriteLock();
+        try
         {
             if (!_data.TryGetValue(key, out var value))
                 return false;
 
             updateAction(value);
-            return save ? Save() : true;
         }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        // Save outside the lock
+        return save ? Save() : true;
     }
 
     /// <summary>
@@ -425,48 +584,97 @@ public abstract class YamlDictionaryService<TKey, TValue>
     /// </summary>
     public TValue GetOrCreate(TKey key, Func<TValue> factory, bool save = true)
     {
-        lock (_lock)
+        // First try with read lock
+        _lock.EnterReadLock();
+        try
         {
             if (_data.TryGetValue(key, out var existing))
                 return existing;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
 
-            var value = factory();
+        // Need to create - use write lock
+        TValue value;
+        bool needsSave = false;
+        _lock.EnterWriteLock();
+        try
+        {
+            // Double-check in case another thread added it
+            if (_data.TryGetValue(key, out var existing))
+                return existing;
+
+            value = factory();
             _data[key] = value;
             OnItemSet(key, value);
-
-            if (save)
-                Save();
-
-            return value;
+            needsSave = save;
         }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        // Save outside the lock
+        if (needsSave)
+            Save();
+
+        return value;
     }
 
     /// <summary>
-    /// Execute an action within the lock for complex operations.
+    /// Execute an action within the read lock for complex read operations.
     /// </summary>
-    protected TResult WithLock<TResult>(Func<Dictionary<TKey, TValue>, TResult> action)
+    protected TResult WithReadLock<TResult>(Func<Dictionary<TKey, TValue>, TResult> action)
     {
-        lock (_lock)
+        _lock.EnterReadLock();
+        try
         {
             return action(_data);
         }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
     }
 
     /// <summary>
-    /// Execute an action within the lock for complex operations.
+    /// Execute an action within the write lock for complex write operations.
     /// </summary>
-    protected void WithLock(Action<Dictionary<TKey, TValue>> action)
+    protected TResult WithWriteLock<TResult>(Func<Dictionary<TKey, TValue>, TResult> action)
     {
-        lock (_lock)
+        _lock.EnterWriteLock();
+        try
+        {
+            return action(_data);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// Execute an action within the write lock for complex write operations.
+    /// </summary>
+    protected void WithWriteLock(Action<Dictionary<TKey, TValue>> action)
+    {
+        _lock.EnterWriteLock();
+        try
         {
             action(_data);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
         }
     }
 
     /// <summary>
     /// Called after data is successfully loaded. Override to perform post-load processing
     /// like ensuring keys match value fields.
-    /// Called within the lock.
+    /// Called within the write lock.
     /// </summary>
     protected virtual void OnDataLoaded(Dictionary<TKey, TValue> data)
     {
@@ -474,7 +682,7 @@ public abstract class YamlDictionaryService<TKey, TValue>
 
     /// <summary>
     /// Called after an item is set. Override for logging or validation.
-    /// Called within the lock.
+    /// Called within the write lock.
     /// </summary>
     protected virtual void OnItemSet(TKey key, TValue value)
     {
