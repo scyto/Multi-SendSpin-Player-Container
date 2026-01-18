@@ -776,7 +776,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Hardware volume is set to 80% on container startup to avoid clipping
             // Server (Music Assistant) controls the actual volume level
             player.Volume = 1.0f;
-            _logger.LogInformation("VOLUME [Create] Player '{Name}': initial volume {Volume}% (sent to server)",
+            _logger.LogInformation("VOLUME [Create] Player '{Name}': startup volume {Volume}% (sent to server)",
                 request.Name, request.Volume);
 
             // 13. Apply delay offset from user configuration
@@ -1436,7 +1436,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _ => context.State
             };
 
-            // Record connection time and push initial volume to server when connected
+            // Record connection time and push startup volume to server when connected
             // This ensures MA shows the correct startup volume immediately
             if (args.NewState == ConnectionState.Connected)
             {
@@ -1576,7 +1576,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 // Update runtime config only (affects current playback)
                 // DO NOT persist to config file - MA has its own volume database
                 // If we persist, we create a fight between our config and MA's database
-                // The config file volume is only the INITIAL volume sent on connection
+                // The config file volume is only the STARTUP volume sent on connection
                 context.Config.Volume = serverVolume;
 
                 // Send player state back to MA to update its stored preference

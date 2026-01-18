@@ -810,7 +810,7 @@ function renderPlayers() {
                                 <i class="fas fa-info-circle ms-1 text-muted small volume-tooltip"
                                    data-bs-toggle="tooltip"
                                    data-bs-placement="top"
-                                   data-bs-title="Initial volume sent when player connects (on container or player restart)"></i>
+                                   data-bs-title="Startup volume sent when player connects (on container or player restart)"></i>
                             </div>
                             <div class="d-flex align-items-center">
                                 <input type="range" class="form-range form-range-sm flex-grow-1 volume-slider" min="0" max="100"
