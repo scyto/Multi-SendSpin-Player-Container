@@ -32,7 +32,8 @@
       "settings": {
         "dotnet.defaultSolution": "squeezelite-docker.sln",
         "omnisharp.enableRoslynAnalyzers": true,
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "dotnet.server.useOmnisharp": true
       }
     }
   },
