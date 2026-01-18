@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run (Mock Hardware)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/MultiRoomAudio/bin/Debug/net8.0/MultiRoomAudio.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/MultiRoomAudio",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MOCK_HARDWARE": "true",
+        "CONFIG_PATH": "${workspaceFolder}/.dev-config",
+        "LOG_PATH": "${workspaceFolder}/.dev-config/logs",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s"
+      }
+    },
+    {
+      "name": "Run (Real Hardware)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/MultiRoomAudio/bin/Debug/net8.0/MultiRoomAudio.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/MultiRoomAudio",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CONFIG_PATH": "${workspaceFolder}/.dev-config",
+        "LOG_PATH": "${workspaceFolder}/.dev-config/logs",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s"
+      }
+    },
+    {
+      "name": "Attach to Process",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ],
+  "compounds": []
+}

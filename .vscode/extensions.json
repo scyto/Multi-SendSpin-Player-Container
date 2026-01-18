@@ -1,0 +1,28 @@
+{
+  "recommendations": [
+    // C# Development
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.vscode-dotnet-runtime",
+
+    // Testing
+    "ms-playwright.playwright",
+
+    // Docker & Containers
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+
+    // YAML (for config files)
+    "redhat.vscode-yaml",
+
+    // Git
+    "eamodio.gitlens",
+
+    // REST API Testing
+    "humao.rest-client",
+
+    // EditorConfig
+    "editorconfig.editorconfig"
+  ],
+  "unwantedRecommendations": []
+}

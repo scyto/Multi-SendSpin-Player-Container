@@ -1,0 +1,115 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/squeezelite-docker.sln",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "run (mock hardware)",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/MultiRoomAudio/MultiRoomAudio.csproj"
+      ],
+      "options": {
+        "env": {
+          "MOCK_HARDWARE": "true",
+          "CONFIG_PATH": "${workspaceFolder}/.dev-config",
+          "LOG_PATH": "${workspaceFolder}/.dev-config/logs"
+        }
+      },
+      "problemMatcher": "$msCompile",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "test: all",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "${workspaceFolder}/squeezelite-docker.sln",
+        "--logger",
+        "console;verbosity=normal"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "test: API only",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/MultiRoomAudio.ApiTests/MultiRoomAudio.ApiTests.csproj",
+        "--logger",
+        "console;verbosity=normal"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: E2E only",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "test",
+        "${workspaceFolder}/tests/MultiRoomAudio.E2ETests/MultiRoomAudio.E2ETests.csproj",
+        "--logger",
+        "console;verbosity=normal"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "restore",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "restore",
+        "${workspaceFolder}/squeezelite-docker.sln"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "clean",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "clean",
+        "${workspaceFolder}/squeezelite-docker.sln"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "install Playwright browsers",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "${workspaceFolder}/tests/MultiRoomAudio.E2ETests/bin/Debug/net8.0/playwright.ps1",
+        "install",
+        "--with-deps"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

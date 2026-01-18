@@ -1,0 +1,63 @@
+{
+  // .NET Settings
+  "dotnet.defaultSolution": "squeezelite-docker.sln",
+  "omnisharp.enableRoslynAnalyzers": true,
+  "omnisharp.enableEditorConfigSupport": true,
+
+  // C# Formatting
+  "editor.formatOnSave": true,
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // JavaScript/TypeScript (for wwwroot)
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+
+  // YAML
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+
+  // File Associations
+  "files.associations": {
+    "*.csproj": "xml",
+    "*.props": "xml",
+    "*.targets": "xml"
+  },
+
+  // Search Exclusions
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/node_modules": true,
+    "**/.git": true
+  },
+
+  // Files to Hide in Explorer
+  "files.exclude": {
+    "**/bin": false,
+    "**/obj": false
+  },
+
+  // Testing
+  "dotnet-test-explorer.testProjectPath": "tests/**/*.csproj",
+
+  // Terminal
+  "terminal.integrated.env.osx": {
+    "DOTNET_ROOT": "/opt/homebrew/opt/dotnet@8/libexec"
+  },
+  "terminal.integrated.env.linux": {
+    "DOTNET_ROOT": "/usr/share/dotnet"
+  },
+
+  // Task Runner
+  "task.autoDetect": "on"
+}

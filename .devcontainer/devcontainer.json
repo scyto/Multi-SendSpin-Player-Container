@@ -1,0 +1,64 @@
+{
+  "name": "Multi-Room Audio Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+
+  // Features to install
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "ms-playwright.playwright",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "eamodio.gitlens",
+        "humao.rest-client",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "dotnet.defaultSolution": "squeezelite-docker.sln",
+        "omnisharp.enableRoslynAnalyzers": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+
+  // Forward ports for the web server
+  "forwardPorts": [8096],
+  "portsAttributes": {
+    "8096": {
+      "label": "Multi-Room Audio Web UI",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Run commands after container is created
+  "postCreateCommand": "dotnet restore && pwsh tests/MultiRoomAudio.E2ETests/bin/Debug/net8.0/playwright.ps1 install --with-deps || true",
+
+  // Environment variables for development
+  "containerEnv": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "MOCK_HARDWARE": "true"
+  },
+
+  // Mount local Git credentials
+  "mounts": [
+    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+  ],
+
+  // Use non-root user
+  "remoteUser": "vscode"
+}

@@ -30,7 +30,9 @@ ehthumbs.db
 Thumbs.db
 
 # IDE and AI assistant files
-.vscode/
+# Note: .vscode/ is NOT ignored - we commit shared VS Code config
+# Only ignore personal settings like .vscode/settings.local.json
+.vscode/*.local.json
 .idea/
 .claude/
 *.sublime-project
