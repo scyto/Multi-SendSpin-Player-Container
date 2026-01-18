@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-2021cbd
+## Development Build: sha-ee58e2b
 
 **Current Dev Build Changes** (recent)
 
+- Add thread safety to DefaultPaParser with file locking
 - Add YamlFileService and PactlCommandRunner utilities to reduce code duplication
 - Add ApiExceptionHandler utility to reduce duplicated exception handling
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
@@ -13,7 +14,6 @@
 - Merge pull request #69 from scyto/feature/preserve-volume-across-tracks
 - Fix hardware volume init to always apply volume, not skip
 - Fix UI slider interaction and tooltip issues
-- Add volume grace period to resolve startup volume sync battle
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
