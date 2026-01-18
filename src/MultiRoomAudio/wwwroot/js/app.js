@@ -4,6 +4,9 @@
 let players = {};
 let devices = [];
 let connection = null;
+let currentBuildVersion = null; // Stored build version for comparison
+let isUserInteracting = false; // Track if user is dragging a slider
+let pendingUpdate = null; // Store pending updates during interaction
 
 function formatBuildVersion(apiInfo) {
     const version = apiInfo?.version;
@@ -32,12 +35,48 @@ async function refreshBuildInfo() {
         if (!response.ok) throw new Error('Failed to fetch build info');
 
         const data = await response.json();
-        buildVersion.textContent = formatBuildVersion(data);
+        const formattedVersion = formatBuildVersion(data);
+        buildVersion.textContent = formattedVersion;
         buildVersion.title = data?.build ? `Full build: ${data.build}` : '';
+
+        // Store the full build string for version comparison
+        if (currentBuildVersion === null) {
+            // First load - store the version
+            currentBuildVersion = data?.build || formattedVersion;
+            console.log('Initial build version:', currentBuildVersion);
+        }
     } catch (error) {
         console.error('Error fetching build info:', error);
         buildVersion.textContent = 'unknown';
         buildVersion.title = '';
+    }
+}
+
+/**
+ * Checks if the backend version has changed and reloads the page if needed.
+ * Called on SignalR reconnect and periodically as a fallback.
+ */
+async function checkVersionAndReload() {
+    try {
+        const response = await fetch('./api');
+        if (!response.ok) return; // Silently fail - backend might be starting
+
+        const data = await response.json();
+        const serverVersion = data?.build || formatBuildVersion(data);
+
+        // If we have a stored version and it differs from server, reload
+        if (currentBuildVersion !== null && currentBuildVersion !== serverVersion) {
+            console.log(`Version changed: ${currentBuildVersion} → ${serverVersion}. Reloading page...`);
+            showAlert('Backend updated - reloading page...', 'info', 2000);
+
+            // Wait 2 seconds to show the alert, then reload
+            setTimeout(() => {
+                window.location.reload(true); // Hard reload (bypass cache)
+            }, 2000);
+        }
+    } catch (error) {
+        // Silently fail - backend might be restarting
+        console.debug('Version check failed (backend might be restarting):', error);
     }
 }
 
@@ -119,6 +158,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Poll for status updates as fallback
     setInterval(refreshStatus, 5000);
+
+    // Periodic version check (every 30 seconds) as fallback
+    setInterval(checkVersionAndReload, 30000);
 });
 
 // SignalR setup
@@ -146,7 +188,14 @@ function setupSignalR() {
             (data.players || []).forEach(p => {
                 players[p.name] = p;
             });
-            renderPlayers();
+
+            // If user is interacting with a slider, defer the update
+            if (isUserInteracting) {
+                console.log('Deferring update - user is interacting');
+                pendingUpdate = { players: { ...players } };
+            } else {
+                renderPlayers();
+            }
         }
     });
 
@@ -158,6 +207,9 @@ function setupSignalR() {
     connection.onreconnected(() => {
         statusBadge.textContent = 'Connected';
         statusBadge.className = 'badge bg-success me-2';
+
+        // Check if backend version changed after reconnection
+        checkVersionAndReload();
     });
 
     connection.onclose(() => {
@@ -488,30 +540,31 @@ async function setVolume(name, volume) {
  * Set the hardware volume limit for a player's audio device.
  * This controls the PulseAudio sink volume (physical output level).
  */
-async function setHardwareVolumeLimit(name, maxVolume) {
+async function setStartupVolume(name, volume) {
     try {
-        const response = await fetch(`./api/players/${encodeURIComponent(name)}/hardware-volume`, {
+        const response = await fetch(`./api/players/${encodeURIComponent(name)}/startup-volume`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ maxVolume: parseInt(maxVolume) })
+            body: JSON.stringify({ volume: parseInt(volume) })
         });
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.message || 'Failed to set hardware volume');
+            throw new Error(error.message || 'Failed to set startup volume');
         }
 
         // Update local state
         if (players[name]) {
-            players[name].hardwareVolumeLimit = parseInt(maxVolume);
+            players[name].startupVolume = parseInt(volume);
         }
 
-        showAlert(`Hardware volume set to ${maxVolume}%`, 'success', 2000);
+        showAlert(`Startup volume set to ${volume}% (takes effect on next restart)`, 'success', 2000);
     } catch (error) {
-        console.error('Error setting hardware volume:', error);
+        console.error('Error setting startup volume:', error);
         showAlert(error.message, 'danger');
     }
 }
+
 
 async function setDelay(name, delayMs) {
     // Clamp value to valid range
@@ -733,27 +786,38 @@ function renderPlayers() {
                             <small class="text-muted ms-2">${escapeHtml(getDeviceDisplayName(player.device))}</small>
                         </div>
 
-                        <div class="volume-control">
+                        <div class="volume-control mb-3 pt-2 border-top">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fas fa-volume-up me-1"></i>
+                                <span class="small fw-semibold">Current Volume</span>
+                                <i class="fas fa-info-circle ms-1 text-muted small volume-tooltip"
+                                   data-bs-toggle="tooltip"
+                                   data-bs-placement="top"
+                                   data-bs-title="Current playback volume (syncs with Music Assistant)"></i>
+                            </div>
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-volume-down me-2"></i>
-                                <input type="range" class="form-range flex-grow-1" min="0" max="100" value="${player.volume}"
+                                <input type="range" class="form-range form-range-sm flex-grow-1 volume-slider" min="0" max="100" value="${player.volume}"
                                     onchange="setVolume('${escapeHtml(name)}', this.value)"
                                     oninput="this.nextElementSibling.textContent = this.value + '%'">
-                                <span class="volume-display ms-2">${player.volume}%</span>
+                                <span class="volume-display ms-2 small">${player.volume}%</span>
                             </div>
                         </div>
 
-                        <div class="hardware-volume-section mt-3 pt-2 border-top">
+                        <div class="startup-volume-section mb-3 pt-2 border-top">
                             <div class="d-flex align-items-center mb-1">
-                                <i class="fas fa-cog me-1 text-muted small"></i>
-                                <span class="small text-muted">Hardware Volume</span>
+                                <i class="fas fa-power-off me-1 text-muted small"></i>
+                                <span class="small text-muted">Startup Volume</span>
+                                <i class="fas fa-info-circle ms-1 text-muted small volume-tooltip"
+                                   data-bs-toggle="tooltip"
+                                   data-bs-placement="top"
+                                   data-bs-title="Initial volume sent when player connects (on container or player restart)"></i>
                             </div>
                             <div class="d-flex align-items-center">
-                                <input type="range" class="form-range form-range-sm flex-grow-1" min="0" max="100"
-                                       value="${player.hardwareVolumeLimit || 80}"
-                                       onchange="setHardwareVolumeLimit('${escapeHtml(name)}', this.value)"
+                                <input type="range" class="form-range form-range-sm flex-grow-1 volume-slider" min="0" max="100"
+                                       value="${player.startupVolume || player.volume}"
+                                       onchange="setStartupVolume('${escapeHtml(name)}', this.value)"
                                        oninput="this.nextElementSibling.textContent = this.value + '%'">
-                                <span class="volume-display ms-2 small">${player.hardwareVolumeLimit || 80}%</span>
+                                <span class="volume-display ms-2 small">${player.startupVolume || player.volume}%</span>
                             </div>
                         </div>
 
@@ -770,6 +834,92 @@ function renderPlayers() {
             </div>
         `;
     }).join('');
+
+    // Initialize Bootstrap tooltips for the rendered elements
+    initializeTooltips();
+
+    // Attach interaction tracking to all volume sliders
+    attachSliderInteractionHandlers();
+}
+
+/**
+ * Attaches mousedown/mouseup/touchstart/touchend handlers to volume sliders
+ * to track user interaction and prevent DOM updates during drag.
+ */
+function attachSliderInteractionHandlers() {
+    const sliders = document.querySelectorAll('.volume-slider');
+
+    sliders.forEach(slider => {
+        // Mouse events
+        slider.addEventListener('mousedown', () => {
+            isUserInteracting = true;
+            console.log('Slider interaction started (mouse)');
+        });
+
+        // Touch events
+        slider.addEventListener('touchstart', () => {
+            isUserInteracting = true;
+            console.log('Slider interaction started (touch)');
+        });
+    });
+
+    // Global handlers for mouse/touch release
+    // These fire when user releases anywhere, not just on the slider
+    const handleInteractionEnd = () => {
+        if (isUserInteracting) {
+            isUserInteracting = false;
+            console.log('Slider interaction ended');
+
+            // Apply any pending updates
+            if (pendingUpdate) {
+                console.log('Applying pending update');
+                players = pendingUpdate.players;
+                pendingUpdate = null;
+                renderPlayers();
+            }
+        }
+    };
+
+    // Use 'once: false' and remove old listeners to avoid duplicates
+    document.removeEventListener('mouseup', handleInteractionEnd);
+    document.removeEventListener('touchend', handleInteractionEnd);
+    document.addEventListener('mouseup', handleInteractionEnd);
+    document.addEventListener('touchend', handleInteractionEnd);
+}
+
+/**
+ * Disposes all existing Bootstrap tooltips to prevent memory leaks and conflicts.
+ * Also removes any orphaned tooltip popover elements from the DOM.
+ */
+function disposeTooltips() {
+    const tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipElements.forEach(element => {
+        const tooltip = bootstrap.Tooltip.getInstance(element);
+        if (tooltip) {
+            tooltip.dispose();
+        }
+    });
+
+    // Aggressively remove any orphaned tooltip popovers from the DOM
+    // These can be left behind when tooltips are disposed while visible
+    const orphanedTooltips = document.querySelectorAll('.tooltip');
+    orphanedTooltips.forEach(tooltipElement => {
+        tooltipElement.remove();
+    });
+}
+
+/**
+ * Initializes Bootstrap tooltips for elements with data-bs-toggle="tooltip"
+ */
+function initializeTooltips() {
+    // First dispose any existing tooltips to prevent conflicts
+    disposeTooltips();
+
+    // Then create new tooltip instances
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 }
 
 function getStateClass(state) {
@@ -1866,6 +2016,18 @@ function renderSoundCards() {
                         </div>
                     </div>
 
+                    <div class="mb-2">
+                        <label class="form-label small text-muted mb-1">Limit Max. Vol.</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="range" class="form-range flex-grow-1" min="0" max="100" step="1"
+                                   value="${card.maxVolume || 100}"
+                                   id="settings-max-volume-${card.index}"
+                                   oninput="document.getElementById('settings-max-volume-value-${card.index}').textContent = this.value + '%'"
+                                   onchange="setDeviceMaxVolume('${escapeHtml(card.name)}', this.value, ${card.index})">
+                            <span class="text-muted" style="min-width: 45px;" id="settings-max-volume-value-${card.index}">${card.maxVolume || 100}%</span>
+                        </div>
+                    </div>
+
                     ${hasMultipleProfiles ? `
                         <div class="mb-2">
                             <label class="form-label small text-muted mb-1">Audio Profile</label>
@@ -2001,6 +2163,46 @@ async function setSoundCardBootMute(cardName, value, cardIndex) {
         }
     } finally {
         if (select) select.disabled = false;
+    }
+}
+
+async function setDeviceMaxVolume(cardName, maxVolume, cardIndex) {
+    const slider = document.getElementById(`settings-max-volume-${cardIndex}`);
+    if (slider) slider.disabled = true;
+
+    try {
+        const volumeValue = parseInt(maxVolume);
+        const response = await fetch(`./api/cards/${encodeURIComponent(cardName)}/max-volume`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ maxVolume: volumeValue })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to set max volume');
+        }
+
+        const card = soundCards.find(c => c.name === cardName);
+        if (card) {
+            card.maxVolume = volumeValue;
+        }
+
+        showAlert(`Max volume set to ${volumeValue}%`, 'success', 2000);
+    } catch (error) {
+        console.error('Failed to set max volume:', error);
+        showAlert(error.message, 'danger');
+        // Revert slider to previous value
+        const card = soundCards.find(c => c.name === cardName);
+        if (slider && card) {
+            slider.value = card.maxVolume || 100;
+            const valueDisplay = document.getElementById(`settings-max-volume-value-${cardIndex}`);
+            if (valueDisplay) {
+                valueDisplay.textContent = (card.maxVolume || 100) + '%';
+            }
+        }
+    } finally {
+        if (slider) slider.disabled = false;
     }
 }
 

@@ -174,6 +174,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     /// </summary>
     private const int MaxReconnectAttempts = 0; // Unlimited - keep trying forever
 
+    /// <summary>
+    /// Grace period after connection during which volume updates from MA are ignored.
+    /// This allows the startup volume to "win" the initial sync battle with Music Assistant.
+    /// </summary>
+    private static readonly TimeSpan VolumeGracePeriod = TimeSpan.FromSeconds(5);
+
     #endregion
 
     #region Helper Methods
@@ -316,6 +322,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         public PlayerState State { get; set; } = PlayerState.Created;
         public string? ErrorMessage { get; set; }
         public DateTime? ConnectedAt { get; set; }
+        public int InitialVolume { get; init; } // Store initial volume to detect resets
         public long SamplesPlayed { get; set; }
 
         // Event handler references for proper cleanup (prevents memory leaks)
@@ -361,6 +368,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     /// This is called once at container startup to set a safe volume level
     /// that avoids clipping. The server (Music Assistant) then controls the
     /// actual volume level via its own volume control.
+    /// Devices with configured MaxVolume limits in devices.yaml are skipped.
     /// </summary>
     private async Task InitializeHardwareVolumesAsync(CancellationToken cancellationToken)
     {
@@ -378,15 +386,36 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
             _logger.LogInformation("Found {Count} audio output device(s)", devices.Count);
 
+            // Get device configurations to check for volume limits
+            var deviceConfigs = _config.GetAllDeviceConfigurations();
+
             foreach (var device in devices)
             {
                 try
                 {
-                    var success = await _backendFactory.SetVolumeAsync(device.Id, HardwareVolumePercent, cancellationToken);
+                    // Determine volume to apply: use configured max if set, otherwise default 80%
+                    var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    int volumeToApply;
+                    string volumeSource;
+
+                    if (deviceConfigs.TryGetValue(deviceKey, out var config) && config.MaxVolume.HasValue)
+                    {
+                        // User has explicitly configured a max volume - honor it
+                        volumeToApply = config.MaxVolume.Value;
+                        volumeSource = "configured max";
+                    }
+                    else
+                    {
+                        // No configured limit - apply default hardware volume
+                        volumeToApply = HardwareVolumePercent;
+                        volumeSource = "default";
+                    }
+
+                    var success = await _backendFactory.SetVolumeAsync(device.Id, volumeToApply, cancellationToken);
                     if (success)
                     {
-                        _logger.LogInformation("VOLUME [Init] Device '{Name}' ({Id}): set to {Volume}%",
-                            device.Name, device.Id, HardwareVolumePercent);
+                        _logger.LogInformation("VOLUME [Init] Device '{Name}' ({Id}): set to {Volume}% ({Source})",
+                            device.Name, device.Id, volumeToApply, volumeSource);
                     }
                     else
                     {
@@ -446,12 +475,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     };
 
                     await CreatePlayerAsync(request, cancellationToken);
-
-                    // Apply hardware volume limit if configured
-                    if (playerConfig.HardwareVolumeLimit.HasValue)
-                    {
-                        await SetHardwareVolumeLimitAsync(playerConfig.Name, playerConfig.HardwareVolumeLimit.Value, cancellationToken);
-                    }
 
                     _logger.LogInformation("Player {PlayerName} autostarted successfully", playerConfig.Name);
                 }
@@ -690,7 +713,8 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 client, connection, pipeline, player, clockSync, clientCapabilities, config,
                 DateTime.UtcNow, cts, deviceCapabilities)
             {
-                State = PlayerState.Created
+                State = PlayerState.Created,
+                InitialVolume = request.Volume // Store initial volume to detect resets
             };
 
             // 9. Wire up events
@@ -820,14 +844,15 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     : "Player not running. Device may be unavailable or misconfigured.";
 
                 // Return a placeholder response so user can edit/reconfigure it
+                var volume = config.Volume ?? 100;
                 responses.Add(new PlayerResponse(
                     Name: name,
                     State: state,
                     Device: config.Device,
                     ClientId: ClientIdGenerator.Generate(name),
                     ServerUrl: config.Server,
-                    Volume: config.Volume ?? 100,
-                    HardwareVolumeLimit: 80, // Default for non-running players
+                    Volume: volume,
+                    StartupVolume: volume, // For non-running players, startup volume = config volume
                     IsMuted: false,
                     DelayMs: config.DelayMs,
                     OutputLatencyMs: 0,
@@ -920,58 +945,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         return true;
     }
 
-    /// <summary>
-    /// Sets the hardware volume limit for a player's audio device.
-    /// This controls the PulseAudio sink volume, which sets the physical output level.
-    /// Note: If multiple players use the same device, they share the hardware volume.
-    /// </summary>
-    /// <param name="name">Player name.</param>
-    /// <param name="maxVolume">Hardware volume limit (0-100%).</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>True if successful, false if player not found or device not set.</returns>
-    public async Task<bool> SetHardwareVolumeLimitAsync(string name, int maxVolume, CancellationToken ct = default)
-    {
-        if (!_players.TryGetValue(name, out var context))
-            return false;
-
-        // Clamp to valid range
-        maxVolume = Math.Clamp(maxVolume, 0, 100);
-
-        // Update runtime config
-        context.Config.HardwareVolumeLimit = maxVolume;
-
-        // Apply to device if one is assigned
-        if (!string.IsNullOrEmpty(context.Config.DeviceId))
-        {
-            try
-            {
-                var success = await _backendFactory.SetVolumeAsync(context.Config.DeviceId, maxVolume, ct);
-                if (success)
-                {
-                    _logger.LogInformation("VOLUME [Hardware] Player '{Name}' device '{Device}': set to {Volume}%",
-                        name, context.Config.DeviceId, maxVolume);
-                }
-                else
-                {
-                    _logger.LogWarning("VOLUME [Hardware] Player '{Name}' device '{Device}': failed to set volume",
-                        name, context.Config.DeviceId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to set hardware volume for player '{Name}'", name);
-                // Don't fail - config is saved even if hardware change fails
-            }
-        }
-
-        // Persist configuration (update the YAML model)
-        _config.UpdatePlayerField(name, p => p.HardwareVolumeLimit = maxVolume);
-
-        // Broadcast status update
-        _ = BroadcastStatusAsync();
-
-        return true;
-    }
 
     /// <summary>
     /// Sets the mute state for a player.
@@ -1189,6 +1162,12 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
         var config = context.Config;
 
+        // Get startup volume from persisted config (NOT runtime volume)
+        // This ensures MA learns the correct preference on reconnection
+        var startupVolume = _config.Players.TryGetValue(name, out var persistedConfig)
+            ? persistedConfig.Volume ?? 100
+            : config.Volume;
+
         // Fully remove and dispose old player
         await RemoveAndDisposePlayerAsync(name);
 
@@ -1198,7 +1177,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             Device = config.DeviceId,
             ClientId = config.ClientId,
             ServerUrl = config.ServerUrl,
-            Volume = config.Volume,
+            Volume = startupVolume,  // Use startup volume, not runtime volume
             DelayMs = config.DelayMs,
             Persist = false // Already persisted
         };
@@ -1455,6 +1434,16 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _ => context.State
             };
 
+            // Record connection time and push initial volume to server when connected
+            // This ensures MA shows the correct startup volume immediately
+            if (args.NewState == ConnectionState.Connected)
+            {
+                context.ConnectedAt = DateTime.UtcNow;
+                _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': grace period started for {Duration}s",
+                    name, VolumeGracePeriod.TotalSeconds);
+                _ = PushVolumeToServerAsync(name, context);
+            }
+
             // Handle disconnection - queue for reconnection if appropriate
             if (args.NewState == ConnectionState.Disconnected &&
                 previousState != PlayerState.Stopped &&  // Not user-stopped
@@ -1545,15 +1534,64 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             // Clamp volume to valid range
             var serverVolume = Math.Clamp(group.Volume, 0, 100);
 
+            // Check if we're within the grace period after connection
+            var isWithinGracePeriod = context.ConnectedAt.HasValue &&
+                                     (DateTime.UtcNow - context.ConnectedAt.Value) < VolumeGracePeriod;
+
             // Update volume if changed
             if (serverVolume != context.Config.Volume)
             {
+                // During grace period, ignore MA's volume updates and push our startup volume back
+                if (isWithinGracePeriod)
+                {
+                    var gracePeriodRemaining = VolumeGracePeriod - (DateTime.UtcNow - context.ConnectedAt!.Value);
+                    _logger.LogInformation(
+                        "VOLUME [GracePeriod] Player '{Name}': ignoring MA volume {NewVol}% (within grace period, keeping startup volume {OldVol}%, {Remaining:F1}s remaining)",
+                        name, serverVolume, context.Config.Volume, gracePeriodRemaining.TotalSeconds);
+
+                    // Push our startup volume back to MA aggressively
+                    FireAndForget(async () =>
+                    {
+                        try
+                        {
+                            await context.Client.SetVolumeAsync(context.Config.Volume);
+                            _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': pushed startup volume {Volume}% back to MA",
+                                name, context.Config.Volume);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to push startup volume for '{Name}'", name);
+                        }
+                    }, $"Grace period volume push for '{name}'");
+
+                    return; // Don't update local volume or broadcast
+                }
+
+                // Outside grace period - accept MA's volume updates normally
                 _logger.LogInformation("VOLUME [ServerSync] Player '{Name}': {OldVol}% -> {NewVol}%",
                     name, context.Config.Volume, serverVolume);
 
-                // Just update our config to reflect server state - no hardware adjustment
-                // Server (Music Assistant) controls actual volume level
+                // Update runtime config only (affects current playback)
+                // DO NOT persist to config file - MA has its own volume database
+                // If we persist, we create a fight between our config and MA's database
+                // The config file volume is only the INITIAL volume sent on connection
                 context.Config.Volume = serverVolume;
+
+                // Send player state back to MA to update its stored preference
+                // This uses SendPlayerStateAsync which is fire-and-forget and doesn't trigger GroupStateChanged
+                FireAndForget(async () =>
+                {
+                    try
+                    {
+                        await context.Client.SendPlayerStateAsync(serverVolume, context.Player.IsMuted);
+                        _logger.LogDebug("VOLUME [StateEcho] Player '{Name}': echoed client/state with {Volume}%",
+                            name, serverVolume);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to echo player state for '{Name}'", name);
+                    }
+                }, $"Player state echo for '{name}'");
 
                 // Broadcast to UI so slider updates
                 _ = BroadcastStatusAsync();
@@ -1617,14 +1655,19 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         // Check if player is pending reconnection
         var isPendingReconnection = _pendingReconnections.TryGetValue(name, out var reconnectState);
 
+        // Get startup volume from persisted config (not runtime config which changes with MA)
+        var startupVolume = _config.Players.TryGetValue(name, out var persistedConfig)
+            ? persistedConfig.Volume ?? 100
+            : context.Config.Volume;
+
         return new PlayerResponse(
             Name: name,
             State: context.State,
             Device: context.Config.DeviceId,
             ClientId: context.Capabilities.ClientId,
             ServerUrl: context.Config.ServerUrl,
-            Volume: context.Config.Volume,
-            HardwareVolumeLimit: context.Config.HardwareVolumeLimit,
+            Volume: context.Config.Volume, // Runtime volume (synced with MA)
+            StartupVolume: startupVolume,   // Startup volume (from persisted config)
             IsMuted: context.Player.IsMuted,
             DelayMs: context.Config.DelayMs,
             OutputLatencyMs: context.Player.OutputLatencyMs,

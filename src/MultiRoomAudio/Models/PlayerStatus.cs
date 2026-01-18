@@ -27,7 +27,7 @@ public record PlayerResponse(
     string ClientId,
     string? ServerUrl,
     int Volume,
-    int HardwareVolumeLimit,
+    int StartupVolume,
     bool IsMuted,
     int DelayMs,
     int OutputLatencyMs,

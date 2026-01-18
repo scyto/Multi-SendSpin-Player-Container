@@ -44,7 +44,7 @@ Players appear automatically in Music Assistant via the Sendspin protocol.
 ### For Power Users
 - **Custom Sinks** - Split multi-channel DACs or combine outputs
 - **Sound Card Profiles** - Switch between stereo, multi-channel, and other modes
-- **Hardware Volume Control** - Direct DAC volume control for better audio quality
+- **Device Volume Limits** - Set maximum volume limits per sound card for safety
 - **Test Tones** - Verify audio routing during setup
 
 ### For Home Assistant Users
