@@ -393,21 +393,29 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             {
                 try
                 {
-                    // Check if device has a configured max volume limit
+                    // Determine volume to apply: use configured max if set, otherwise default 80%
                     var deviceKey = ConfigurationService.GenerateDeviceKey(device);
+                    int volumeToApply;
+                    string volumeSource;
+
                     if (deviceConfigs.TryGetValue(deviceKey, out var config) && config.MaxVolume.HasValue)
                     {
-                        _logger.LogDebug("VOLUME [Init] Device '{Name}' ({Id}): skipping, has configured limit of {Limit}%",
-                            device.Name, device.Id, config.MaxVolume.Value);
-                        continue;
+                        // User has explicitly configured a max volume - honor it
+                        volumeToApply = config.MaxVolume.Value;
+                        volumeSource = "configured max";
+                    }
+                    else
+                    {
+                        // No configured limit - apply default hardware volume
+                        volumeToApply = HardwareVolumePercent;
+                        volumeSource = "default";
                     }
 
-                    // No configured limit - apply default hardware volume
-                    var success = await _backendFactory.SetVolumeAsync(device.Id, HardwareVolumePercent, cancellationToken);
+                    var success = await _backendFactory.SetVolumeAsync(device.Id, volumeToApply, cancellationToken);
                     if (success)
                     {
-                        _logger.LogInformation("VOLUME [Init] Device '{Name}' ({Id}): set to {Volume}%",
-                            device.Name, device.Id, HardwareVolumePercent);
+                        _logger.LogInformation("VOLUME [Init] Device '{Name}' ({Id}): set to {Volume}% ({Source})",
+                            device.Name, device.Id, volumeToApply, volumeSource);
                     }
                     else
                     {
