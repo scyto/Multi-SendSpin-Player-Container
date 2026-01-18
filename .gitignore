@@ -59,7 +59,10 @@ coverage.xml
 # Testing
 .pytest_cache/
 .tox/
-tests/*
+# Keep test source files but ignore build artifacts
+tests/**/bin/
+tests/**/obj/
+tests/**/TestResults/
 
 # Documentation build
 docs/_build/
