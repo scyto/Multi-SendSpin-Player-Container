@@ -129,7 +129,6 @@ public static class OnboardingEndpoint
         app.MapPost("/api/onboarding/create-players", async (
             BatchCreatePlayersRequest request,
             PlayerManagerService playerManager,
-            ConfigurationService config,
             ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
@@ -141,98 +140,21 @@ public static class OnboardingEndpoint
                 return Results.BadRequest(new ErrorResponse(false, "No players specified"));
             }
 
-            var created = new List<string>();
-            var started = new List<string>();
-            var failed = new List<object>();
+            var result = await playerManager.BatchCreatePlayersAsync(request.Players, ct);
 
-            foreach (var playerReq in request.Players)
-            {
-                try
-                {
-                    if (string.IsNullOrWhiteSpace(playerReq.Name))
-                    {
-                        failed.Add(new { name = playerReq.Name ?? "(empty)", error = "Player name is required" });
-                        continue;
-                    }
-
-                    // Validate player name format (alphanumeric, spaces, hyphens, underscores only)
-                    if (!PlayerManagerService.ValidatePlayerName(playerReq.Name, out var nameError))
-                    {
-                        failed.Add(new { name = playerReq.Name, error = nameError });
-                        continue;
-                    }
-
-                    if (config.PlayerExists(playerReq.Name))
-                    {
-                        failed.Add(new { name = playerReq.Name, error = "Player already exists" });
-                        continue;
-                    }
-
-                    // Create player configuration
-                    var playerConfig = new PlayerConfiguration
-                    {
-                        Name = playerReq.Name,
-                        Device = playerReq.Device ?? string.Empty,
-                        Volume = playerReq.Volume ?? 75,
-                        Autostart = playerReq.Autostart ?? true,
-                        Provider = "sendspin"
-                    };
-
-                    config.SetPlayer(playerReq.Name, playerConfig);
-                    created.Add(playerReq.Name);
-
-                    logger.LogInformation("Created player from onboarding: {PlayerName}", playerReq.Name);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to create player {PlayerName}", playerReq.Name);
-                    failed.Add(new { name = playerReq.Name, error = ex.Message });
-                }
-            }
-
-            // Save all at once
-            if (created.Count > 0)
-            {
-                config.Save();
-            }
-
-            // Start each created player (autostart won't trigger since app already running)
-            foreach (var playerName in created)
-            {
-                try
-                {
-                    var playerConfig = config.GetPlayer(playerName);
-                    if (playerConfig == null)
-                        continue;
-
-                    var createRequest = new PlayerCreateRequest
-                    {
-                        Name = playerName,
-                        Device = playerConfig.Device,
-                        Volume = playerConfig.Volume ?? 75
-                    };
-
-                    await playerManager.CreatePlayerAsync(createRequest, ct);
-                    started.Add(playerName);
-                    logger.LogInformation("Started player from onboarding: {PlayerName}", playerName);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to start player {PlayerName} (config saved, will start on restart)", playerName);
-                    // Don't add to failed - the player was created, just not started
-                }
-            }
+            // Transform failed list to match existing API contract (anonymous objects with name/error)
+            var failed = result.Failed.Select(f => new { name = f.Name, error = f.Error }).ToList();
 
             return Results.Ok(new
             {
-                success = failed.Count == 0,
-                message = $"Created {created.Count} of {request.Players.Count} players, started {started.Count}",
-                created,
-                started,
+                success = result.Success,
+                message = $"Created {result.CreatedCount} of {request.Players.Count} players, started {result.StartedCount}",
+                created = result.Created,
+                started = result.Started,
                 failed,
-                createdCount = created.Count,
-                startedCount = started.Count,
-                failedCount = failed.Count
+                createdCount = result.CreatedCount,
+                startedCount = result.StartedCount,
+                failedCount = result.FailedCount
             });
         })
         .WithTags("Onboarding")
@@ -251,17 +173,3 @@ public record OnboardingCompleteRequest(int DevicesConfigured = 0, int PlayersCr
 /// Request to play a test tone.
 /// </summary>
 public record TestToneRequest(int? FrequencyHz = null, int? DurationMs = null);
-
-/// <summary>
-/// Request for batch player creation.
-/// </summary>
-public record BatchCreatePlayersRequest(List<BatchPlayerRequest>? Players);
-
-/// <summary>
-/// Single player creation request.
-/// </summary>
-public record BatchPlayerRequest(
-    string Name,
-    string? Device = null,
-    int? Volume = null,
-    bool? Autostart = null);

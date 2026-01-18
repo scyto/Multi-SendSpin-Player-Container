@@ -29,9 +29,9 @@ public static class SinksEndpoint
             .WithOpenApi();
 
         // GET /api/sinks - List all custom sinks
-        group.MapGet("/", (CustomSinksService service, ILoggerFactory lf) =>
+        group.MapGet("/", (CustomSinksService service, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: GET /api/sinks");
             var response = service.GetAllSinks();
             logger.LogDebug("API: Returning {SinkCount} custom sinks", response.Count);
@@ -56,9 +56,9 @@ public static class SinksEndpoint
         .WithDescription("Get available PulseAudio channel names for remap-sink configuration");
 
         // GET /api/sinks/{name} - Get specific sink
-        group.MapGet("/{name}", (string name, CustomSinksService service, ILoggerFactory lf) =>
+        group.MapGet("/{name}", (string name, CustomSinksService service, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: GET /api/sinks/{SinkName}", name);
             var sink = service.GetSink(name);
             if (sink == null)
@@ -73,10 +73,10 @@ public static class SinksEndpoint
         group.MapPost("/combine", async (
             CombineSinkCreateRequest request,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: POST /api/sinks/combine - Creating {SinkName}", request.Name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -92,10 +92,10 @@ public static class SinksEndpoint
         group.MapPost("/remap", async (
             RemapSinkCreateRequest request,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: POST /api/sinks/remap - Creating {SinkName}", request.Name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -111,10 +111,10 @@ public static class SinksEndpoint
         group.MapDelete("/{name}", async (
             string name,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: DELETE /api/sinks/{SinkName}", name);
             var deleted = await service.DeleteSinkAsync(name, ct);
             if (!deleted)
@@ -130,10 +130,10 @@ public static class SinksEndpoint
         group.MapGet("/{name}/status", async (
             string name,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: GET /api/sinks/{SinkName}/status", name);
             var sink = service.GetSink(name);
             if (sink == null)
@@ -155,10 +155,10 @@ public static class SinksEndpoint
         group.MapPost("/{name}/reload", async (
             string name,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: POST /api/sinks/{SinkName}/reload", name);
             var sink = await service.ReloadSinkAsync(name, ct);
             if (sink == null)
@@ -176,10 +176,10 @@ public static class SinksEndpoint
             TestToneRequest? request,
             CustomSinksService service,
             ToneGeneratorService toneGenerator,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: POST /api/sinks/{SinkName}/test-tone", name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -220,9 +220,9 @@ public static class SinksEndpoint
         .WithDescription("Play a test tone through a custom sink for identification");
 
         // GET /api/sinks/import/scan - Scan default.pa for importable sinks
-        group.MapGet("/import/scan", (DefaultPaParser parser, ILoggerFactory lf) =>
+        group.MapGet("/import/scan", (DefaultPaParser parser, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: GET /api/sinks/import/scan");
 
             if (!parser.IsAvailable())
@@ -264,10 +264,10 @@ public static class SinksEndpoint
             ImportSinksRequest request,
             DefaultPaParser parser,
             CustomSinksService service,
-            ILoggerFactory lf,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
-            var logger = lf.CreateLogger("SinksEndpoint");
+            var logger = loggerFactory.CreateLogger("SinksEndpoint");
             logger.LogDebug("API: POST /api/sinks/import - Importing {Count} sinks", request.LineNumbers.Count);
 
             if (!parser.IsAvailable())

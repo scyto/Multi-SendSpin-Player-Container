@@ -30,8 +30,9 @@ public static class PlayersEndpoint
             .WithOpenApi();
 
         // GET /api/players - List all players
-        group.MapGet("/", (PlayerManagerService manager, ILogger<PlayerManagerService> logger) =>
+        group.MapGet("/", (PlayerManagerService manager, ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: GET /api/players");
             var response = manager.GetAllPlayers();
             logger.LogDebug("API: Returning {PlayerCount} players", response.Count);
@@ -41,8 +42,9 @@ public static class PlayersEndpoint
         .WithDescription("Get all active players");
 
         // GET /api/players/{name} - Get specific player
-        group.MapGet("/{name}", (string name, PlayerManagerService manager, ILogger<PlayerManagerService> logger) =>
+        group.MapGet("/{name}", (string name, PlayerManagerService manager, ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: GET /api/players/{PlayerName}", name);
             var player = manager.GetPlayer(name);
             if (player == null)
@@ -54,8 +56,9 @@ public static class PlayersEndpoint
         .WithDescription("Get details of a specific player");
 
         // GET /api/players/{name}/stats - Get real-time player stats (Stats for Nerds)
-        group.MapGet("/{name}/stats", (string name, PlayerManagerService manager, ILogger<PlayerManagerService> logger) =>
+        group.MapGet("/{name}/stats", (string name, PlayerManagerService manager, ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: GET /api/players/{PlayerName}/stats", name);
             var stats = manager.GetPlayerStats(name);
             if (stats == null)
@@ -70,9 +73,10 @@ public static class PlayersEndpoint
         group.MapPost("/", async (
             PlayerCreateRequest request,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players - Creating player {PlayerName}", request.Name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -88,8 +92,9 @@ public static class PlayersEndpoint
         group.MapDelete("/{name}", async (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: DELETE /api/players/{PlayerName}", name);
             var deleted = await manager.DeletePlayerAsync(name);
             if (!deleted)
@@ -105,8 +110,9 @@ public static class PlayersEndpoint
         group.MapPost("/{name}/stop", async (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players/{PlayerName}/stop", name);
             var stopped = await manager.StopPlayerAsync(name);
             if (!stopped)
@@ -122,9 +128,10 @@ public static class PlayersEndpoint
         group.MapPost("/{name}/start", async (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players/{PlayerName}/start", name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -143,9 +150,10 @@ public static class PlayersEndpoint
         group.MapPost("/{name}/restart", async (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players/{PlayerName}/restart", name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -165,9 +173,10 @@ public static class PlayersEndpoint
             string name,
             DeviceSwitchRequest request,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: PUT /api/players/{PlayerName}/device to {Device}",
                 name, request.Device ?? "(default)");
             return await ApiExceptionHandler.ExecuteAsync(async () =>
@@ -189,9 +198,10 @@ public static class PlayersEndpoint
             string name,
             VolumeRequest request,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogInformation("VOLUME [API] PUT /api/players/{Name}/volume: {Volume}%", name, request.Volume);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -210,8 +220,9 @@ public static class PlayersEndpoint
             string name,
             VolumeRequest request,
             ConfigurationService config,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogInformation("VOLUME [API] PUT /api/players/{Name}/startup-volume: {Volume}%", name, request.Volume);
             return ApiExceptionHandler.Execute(() =>
             {
@@ -237,8 +248,9 @@ public static class PlayersEndpoint
             string name,
             MuteRequest request,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: PUT /api/players/{PlayerName}/mute to {Muted}", name, request.Muted);
             var success = manager.SetMuted(name, request.Muted);
             if (!success)
@@ -255,8 +267,9 @@ public static class PlayersEndpoint
             OffsetRequest request,
             PlayerManagerService manager,
             ConfigurationService config,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: PUT /api/players/{PlayerName}/offset to {DelayMs}ms", name, request.DelayMs);
 
             // Apply to running player (affects clock sync timing immediately)
@@ -275,8 +288,9 @@ public static class PlayersEndpoint
         group.MapPost("/{name}/pause", (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players/{PlayerName}/pause", name);
             return ApiExceptionHandler.Execute(() =>
             {
@@ -295,8 +309,9 @@ public static class PlayersEndpoint
         group.MapPost("/{name}/resume", (
             string name,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: POST /api/players/{PlayerName}/resume", name);
             return ApiExceptionHandler.Execute(() =>
             {
@@ -317,9 +332,10 @@ public static class PlayersEndpoint
             PlayerUpdateRequest request,
             PlayerManagerService manager,
             ConfigurationService config,
-            ILogger<PlayerManagerService> logger,
+            ILoggerFactory loggerFactory,
             CancellationToken ct) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: PUT /api/players/{PlayerName}", name);
             return await ApiExceptionHandler.ExecuteAsync(async () =>
             {
@@ -404,8 +420,9 @@ public static class PlayersEndpoint
             string name,
             RenameRequest request,
             PlayerManagerService manager,
-            ILogger<PlayerManagerService> logger) =>
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("PlayersEndpoint");
             logger.LogDebug("API: PUT /api/players/{PlayerName}/rename to {NewName}", name, request.NewName);
             return ApiExceptionHandler.Execute(() =>
             {

@@ -806,6 +806,108 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     }
 
     /// <summary>
+    /// Creates multiple players in a batch operation.
+    /// Validates all players, saves configurations, and starts them.
+    /// </summary>
+    /// <param name="players">The list of players to create.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Result containing lists of created, started, and failed players.</returns>
+    public async Task<BatchCreatePlayersResult> BatchCreatePlayersAsync(
+        List<BatchPlayerRequest> players,
+        CancellationToken ct = default)
+    {
+        var created = new List<string>();
+        var started = new List<string>();
+        var failed = new List<BatchPlayerFailure>();
+
+        // Validate and create configurations for each player
+        foreach (var playerReq in players)
+        {
+            try
+            {
+                // Validate player name is not empty
+                if (string.IsNullOrWhiteSpace(playerReq.Name))
+                {
+                    failed.Add(new BatchPlayerFailure(playerReq.Name ?? "(empty)", "Player name is required"));
+                    continue;
+                }
+
+                // Validate player name format
+                if (!ValidatePlayerName(playerReq.Name, out var nameError))
+                {
+                    failed.Add(new BatchPlayerFailure(playerReq.Name, nameError!));
+                    continue;
+                }
+
+                // Check if player already exists
+                if (_config.PlayerExists(playerReq.Name))
+                {
+                    failed.Add(new BatchPlayerFailure(playerReq.Name, "Player already exists"));
+                    continue;
+                }
+
+                // Create player configuration
+                var playerConfig = new PlayerConfiguration
+                {
+                    Name = playerReq.Name,
+                    Device = playerReq.Device ?? string.Empty,
+                    Volume = playerReq.Volume ?? 75,
+                    Autostart = playerReq.Autostart ?? true,
+                    Provider = "sendspin"
+                };
+
+                _config.SetPlayer(playerReq.Name, playerConfig);
+                created.Add(playerReq.Name);
+
+                _logger.LogInformation("Created player configuration from batch: {PlayerName}", playerReq.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create player configuration {PlayerName}", playerReq.Name);
+                failed.Add(new BatchPlayerFailure(playerReq.Name ?? "(unknown)", ex.Message));
+            }
+        }
+
+        // Save all configurations at once
+        if (created.Count > 0)
+        {
+            _config.Save();
+        }
+
+        // Start each created player
+        // Note: Autostart won't trigger since the app is already running
+        foreach (var playerName in created)
+        {
+            try
+            {
+                var playerConfig = _config.GetPlayer(playerName);
+                if (playerConfig == null)
+                    continue;
+
+                var createRequest = new PlayerCreateRequest
+                {
+                    Name = playerName,
+                    Device = playerConfig.Device,
+                    Volume = playerConfig.Volume ?? 75
+                };
+
+                await CreatePlayerAsync(createRequest, ct);
+                started.Add(playerName);
+
+                _logger.LogInformation("Started player from batch: {PlayerName}", playerName);
+            }
+            catch (Exception ex)
+            {
+                // Don't add to failed - the player was created (config saved), just not started
+                // It will start on next restart
+                _logger.LogWarning(ex, "Failed to start player {PlayerName} (config saved, will start on restart)", playerName);
+            }
+        }
+
+        return new BatchCreatePlayersResult(created, started, failed);
+    }
+
+    /// <summary>
     /// Gets the current status of a player.
     /// </summary>
     public PlayerResponse? GetPlayer(string name)

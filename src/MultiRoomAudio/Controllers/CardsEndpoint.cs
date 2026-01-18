@@ -17,9 +17,9 @@ public static class CardsEndpoint
             .WithOpenApi();
 
         // GET /api/cards - List all sound cards with their profiles
-        group.MapGet("/", (CardProfileService service, ILoggerFactory lf) =>
+        group.MapGet("/", (CardProfileService service, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: GET /api/cards");
             return ApiExceptionHandler.Execute(() =>
             {
@@ -32,9 +32,9 @@ public static class CardsEndpoint
         .WithDescription("List all PulseAudio sound cards with their available profiles");
 
         // GET /api/cards/saved - Get saved profile configurations
-        group.MapGet("/saved", (CardProfileService service, ILoggerFactory lf) =>
+        group.MapGet("/saved", (CardProfileService service, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: GET /api/cards/saved");
 
             var saved = service.GetSavedProfiles();
@@ -48,9 +48,9 @@ public static class CardsEndpoint
         .WithDescription("Get all saved card profile configurations that will be restored on startup");
 
         // GET /api/cards/{nameOrIndex} - Get specific card
-        group.MapGet("/{nameOrIndex}", (string nameOrIndex, CardProfileService service, ILoggerFactory lf) =>
+        group.MapGet("/{nameOrIndex}", (string nameOrIndex, CardProfileService service, ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: GET /api/cards/{CardId}", nameOrIndex);
             return ApiExceptionHandler.Execute(() =>
             {
@@ -71,9 +71,9 @@ public static class CardsEndpoint
             string nameOrIndex,
             SetCardProfileRequest request,
             CardProfileService service,
-            ILoggerFactory lf) =>
+            ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: PUT /api/cards/{CardId}/profile - Setting to {Profile}",
                 nameOrIndex, request.Profile);
 
@@ -121,9 +121,9 @@ public static class CardsEndpoint
             string nameOrIndex,
             SetCardBootMuteRequest request,
             CardProfileService service,
-            ILoggerFactory lf) =>
+            ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: PUT /api/cards/{CardId}/boot-mute to {Muted}", nameOrIndex, request.Muted);
 
             var result = service.SetCardBootMute(nameOrIndex, request.Muted);
@@ -150,9 +150,9 @@ public static class CardsEndpoint
             string nameOrIndex,
             SetCardMuteRequest request,
             CardProfileService service,
-            ILoggerFactory lf) =>
+            ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: PUT /api/cards/{CardId}/mute to {Muted}", nameOrIndex, request.Muted);
 
             var result = await service.SetCardMuteAsync(nameOrIndex, request.Muted);
@@ -179,9 +179,9 @@ public static class CardsEndpoint
             string nameOrIndex,
             SetCardMaxVolumeRequest request,
             CardProfileService service,
-            ILoggerFactory lf) =>
+            ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: PUT /api/cards/{CardId}/max-volume to {MaxVolume}", nameOrIndex, request.MaxVolume);
 
             var result = await service.SetCardMaxVolumeAsync(nameOrIndex, request.MaxVolume);
@@ -207,9 +207,9 @@ public static class CardsEndpoint
         group.MapDelete("/{nameOrIndex}/saved", (
             string nameOrIndex,
             CardProfileService service,
-            ILoggerFactory lf) =>
+            ILoggerFactory loggerFactory) =>
         {
-            var logger = lf.CreateLogger("CardsEndpoint");
+            var logger = loggerFactory.CreateLogger("CardsEndpoint");
             logger.LogDebug("API: DELETE /api/cards/{CardId}/saved", nameOrIndex);
 
             var removed = service.RemoveSavedProfile(nameOrIndex);
