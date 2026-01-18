@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-bd5f2b5
+## Development Build: sha-996577d
 
 **Current Dev Build Changes** (recent)
 
+- Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
+- add back aarch64 to the config so it can get the already building images.
 - Merge branch 'main' into dev
 - Merge pull request #69 from scyto/feature/preserve-volume-across-tracks
 - Fix hardware volume init to always apply volume, not skip
@@ -12,8 +14,6 @@
 - Add volume grace period to resolve startup volume sync battle
 - Fix tooltip persistence issues by properly disposing old instances
 - Add automatic page reload on backend version change
-- Fix: Restore volume sync and implement proper tooltips
-- UI improvements for player volume controls
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
