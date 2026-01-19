@@ -171,7 +171,7 @@ public sealed class HidRelayBoard : IRelayBoard
             else
                 _currentState &= ~(1 << (channel - 1));
 
-            _logger?.LogInformation("HID SetRelay({Channel}, {On}): sent SetFeature, local state 0x{Old:X2}->0x{New:X2}",
+            _logger?.LogDebug("HID SetRelay({Channel}, {On}): local state 0x{Old:X2}->0x{New:X2}",
                 channel, on ? "ON" : "OFF", oldState, _currentState);
             return true;
         }
@@ -187,12 +187,14 @@ public sealed class HidRelayBoard : IRelayBoard
         if (!IsConnected || channel < 1 || channel > _channelCount)
             return RelayState.Unknown;
 
-        // Read current state from device
-        RefreshState();
+        // NOTE: These HID relay boards do NOT reliably report state via GetFeature.
+        // The feature report byte[7] returns 0x00 even when relays are on.
+        // We rely on local state tracking updated by SetRelay() instead.
+        // RefreshState() is NOT called here to avoid overwriting correct local state.
 
         var isOn = (_currentState & (1 << (channel - 1))) != 0;
         var result = isOn ? RelayState.On : RelayState.Off;
-        _logger?.LogInformation("HID GetRelay({Channel}): state=0x{State:X2}, mask=0x{Mask:X2}, result={Result}",
+        _logger?.LogDebug("HID GetRelay({Channel}): localState=0x{State:X2}, mask=0x{Mask:X2}, result={Result}",
             channel, _currentState, 1 << (channel - 1), result);
         return result;
     }
@@ -212,6 +214,11 @@ public sealed class HidRelayBoard : IRelayBoard
         return success;
     }
 
+    /// <summary>
+    /// Read state from device feature report.
+    /// WARNING: Many HID relay boards return 0x00 in byte[7] regardless of actual state.
+    /// This method is only used during initial connection, NOT for ongoing state tracking.
+    /// </summary>
     private void RefreshState()
     {
         if (_stream == null) return;
@@ -221,11 +228,8 @@ public sealed class HidRelayBoard : IRelayBoard
             var report = new byte[9];
             report[0] = 0;
             _stream.GetFeature(report);
-            var oldState = _currentState;
             _currentState = report[7];
-            _logger?.LogInformation("HID RefreshState: report=[{Bytes}], byte[7]=0x{StateByte:X2}, state: 0x{Old:X2}->0x{New:X2}",
-                string.Join(",", report.Select(b => $"0x{b:X2}")),
-                report[7], oldState, _currentState);
+            _logger?.LogDebug("HID RefreshState: byte[7]=0x{StateByte:X2}", report[7]);
         }
         catch (Exception ex)
         {
