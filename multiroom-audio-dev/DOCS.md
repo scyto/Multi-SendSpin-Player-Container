@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-54fca0b
+## Development Build: sha-828aa01
 
 **Current Dev Build Changes** (recent)
 
+- Extract BackgroundTaskExecutor utility from PlayerManagerService
 - Refactor long methods in PlayerManagerService for improved readability
 - Add XML documentation to endpoint extensions and validation attributes
 - Improve thread safety with ReaderWriterLockSlim and disposal patterns
@@ -14,7 +15,6 @@
 - Extract StartupDiagnosticsService and add UpdateDeviceProperty helper
 - Update all user-facing references from "Initial Volume" to "Startup Volume"
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into feature/rename-initial-volume-to-startup-volume
-- Use FireAndForget helper for async player connection and broadcast
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
