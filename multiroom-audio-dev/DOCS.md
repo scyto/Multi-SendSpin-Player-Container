@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-828aa01
+## Development Build: sha-738de36
 
 **Current Dev Build Changes** (recent)
 
+- Add AppArmor profile to dev add-on for improved security
 - Extract BackgroundTaskExecutor utility from PlayerManagerService
 - Refactor long methods in PlayerManagerService for improved readability
 - Add XML documentation to endpoint extensions and validation attributes
@@ -14,7 +15,6 @@
 - Refactor controllers: move batch logic to service, standardize patterns
 - Extract StartupDiagnosticsService and add UpdateDeviceProperty helper
 - Update all user-facing references from "Initial Volume" to "Startup Volume"
-- Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into feature/rename-initial-volume-to-startup-volume
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
