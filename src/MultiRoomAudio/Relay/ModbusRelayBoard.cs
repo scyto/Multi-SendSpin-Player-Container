@@ -1,4 +1,5 @@
 using System.IO.Ports;
+using System.Security.Cryptography;
 using System.Text;
 using MultiRoomAudio.Models;
 
@@ -122,6 +123,45 @@ public sealed class ModbusRelayBoard : IRelayBoard
 
         _logger?.LogWarning("Failed to open Modbus relay board at '{Port}'", portName);
         return false;
+    }
+
+    /// <summary>
+    /// Open a Modbus relay board by matching the USB port path hash.
+    /// Scans available serial ports to find one with matching USB port path.
+    /// </summary>
+    /// <param name="pathHash">The hash portion of the board ID (e.g., "A1B2C3D4" from "MODBUS:A1B2C3D4")</param>
+    /// <returns>True if connection was successful.</returns>
+    public bool OpenByUsbPathHash(string pathHash)
+    {
+        if (_disposed)
+            return false;
+
+        try
+        {
+            var devices = EnumerateDevices(_logger);
+            foreach (var device in devices)
+            {
+                if (!device.IsPathBased)
+                    continue;
+
+                // Calculate the same hash used when enumerating
+                var deviceHash = ModbusRelayDeviceInfo.StableHash(device.UsbPortPath!);
+                if (deviceHash.Equals(pathHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger?.LogDebug("Found Modbus relay board by USB path hash: {Hash} -> {Port}",
+                        pathHash, device.PortName);
+                    return TryOpenPort(device.PortName);
+                }
+            }
+
+            _logger?.LogWarning("Modbus relay board with USB path hash '{Hash}' not found", pathHash);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to open Modbus relay board by USB path hash '{Hash}'", pathHash);
+            return false;
+        }
     }
 
     private bool TryOpenPort(string portName)
@@ -506,15 +546,18 @@ public sealed class ModbusRelayBoard : IRelayBoard
 
             foreach (var port in ports)
             {
-                // We can't definitively identify a CH340 relay board without probing it,
-                // but we can list available serial ports
+                // Try to get the USB port path for stable identification
+                var usbPortPath = GetUsbPortPath(port, logger);
+
                 result.Add(new ModbusRelayDeviceInfo(
                     PortName: port,
                     Description: GetPortDescription(port),
-                    IsAvailable: true
+                    IsAvailable: true,
+                    UsbPortPath: usbPortPath
                 ));
 
-                logger?.LogDebug("Found potential Modbus relay port: {Port}", port);
+                logger?.LogDebug("Found potential Modbus relay port: {Port}, USB path: {UsbPath}",
+                    port, usbPortPath ?? "(unknown)");
             }
         }
         catch (Exception ex)
@@ -523,6 +566,66 @@ public sealed class ModbusRelayBoard : IRelayBoard
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Get the USB port path for a serial port device (Linux only).
+    /// Returns the bus-port path like "1-2.3" which is stable across reboots.
+    /// </summary>
+    private static string? GetUsbPortPath(string portName, ILogger? logger = null)
+    {
+        if (!OperatingSystem.IsLinux())
+            return null;
+
+        try
+        {
+            // On Linux, /sys/class/tty/ttyUSBX/device is a symlink to the USB device
+            // e.g., /sys/class/tty/ttyUSB0/device -> ../../devices/.../usb1/1-2/1-2.3/1-2.3:1.0/ttyUSB0
+            var deviceName = Path.GetFileName(portName); // e.g., "ttyUSB0"
+            var sysPath = $"/sys/class/tty/{deviceName}/device";
+
+            if (!Directory.Exists(sysPath))
+            {
+                logger?.LogDebug("Sysfs path not found for {Port}: {Path}", portName, sysPath);
+                return null;
+            }
+
+            // Resolve the symlink to get the full device path
+            var targetPath = Path.GetFullPath(sysPath);
+
+            // Extract the USB port path (e.g., "1-2.3") from the path
+            // The path typically contains something like /usb1/1-2/1-2.3/1-2.3:1.0/
+            var match = System.Text.RegularExpressions.Regex.Match(
+                targetPath,
+                @"/(\d+-[\d.]+)(?::\d+\.\d+)?/");
+
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+
+            // Alternative: try reading from uevent or other sysfs files
+            var ueventPath = Path.Combine(sysPath, "..", "..", "uevent");
+            if (File.Exists(ueventPath))
+            {
+                var uevent = File.ReadAllText(ueventPath);
+                var devPathMatch = System.Text.RegularExpressions.Regex.Match(
+                    uevent,
+                    @"DEVPATH=.*/(\d+-[\d.]+)/");
+                if (devPathMatch.Success)
+                {
+                    return devPathMatch.Groups[1].Value;
+                }
+            }
+
+            logger?.LogDebug("Could not extract USB port path from {Path}", targetPath);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Error getting USB port path for {Port}", portName);
+            return null;
+        }
     }
 
     /// <summary>
@@ -556,11 +659,38 @@ public sealed class ModbusRelayBoard : IRelayBoard
 public record ModbusRelayDeviceInfo(
     string PortName,
     string Description,
-    bool IsAvailable
+    bool IsAvailable,
+    string? UsbPortPath = null
 )
 {
     /// <summary>
     /// Get the board identifier for this device.
+    /// Uses USB port path hash if available (stable), otherwise falls back to port name (unstable).
     /// </summary>
-    public string GetBoardId() => $"MODBUS:{PortName}";
+    public string GetBoardId()
+    {
+        if (!string.IsNullOrEmpty(UsbPortPath))
+        {
+            // Use stable hash of USB port path - consistent across reboots
+            return $"MODBUS:{StableHash(UsbPortPath)}";
+        }
+        // Fallback to port name (unstable - can change between reboots)
+        return $"MODBUS:{PortName}";
+    }
+
+    /// <summary>
+    /// Whether this device is identified by USB port path (stable) or port name (unstable).
+    /// </summary>
+    public bool IsPathBased => !string.IsNullOrEmpty(UsbPortPath);
+
+    /// <summary>
+    /// Compute a stable 8-character hash from a string.
+    /// Uses MD5 for deterministic results across process restarts and platforms.
+    /// </summary>
+    internal static string StableHash(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hash = MD5.HashData(bytes);
+        return $"{hash[0]:X2}{hash[1]:X2}{hash[2]:X2}{hash[3]:X2}";
+    }
 }

@@ -101,12 +101,12 @@ public class RealRelayDeviceEnumerator : IRelayDeviceEnumerator
                 result.Add(new RelayDeviceInfo(
                     BoardId: modbus.GetBoardId(),
                     BoardType: RelayBoardType.Modbus,
-                    SerialNumber: null, // Modbus boards don't have serial numbers
+                    SerialNumber: modbus.UsbPortPath, // Store USB port path if available
                     Description: modbus.Description,
                     ChannelCount: 16, // Default - user must configure manually
                     IsInUse: false,
-                    UsbPath: modbus.PortName,
-                    IsPathBased: true, // Serial ports are always path-based
+                    UsbPath: modbus.PortName, // Current serial port name
+                    IsPathBased: modbus.IsPathBased, // True if we have USB port path
                     ChannelCountDetected: false // Modbus boards can't auto-detect channel count
                 ));
             }

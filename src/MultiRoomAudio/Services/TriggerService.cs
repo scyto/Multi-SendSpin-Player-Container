@@ -739,9 +739,26 @@ public class TriggerService : IHostedService, IAsyncDisposable
                 // USB port-based board - open first available
                 connected = board.Open();
             }
+            else if (boardId.StartsWith("MODBUS:", StringComparison.OrdinalIgnoreCase))
+            {
+                var modbusId = boardId.Substring(7);
+                // Check if it's a USB path hash (8 hex chars) or a port name (/dev/ttyUSB0)
+                var isHashId = modbusId.Length == 8 && modbusId.All(c => char.IsAsciiHexDigit(c));
+
+                if (isHashId && board is ModbusRelayBoard modbusBoard)
+                {
+                    // Hash-based identification - find by USB port path
+                    connected = modbusBoard.OpenByUsbPathHash(modbusId);
+                }
+                else
+                {
+                    // Legacy port-name based identification
+                    connected = board.OpenBySerial(boardId);
+                }
+            }
             else
             {
-                // FTDI/Modbus use serial-based identification
+                // FTDI uses serial-based identification
                 var serial = GetSerialFromBoardId(boardId);
                 connected = string.IsNullOrEmpty(serial) ? board.Open() : board.OpenBySerial(serial);
             }
