@@ -240,38 +240,28 @@ public static class SinksEndpoint
                     {
                         // Get the master channel this output maps to
                         var masterChannel = mapping.MasterChannel;
-                        var channelIndex = PulseAudioChannels.GetChannelIndex(masterChannel);
 
-                        if (channelIndex >= 0)
+                        logger.LogInformation(
+                            "Remap sink test: Playing to master '{Master}' channel {ChannelName} via --channel-map",
+                            sink.MasterSink, masterChannel);
+
+                        await toneGenerator.PlayChannelToneAsync(
+                            sink.MasterSink,
+                            masterChannel,
+                            request.FrequencyHz ?? 1000,
+                            request.DurationMs ?? 1500,
+                            ct);
+
+                        return Results.Ok(new
                         {
-                            // Determine master device channel count (default to 8 for 7.1 surround)
-                            // This covers the most common multi-channel use case
-                            var masterChannelCount = 8;
-
-                            logger.LogInformation(
-                                "Remap sink test: Playing to master '{Master}' channel {Index} ({ChannelName})",
-                                sink.MasterSink, channelIndex, masterChannel);
-
-                            await toneGenerator.PlayMasterChannelToneAsync(
-                                sink.MasterSink,
-                                masterChannelCount,
-                                channelIndex,
-                                request.FrequencyHz ?? 1000,
-                                request.DurationMs ?? 1500,
-                                ct);
-
-                            return Results.Ok(new
-                            {
-                                success = true,
-                                message = "Test tone played successfully",
-                                sinkName = name,
-                                masterSink = sink.MasterSink,
-                                masterChannel = masterChannel,
-                                channelIndex = channelIndex,
-                                frequencyHz = request.FrequencyHz ?? 1000,
-                                durationMs = request.DurationMs ?? 1500
-                            });
-                        }
+                            success = true,
+                            message = "Test tone played successfully",
+                            sinkName = name,
+                            masterSink = sink.MasterSink,
+                            masterChannel = masterChannel,
+                            frequencyHz = request.FrequencyHz ?? 1000,
+                            durationMs = request.DurationMs ?? 1500
+                        });
                     }
                 }
 
