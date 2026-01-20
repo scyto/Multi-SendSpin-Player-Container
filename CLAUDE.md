@@ -39,11 +39,18 @@ ASP.NET Core 8.0 Application
 │   ├── PlayersEndpoint.cs       # /api/players CRUD
 │   ├── DevicesEndpoint.cs       # /api/devices
 │   ├── ProvidersEndpoint.cs     # /api/providers
+│   ├── TriggersEndpoint.cs      # /api/triggers (12V relay control)
 │   └── HealthEndpoint.cs        # /api/health
 ├── Services/
 │   ├── PlayerManagerService.cs   # SDK player lifecycle
 │   ├── ConfigurationService.cs   # YAML persistence
+│   ├── TriggerService.cs        # Relay board management, player↔relay mapping
 │   └── EnvironmentService.cs     # Docker vs HAOS detection
+├── Relay/                        # 12V trigger hardware abstraction
+│   ├── IRelayBoard.cs           # Common relay board interface
+│   ├── HidRelayBoard.cs         # USB HID relay boards (DCT Tech)
+│   ├── FtdiRelayBoard.cs        # FTDI relay boards (Denkovi)
+│   └── MockRelayBoard.cs        # Mock board for testing
 ├── Audio/                        # Audio output layer
 │   ├── BufferedAudioSampleSource.cs  # Bridges timed buffer to audio output
 │   ├── PulseAudio/              # PulseAudio backend (primary)
@@ -51,7 +58,9 @@ ASP.NET Core 8.0 Application
 ├── Utilities/
 │   ├── ClientIdGenerator.cs     # MD5-based IDs
 │   └── AlsaCommandRunner.cs     # Volume control
-├── Models/                       # Request/Response types
+├── Models/
+│   ├── TriggerModels.cs         # Trigger/relay data models
+│   └── ...                      # Other request/response types
 ├── wwwroot/                      # Static web UI
 └── Program.cs                    # Entry point
 ```
@@ -157,6 +166,7 @@ new ErrorResponse(false, "Error message")
 | `CONFIG_PATH` | `/app/config` | Configuration directory (Docker mode) |
 | `LOG_PATH` | `/app/logs` | Log directory (Docker mode) |
 | `SUPERVISOR_TOKEN` | (HAOS only) | Auto-set by Home Assistant supervisor |
+| `MOCK_HARDWARE` | `false` | Enable mock relay boards for testing without hardware |
 
 ---
 
@@ -202,6 +212,8 @@ squeezelite-docker/
 
 ## API Endpoints
 
+### Players
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/players` | List all players |
@@ -212,6 +224,11 @@ squeezelite-docker/
 | POST | `/api/players/{name}/restart` | Restart player |
 | PUT | `/api/players/{name}/volume` | Set volume |
 | PUT | `/api/players/{name}/offset` | Set delay offset |
+
+### Audio Devices
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/devices` | List audio devices |
 | GET | `/api/providers` | List available providers |
 | GET | `/api/cards` | List all sound cards |
@@ -219,7 +236,32 @@ squeezelite-docker/
 | PUT | `/api/cards/{id}/profile` | Set card profile |
 | PUT | `/api/cards/{id}/mute` | Mute/unmute card in real-time |
 | PUT | `/api/cards/{id}/boot-mute` | Set boot mute preference |
+
+### 12V Triggers (Relay Control)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/triggers` | Get trigger feature status and all boards |
+| PUT | `/api/triggers/enabled` | Enable/disable the trigger feature |
+| GET | `/api/triggers/devices` | List available FTDI devices (legacy) |
+| GET | `/api/triggers/devices/all` | List all relay devices (FTDI + HID) |
+| GET | `/api/triggers/boards` | List all configured boards |
+| POST | `/api/triggers/boards` | Add a new relay board |
+| GET | `/api/triggers/boards/{boardId}` | Get specific board status |
+| PUT | `/api/triggers/boards/{boardId}` | Update board settings |
+| DELETE | `/api/triggers/boards/{boardId}` | Remove a board |
+| POST | `/api/triggers/boards/{boardId}/reconnect` | Reconnect a specific board |
+| GET | `/api/triggers/boards/{boardId}/{channel}` | Get channel status |
+| PUT | `/api/triggers/boards/{boardId}/{channel}` | Configure trigger channel |
+| DELETE | `/api/triggers/boards/{boardId}/{channel}` | Unassign trigger channel |
+| POST | `/api/triggers/boards/{boardId}/{channel}/test` | Test relay (on/off) |
+
+### Other
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/health` | Health check |
+| GET | `/api/sinks` | List custom audio sinks |
 
 ---
 
@@ -236,6 +278,63 @@ The `EnvironmentService` automatically detects the runtime environment:
   - Config path: `/app/config` (or `CONFIG_PATH` env)
   - Log path: `/app/logs` (or `LOG_PATH` env)
   - Audio backend: ALSA
+
+---
+
+## 12V Trigger Hardware Reference
+
+The trigger system supports USB relay boards for automatic amplifier power control.
+
+### Supported Hardware
+
+| Type | VID:PID | Example Products | Channel Detection |
+| ---- | ------- | ---------------- | ----------------- |
+| **USB HID** | `0x16C0:0x05DF` | DCT Tech, ucreatefun | Auto-detected from product name (e.g., "USBRelay8") |
+| **FTDI** | `0x0403:0x6001` | Denkovi DAE0006K | Manual configuration required |
+
+### Board Identification
+
+Boards are identified in priority order:
+
+1. **Serial Number** (preferred) - Stable across reboots and USB port changes
+2. **USB Port Path** (fallback) - For boards without unique serial numbers, format: `USB:1-2.3`
+
+### HID Protocol Details
+
+- Feature report byte 0: Report ID (0x00)
+- Feature report bytes 1-5: Serial number (ASCII, may contain garbage - sanitized)
+- Feature report byte 7: Relay state bitmask (unreliable - always returns 0x00 on some boards)
+- Command `0xFF` + channel: Turn relay ON
+- Command `0xFD` + channel: Turn relay OFF
+
+### FTDI Protocol Details
+
+- Uses bitbang mode on FT245RL chip
+- State written as single byte bitmask (bit 0 = channel 1, etc.)
+- Requires `libftdi1` library
+
+### Key Implementation Files
+
+| File | Purpose |
+| ---- | ------- |
+| `src/MultiRoomAudio/Relay/IRelayBoard.cs` | Common interface for all relay board types |
+| `src/MultiRoomAudio/Relay/HidRelayBoard.cs` | USB HID relay implementation using HidApi.Net |
+| `src/MultiRoomAudio/Relay/FtdiRelayBoard.cs` | FTDI relay implementation using libftdi1 |
+| `src/MultiRoomAudio/Relay/MockRelayBoard.cs` | Mock implementation for testing |
+| `src/MultiRoomAudio/Services/TriggerService.cs` | Multi-board management, player↔channel mapping |
+| `src/MultiRoomAudio/Models/TriggerModels.cs` | Data models, enums, request/response types |
+
+### Startup/Shutdown Behaviors
+
+| Behavior | Description |
+| -------- | ----------- |
+| `AllOff` | Turn all relays OFF (default - safest) |
+| `AllOn` | Turn all relays ON |
+| `NoChange` | Preserve current hardware state |
+
+### Testing Without Hardware
+
+Set `MOCK_HARDWARE=true` to enable mock relay boards that simulate real hardware behavior.
 
 ---
 
