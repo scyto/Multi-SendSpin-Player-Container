@@ -1,4 +1,6 @@
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using HidSharp;
 using MultiRoomAudio.Models;
 
@@ -89,6 +91,41 @@ public sealed class HidRelayBoard : IRelayBoard
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to open USB HID relay board by serial '{Serial}'", serialNumber);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Open a USB HID relay board by matching a hash of the device path.
+    /// Used for boards identified by path rather than serial number.
+    /// </summary>
+    /// <param name="pathHash">The hash portion of the board ID (e.g., "CA88BCAC" from "HID:CA88BCAC")</param>
+    /// <returns>True if connection was successful.</returns>
+    public bool OpenByPathHash(string pathHash)
+    {
+        if (_disposed)
+            return false;
+
+        try
+        {
+            var devices = DeviceList.Local.GetHidDevices(VendorId, ProductId);
+            foreach (var device in devices)
+            {
+                // Calculate the same stable hash that was used when enumerating
+                var deviceHash = HidRelayDeviceInfo.StableHash(device.DevicePath);
+                if (deviceHash.Equals(pathHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger?.LogDebug("Found HID relay board by path hash: {Hash}", pathHash);
+                    return OpenDevice(device);
+                }
+            }
+
+            _logger?.LogWarning("USB HID relay board with path hash '{Hash}' not found", pathHash);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to open USB HID relay board by path hash '{Hash}'", pathHash);
             return false;
         }
     }
@@ -443,12 +480,25 @@ public record HidRelayDeviceInfo(
         if (!string.IsNullOrWhiteSpace(SerialNumber))
             return $"HID:{SerialNumber}";
 
-        // Fallback to path-based ID
-        return $"HID:{DevicePath.GetHashCode():X8}";
+        // Fallback to path-based ID using stable hash
+        return $"HID:{StableHash(DevicePath)}";
     }
 
     /// <summary>
     /// Whether this device is identified by path (less stable).
     /// </summary>
     public bool IsPathBased => string.IsNullOrWhiteSpace(SerialNumber);
+
+    /// <summary>
+    /// Compute a stable 8-character hash from a string.
+    /// Uses MD5 for deterministic results across process restarts and platforms.
+    /// (String.GetHashCode is randomized per-process in .NET Core)
+    /// </summary>
+    internal static string StableHash(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hash = MD5.HashData(bytes);
+        // Take first 4 bytes for an 8-char hex string
+        return $"{hash[0]:X2}{hash[1]:X2}{hash[2]:X2}{hash[3]:X2}";
+    }
 }

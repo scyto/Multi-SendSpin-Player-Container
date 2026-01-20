@@ -65,19 +65,25 @@ public class RealRelayDeviceEnumerator : IRelayDeviceEnumerator
         }
 
         // Enumerate USB HID relay devices
+        // Always use path-based IDs for HID boards to ensure consistency.
+        // Serial numbers on these boards are often duplicated across units from the same
+        // manufacturer, which would cause ID collisions when adding additional boards.
         try
         {
             foreach (var hid in HidRelayBoard.EnumerateDevices(_logger))
             {
+                // Use stable hash for consistent IDs across process restarts
+                var boardId = $"HID:{HidRelayDeviceInfo.StableHash(hid.DevicePath)}";
+
                 result.Add(new RelayDeviceInfo(
-                    BoardId: hid.GetBoardId(),
+                    BoardId: boardId,
                     BoardType: RelayBoardType.UsbHid,
                     SerialNumber: hid.SerialNumber,
                     Description: hid.ProductName ?? "USB HID Relay Board",
                     ChannelCount: hid.ChannelCount,
                     IsInUse: false, // We don't track this here - TriggerService manages it
                     UsbPath: hid.DevicePath,
-                    IsPathBased: hid.IsPathBased,
+                    IsPathBased: true,
                     ChannelCountDetected: hid.ChannelCountDetected
                 ));
             }

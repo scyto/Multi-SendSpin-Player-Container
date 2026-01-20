@@ -718,18 +718,32 @@ public class TriggerService : IHostedService, IAsyncDisposable
             var board = _boardFactory.CreateBoard(boardId, boardType);
 
             // Connect to the board
-            var serial = GetSerialFromBoardId(boardId);
             bool connected;
 
-            if (string.IsNullOrEmpty(serial) || boardId.StartsWith("USB:"))
+            if (boardId.StartsWith("HID:", StringComparison.OrdinalIgnoreCase))
             {
-                // Port-based board or no serial - open first available
+                // HID boards always use path-based identification (hash of device path)
+                var pathHash = boardId.Substring(4);
+                if (board is HidRelayBoard hidBoard)
+                {
+                    connected = hidBoard.OpenByPathHash(pathHash);
+                }
+                else
+                {
+                    _logger.LogWarning("Board '{BoardId}' is HID type but factory didn't create HidRelayBoard", boardId);
+                    connected = board.Open();
+                }
+            }
+            else if (boardId.StartsWith("USB:", StringComparison.OrdinalIgnoreCase))
+            {
+                // USB port-based board - open first available
                 connected = board.Open();
             }
             else
             {
-                // Serial-based board
-                connected = board.OpenBySerial(serial);
+                // FTDI/Modbus use serial-based identification
+                var serial = GetSerialFromBoardId(boardId);
+                connected = string.IsNullOrEmpty(serial) ? board.Open() : board.OpenBySerial(serial);
             }
 
             if (connected)
