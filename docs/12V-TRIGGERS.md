@@ -82,6 +82,34 @@ dmesg | grep ttyUSB
 ls /dev/ttyUSB*
 ```
 
+#### Multiple Modbus Boards
+
+If you have multiple CH340-based boards, use `/dev/serial/by-path/` for stable identification. The `/dev/ttyUSB*` names can swap between reboots.
+
+```bash
+# Find stable paths for your devices
+ls -la /dev/serial/by-path/
+```
+
+Example output:
+
+```text
+pci-0000:00:14.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
+pci-0000:00:14.0-usb-0:2.2:1.0-port0 -> ../../ttyUSB1
+```
+
+Use these paths in your compose file:
+
+```yaml
+services:
+  multiroom-audio:
+    devices:
+      - /dev/serial/by-path/pci-0000:00:14.0-usb-0:2.1:1.0-port0:/dev/ttyUSB0
+      - /dev/serial/by-path/pci-0000:00:14.0-usb-0:2.2:1.0-port0:/dev/ttyUSB1
+```
+
+This ensures each physical USB port always maps to the same `/dev/ttyUSB*` device inside the container.
+
 ## Home Assistant OS Setup
 
 USB relay boards should work automatically when connected. If not detected:
