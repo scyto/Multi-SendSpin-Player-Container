@@ -1058,6 +1058,102 @@ function showAlert(message, type = 'info', duration = 5000) {
     }, duration);
 }
 
+// Show a styled confirmation modal (returns a Promise that resolves to true/false)
+function showConfirm(title, message, okText = 'OK', okClass = 'btn-danger') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirmModal');
+        const titleEl = document.getElementById('confirmModalTitle');
+        const messageEl = document.getElementById('confirmModalMessage');
+        const okBtn = document.getElementById('confirmModalOkBtn');
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        okBtn.textContent = okText;
+        okBtn.className = `btn ${okClass}`;
+
+        const bsModal = new bootstrap.Modal(modal);
+
+        // Clean up any previous handlers
+        const newOkBtn = okBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+        let resolved = false;
+
+        newOkBtn.addEventListener('click', () => {
+            resolved = true;
+            bsModal.hide();
+            resolve(true);
+        });
+
+        modal.addEventListener('hidden.bs.modal', function handler() {
+            modal.removeEventListener('hidden.bs.modal', handler);
+            if (!resolved) {
+                resolve(false);
+            }
+        });
+
+        bsModal.show();
+    });
+}
+
+// Show a styled prompt modal for text input (returns a Promise that resolves to the input value or null)
+function showPrompt(title, label, defaultValue = '', placeholder = '') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('promptModal');
+        const titleEl = document.getElementById('promptModalTitle');
+        const labelEl = document.getElementById('promptModalLabel');
+        const inputEl = document.getElementById('promptModalInput');
+        const okBtn = document.getElementById('promptModalOkBtn');
+
+        titleEl.textContent = title;
+        labelEl.textContent = label;
+        inputEl.value = defaultValue;
+        inputEl.placeholder = placeholder;
+
+        const bsModal = new bootstrap.Modal(modal);
+
+        // Clean up any previous handlers
+        const newOkBtn = okBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+        let resolved = false;
+
+        const submitValue = () => {
+            resolved = true;
+            bsModal.hide();
+            resolve(inputEl.value);
+        };
+
+        newOkBtn.addEventListener('click', submitValue);
+
+        // Allow Enter key to submit
+        const keyHandler = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitValue();
+            }
+        };
+        inputEl.addEventListener('keydown', keyHandler);
+
+        modal.addEventListener('hidden.bs.modal', function handler() {
+            modal.removeEventListener('hidden.bs.modal', handler);
+            inputEl.removeEventListener('keydown', keyHandler);
+            if (!resolved) {
+                resolve(null);
+            }
+        });
+
+        bsModal.show();
+
+        // Focus the input after modal is shown
+        modal.addEventListener('shown.bs.modal', function focusHandler() {
+            modal.removeEventListener('shown.bs.modal', focusHandler);
+            inputEl.focus();
+            inputEl.select();
+        });
+    });
+}
+
 // ========== Stats for Nerds ==========
 let statsInterval = null;
 let currentStatsPlayer = null;
@@ -2839,7 +2935,8 @@ async function loadTriggers() {
 function renderTriggers() {
     const container = document.getElementById('triggersContainer');
     const enabledCheckbox = document.getElementById('triggersEnabled');
-    const statusBadge = document.getElementById('triggersStatus');
+    const foundBadge = document.getElementById('triggerFoundBadge');
+    const connectedBadge = document.getElementById('triggerConnectedBadge');
     const errorDiv = document.getElementById('triggersError');
     const errorText = document.getElementById('triggersErrorText');
     const totalChannelsSpan = document.getElementById('triggersTotalChannels');
@@ -2886,38 +2983,36 @@ function renderTriggers() {
             : '';
     }
 
-    // Update status badge
-    let statusText = triggersData.enabled ? 'Enabled' : 'Disabled';
-    let statusClass = 'bg-secondary';
+    // Update status badges - show both "Found" and "Connected" counts
     const detectedDeviceCount = ftdiDevicesData?.count || 0;
 
+    // "N Devices Found" badge
     if (noHardware) {
-        statusText = 'No Hardware';
-    } else if (triggersData.enabled) {
-        const connectedCount = triggersData.boards.filter(b => b.isConnected).length;
-        if (connectedCount === triggersData.boards.length && triggersData.boards.length > 0) {
-            statusText = `${connectedCount} Board(s) Connected`;
-            statusClass = 'bg-success';
-        } else if (connectedCount > 0) {
-            statusText = `${connectedCount}/${triggersData.boards.length} Connected`;
-            statusClass = 'bg-warning';
-        } else if (triggersData.boards.length > 0) {
-            statusText = 'Disconnected';
-            statusClass = 'bg-danger';
-        } else {
-            // No boards configured - show detected device count
-            statusText = detectedDeviceCount > 0
-                ? `${detectedDeviceCount} Device${detectedDeviceCount !== 1 ? 's' : ''} Found`
-                : 'No Boards';
-            statusClass = detectedDeviceCount > 0 ? 'bg-info' : 'bg-secondary';
-        }
-    } else if (triggersData.boards.length === 0 && detectedDeviceCount > 0) {
-        // Feature disabled but devices detected
-        statusText = `${detectedDeviceCount} Device${detectedDeviceCount !== 1 ? 's' : ''} Found`;
-        statusClass = 'bg-info';
+        foundBadge.classList.add('d-none');
+    } else {
+        foundBadge.classList.remove('d-none');
+        foundBadge.textContent = `${detectedDeviceCount} Device${detectedDeviceCount !== 1 ? 's' : ''} Found`;
+        foundBadge.className = `badge ${detectedDeviceCount > 0 ? 'bg-info' : 'bg-secondary'} me-2`;
     }
-    statusBadge.className = `badge ${statusClass}`;
-    statusBadge.textContent = statusText;
+
+    // "N Devices Connected" badge
+    const configuredCount = triggersData.boards.length;
+    const connectedCount = triggersData.boards.filter(b => b.isConnected).length;
+
+    if (configuredCount === 0 || noHardware || !triggersData.enabled) {
+        connectedBadge.classList.add('d-none');
+    } else {
+        connectedBadge.classList.remove('d-none');
+        connectedBadge.textContent = `${connectedCount} Device${connectedCount !== 1 ? 's' : ''} Connected`;
+
+        let connectedClass = 'bg-success';
+        if (connectedCount === 0) {
+            connectedClass = 'bg-danger';
+        } else if (connectedCount < configuredCount) {
+            connectedClass = 'bg-warning';
+        }
+        connectedBadge.className = `badge ${connectedClass}`;
+    }
 
     // Show/hide error - only show when truly no hardware support
     if (noHardware) {
@@ -3248,7 +3343,14 @@ async function addBoard() {
 
 // Remove a board
 async function removeBoard(boardId) {
-    if (!confirm(`Remove relay board "${boardId}"? This will delete all trigger configurations for this board.`)) {
+    const confirmed = await showConfirm(
+        'Remove Relay Board',
+        `Remove relay board "${boardId}"? This will delete all trigger configurations for this board.`,
+        'Remove',
+        'btn-danger'
+    );
+
+    if (!confirmed) {
         return;
     }
 
@@ -3275,33 +3377,83 @@ async function editBoard(boardId) {
     const board = triggersData?.boards?.find(b => b.boardId === boardId);
     if (!board) return;
 
-    const newName = prompt('Display name:', board.displayName || '');
-    if (newName === null) return;
-
-    const newCount = prompt('Channel count (1, 2, 4, 8, or 16):', board.channelCount);
-    if (newCount === null) return;
-
-    try {
-        const response = await fetch(`./api/triggers/boards/${encodeURIComponent(boardId)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                displayName: newName || null,
-                channelCount: parseInt(newCount, 10) || null
-            })
+    // Check if this device has auto-detected channel count
+    // Look up the device in the detected devices list
+    let channelCountDetected = false;
+    if (ftdiDevicesData?.devices) {
+        const device = ftdiDevicesData.devices.find(d => {
+            // Match by board ID (could be serial-based or path-based)
+            const deviceBoardId = d.boardId ||
+                (d.serialNumber ? `HID:${d.serialNumber}` : null) ||
+                (d.serialNumber ? d.serialNumber : null);
+            return deviceBoardId === boardId ||
+                   (d.serialNumber && boardId.includes(d.serialNumber));
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to update board');
+        if (device) {
+            channelCountDetected = device.channelCountDetected === true;
         }
-
-        await loadTriggers();
-        showAlert('Board settings updated', 'success');
-    } catch (error) {
-        console.error('Error updating board:', error);
-        showAlert(`Failed to update board: ${error.message}`, 'danger');
     }
+
+    // Show combined edit modal
+    const modal = document.getElementById('editBoardModal');
+    const displayNameInput = document.getElementById('editBoardDisplayName');
+    const channelCountSelect = document.getElementById('editBoardChannelCount');
+    const channelCountGroup = document.getElementById('editBoardChannelCountGroup');
+    const channelCountHelp = document.getElementById('editBoardChannelCountHelp');
+    const boardIdInput = document.getElementById('editBoardId');
+    const saveBtn = document.getElementById('editBoardSaveBtn');
+
+    // Populate form
+    boardIdInput.value = boardId;
+    displayNameInput.value = board.displayName || '';
+    channelCountSelect.value = String(board.channelCount);
+
+    // Disable channel count if auto-detected
+    channelCountSelect.disabled = channelCountDetected;
+    channelCountHelp.classList.toggle('d-none', !channelCountDetected);
+
+    const bsModal = new bootstrap.Modal(modal);
+
+    // Clean up any previous handlers by cloning the button
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    newSaveBtn.addEventListener('click', async () => {
+        const newName = displayNameInput.value.trim();
+        const newCount = parseInt(channelCountSelect.value, 10);
+
+        try {
+            const response = await fetch(`./api/triggers/boards/${encodeURIComponent(boardId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    displayName: newName || null,
+                    channelCount: channelCountDetected ? null : newCount
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to update board');
+            }
+
+            bsModal.hide();
+            await loadTriggers();
+            showAlert('Board settings updated', 'success');
+        } catch (error) {
+            console.error('Error updating board:', error);
+            showAlert(`Failed to update board: ${error.message}`, 'danger');
+        }
+    });
+
+    bsModal.show();
+
+    // Focus display name input when modal is shown
+    modal.addEventListener('shown.bs.modal', function focusHandler() {
+        modal.removeEventListener('shown.bs.modal', focusHandler);
+        displayNameInput.focus();
+        displayNameInput.select();
+    });
 }
 
 // Update board startup or shutdown behavior
