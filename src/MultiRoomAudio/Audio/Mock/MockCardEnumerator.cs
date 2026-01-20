@@ -1,106 +1,19 @@
 using MultiRoomAudio.Models;
+using MultiRoomAudio.Services;
 
 namespace MultiRoomAudio.Audio.Mock;
 
 /// <summary>
 /// Mock card enumerator for testing without real PulseAudio hardware.
 /// Provides fake sound cards with typical USB DAC profiles.
+/// Configuration is loaded from MockHardwareConfigService when available.
 /// </summary>
 public static class MockCardEnumerator
 {
     private static ILogger? _logger;
+    private static MockHardwareConfigService? _configService;
     private static readonly Dictionary<int, string> _activeProfiles = new();
     private static readonly Dictionary<int, bool> _muteStates = new();
-
-    /// <summary>
-    /// Profile sets for different card types - based on real PulseAudio profile names.
-    /// </summary>
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] IntelHdaProfiles = new[]
-    {
-        ("output:analog-stereo+input:analog-stereo", "Analog Stereo Duplex", 1, 6565, true),
-        ("output:analog-stereo", "Analog Stereo Output", 1, 6500, true),
-        ("output:hdmi-stereo", "Digital Stereo (HDMI)", 1, 5900, true),
-        ("output:hdmi-stereo-extra1", "Digital Stereo (HDMI 2)", 1, 5700, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] XonarProfiles = new[]
-    {
-        ("output:analog-surround-71+input:analog-stereo", "Analog Surround 7.1 Output + Analog Stereo Input", 1, 7171, true),
-        ("output:analog-surround-71", "Analog Surround 7.1 Output", 1, 7100, true),
-        ("output:analog-surround-51", "Analog Surround 5.1 Output", 1, 6100, true),
-        ("output:analog-stereo+input:analog-stereo", "Analog Stereo Duplex", 1, 6065, true),
-        ("output:analog-stereo", "Analog Stereo Output", 1, 6000, true),
-        ("output:iec958-stereo+input:analog-stereo", "Digital Stereo (S/PDIF) Output + Analog Stereo Input", 1, 5565, true),
-        ("output:iec958-stereo", "Digital Stereo (S/PDIF) Output", 1, 5500, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] UsbDacProfiles = new[]
-    {
-        ("output:analog-stereo", "Analog Stereo Output", 1, 6500, true),
-        ("output:iec958-stereo", "Digital Stereo (IEC958) Output", 1, 5500, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] UsbMultichannelProfiles = new[]
-    {
-        ("output:analog-surround-71", "Analog Surround 7.1 Output", 1, 7100, true),
-        ("output:analog-surround-51", "Analog Surround 5.1 Output", 1, 6100, true),
-        ("output:analog-stereo", "Analog Stereo Output", 1, 6000, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] BluetoothA2dpProfiles = new[]
-    {
-        ("a2dp-sink", "High Fidelity Playback (A2DP Sink)", 1, 40, true),
-        ("headset-head-unit", "Headset Head Unit (HSP/HFP)", 1, 30, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    private static readonly (string Name, string Description, int Sinks, int Priority, bool Available)[] HdmiProfiles = new[]
-    {
-        ("output:hdmi-stereo", "Digital Stereo (HDMI)", 1, 5900, true),
-        ("output:hdmi-surround", "Digital Surround 5.1 (HDMI)", 1, 5800, true),
-        ("output:hdmi-surround71", "Digital Surround 7.1 (HDMI)", 1, 5700, true),
-        ("off", "Off", 0, 0, true)
-    };
-
-    /// <summary>
-    /// Pre-configured mock cards simulating real hardware.
-    /// Based on actual ALSA/PulseAudio card names and profiles.
-    /// </summary>
-    private static readonly List<MockCardConfig> MockCardConfigs = new()
-    {
-        // Intel HDA onboard audio (very common)
-        new(0, "alsa_card.pci-0000_00_1f.3", "Built-in Audio", "module-alsa-card.c", IntelHdaProfiles),
-
-        // ASUS Xonar 7.1 (popular enthusiast card)
-        new(1, "alsa_card.pci-0000_05_04.0", "Xonar DX", "module-alsa-card.c", XonarProfiles),
-
-        // USB DAC - Schiit Modi (popular audiophile DAC)
-        new(2, "alsa_card.usb-Schiit_Audio_Schiit_Modi_3-00", "Schiit Modi 3", "module-alsa-card.c", UsbDacProfiles),
-
-        // USB multichannel - Focusrite Scarlett (popular audio interface)
-        new(3, "alsa_card.usb-Focusrite_Scarlett_2i2_USB-00", "Scarlett 2i2 USB", "module-alsa-card.c", UsbMultichannelProfiles),
-
-        // Bluetooth speaker - JBL (common BT speaker)
-        new(4, "bluez_card.00_1A_7D_DA_71_13", "JBL Flip 5", "module-bluez5-device.c", BluetoothA2dpProfiles),
-
-        // Bluetooth headphones - Sony WH-1000XM4
-        new(5, "bluez_card.38_18_4C_E9_85_B2", "WH-1000XM4", "module-bluez5-device.c", BluetoothA2dpProfiles),
-
-        // HDMI output (NVIDIA GPU)
-        new(6, "alsa_card.pci-0000_01_00.1", "HDA NVidia", "module-alsa-card.c", HdmiProfiles),
-    };
-
-    private record MockCardConfig(
-        int Index,
-        string Name,
-        string Description,
-        string Driver,
-        (string Name, string Description, int Sinks, int Priority, bool Available)[] Profiles
-    );
 
     /// <summary>
     /// Configures the logger for card enumeration diagnostics.
@@ -111,13 +24,27 @@ public static class MockCardEnumerator
     }
 
     /// <summary>
+    /// Configures the mock hardware config service for dynamic configuration.
+    /// </summary>
+    public static void SetConfigService(MockHardwareConfigService? configService)
+    {
+        _configService = configService;
+        _logger?.LogDebug("MockCardEnumerator config service set (using {Source})",
+            configService?.UsingDefaults == true ? "defaults" : "mock_hardware.yaml");
+    }
+
+    /// <summary>
     /// Gets all available mock sound cards with their profiles.
     /// </summary>
     public static IEnumerable<PulseAudioCard> GetCards()
     {
-        _logger?.LogDebug("Returning {Count} mock cards", MockCardConfigs.Count);
+        // Get enabled cards from config service
+        var cardConfigs = _configService?.GetEnabledAudioCards()
+            ?? new List<MockAudioCardConfig>();
 
-        return MockCardConfigs.Select(config =>
+        _logger?.LogDebug("Returning {Count} mock cards", cardConfigs.Count);
+
+        return cardConfigs.Select(config =>
         {
             var profiles = config.Profiles.Select(p => new CardProfile(
                 Name: p.Name,
@@ -125,10 +52,12 @@ public static class MockCardEnumerator
                 Sinks: p.Sinks,
                 Sources: 0,
                 Priority: p.Priority,
-                IsAvailable: p.Available
+                IsAvailable: p.IsAvailable
             )).ToList();
 
+            // Determine active profile from runtime state, then config default, then first non-off
             var activeProfile = _activeProfiles.GetValueOrDefault(config.Index)
+                ?? config.Profiles.FirstOrDefault(p => p.IsDefault)?.Name
                 ?? profiles.FirstOrDefault(p => p.Name != "off")?.Name
                 ?? "output:analog-stereo";
 
@@ -148,6 +77,14 @@ public static class MockCardEnumerator
                 MaxVolume: maxVolume
             );
         }).ToList();
+    }
+
+    /// <summary>
+    /// Gets all enabled card configs (internal use).
+    /// </summary>
+    private static IReadOnlyList<MockAudioCardConfig> GetCardConfigs()
+    {
+        return _configService?.GetEnabledAudioCards() ?? new List<MockAudioCardConfig>();
     }
 
     /// <summary>
@@ -200,7 +137,7 @@ public static class MockCardEnumerator
     /// </summary>
     public static List<string> GetSinksByCard(int cardIndex)
     {
-        var config = MockCardConfigs.FirstOrDefault(c => c.Index == cardIndex);
+        var config = GetCardConfigs().FirstOrDefault(c => c.Index == cardIndex);
         if (config == null)
             return new List<string>();
 
@@ -215,7 +152,7 @@ public static class MockCardEnumerator
     public static Dictionary<string, bool> GetSinksMuteStates()
     {
         var result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        foreach (var config in MockCardConfigs)
+        foreach (var config in GetCardConfigs())
         {
             var sinkId = config.Name.Replace("alsa_card.", "mock_");
             result[sinkId] = _muteStates.GetValueOrDefault(config.Index, false);
@@ -228,7 +165,7 @@ public static class MockCardEnumerator
     /// </summary>
     public static bool SetMute(int cardIndex, bool muted)
     {
-        if (!MockCardConfigs.Any(c => c.Index == cardIndex))
+        if (!GetCardConfigs().Any(c => c.Index == cardIndex))
             return false;
 
         _muteStates[cardIndex] = muted;
@@ -244,7 +181,7 @@ public static class MockCardEnumerator
         // Find the card that owns this sink
         // Sink names from GetSinksByCard are like "mock_pci-0000_00_1f.3"
         // Card names are like "alsa_card.pci-0000_00_1f.3"
-        foreach (var config in MockCardConfigs)
+        foreach (var config in GetCardConfigs())
         {
             var mockSinkId = config.Name.Replace("alsa_card.", "mock_");
             var cardSuffix = config.Name.Replace("alsa_card.", "");
@@ -279,7 +216,7 @@ public static class MockCardEnumerator
     /// </summary>
     public static bool SetMaxVolume(int cardIndex, int? maxVolume)
     {
-        if (!MockCardConfigs.Any(c => c.Index == cardIndex))
+        if (!GetCardConfigs().Any(c => c.Index == cardIndex))
             return false;
 
         if (maxVolume.HasValue)
@@ -303,7 +240,7 @@ public static class MockCardEnumerator
         // Find the card that owns this sink
         // Sink names from GetSinksByCard are like "mock_pci-0000_00_1f.3"
         // Card names are like "alsa_card.pci-0000_00_1f.3"
-        foreach (var config in MockCardConfigs)
+        foreach (var config in GetCardConfigs())
         {
             var mockSinkId = config.Name.Replace("alsa_card.", "mock_");
             var cardSuffix = config.Name.Replace("alsa_card.", "");

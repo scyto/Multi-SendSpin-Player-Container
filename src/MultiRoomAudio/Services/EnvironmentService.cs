@@ -126,6 +126,12 @@ public class EnvironmentService
     public string OnboardingConfigPath => Path.Combine(_configPath, "onboarding.yaml");
 
     /// <summary>
+    /// Full path to mock_hardware.yaml configuration file.
+    /// Only used when IsMockHardware is true.
+    /// </summary>
+    public string MockHardwareConfigPath => Path.Combine(_configPath, "mock_hardware.yaml");
+
+    /// <summary>
     /// Path to log directory.
     /// </summary>
     public string LogPath => _logPath;

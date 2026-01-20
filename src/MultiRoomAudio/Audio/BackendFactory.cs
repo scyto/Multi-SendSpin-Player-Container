@@ -31,7 +31,8 @@ public class BackendFactory
         EnvironmentService environment,
         ILoggerFactory loggerFactory,
         Utilities.VolumeCommandRunner volumeRunner,
-        CustomSinksService? customSinksService = null)
+        CustomSinksService? customSinksService = null,
+        MockHardwareConfigService? mockConfigService = null)
     {
         _logger = logger;
 
@@ -40,7 +41,8 @@ public class BackendFactory
             _logger.LogInformation("Initializing mock audio backend (MOCK_HARDWARE mode)");
             _backend = new MockAudioBackend(
                 loggerFactory.CreateLogger<MockAudioBackend>(),
-                customSinksService);
+                customSinksService,
+                mockConfigService);
         }
         else
         {

@@ -106,6 +106,9 @@ builder.Services.AddSingleton<OnboardingService>();
 var isMockHardware = Environment.GetEnvironmentVariable("MOCK_HARDWARE")?.ToLower() == "true";
 if (isMockHardware)
 {
+    // Mock hardware configuration service - loads from mock_hardware.yaml if present
+    builder.Services.AddSingleton<MultiRoomAudio.Services.MockHardwareConfigService>();
+
     builder.Services.AddSingleton<MultiRoomAudio.Utilities.IPaModuleRunner, MultiRoomAudio.Audio.Mock.MockPaModuleRunner>();
     // Relay hardware abstractions - mock implementations
     builder.Services.AddSingleton<MultiRoomAudio.Relay.IRelayDeviceEnumerator, MultiRoomAudio.Relay.MockRelayDeviceEnumerator>();
@@ -171,6 +174,16 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 var app = builder.Build();
+
+// Wire up mock hardware config service to static enumerators if in mock mode
+if (isMockHardware)
+{
+    var mockConfigService = app.Services.GetService<MultiRoomAudio.Services.MockHardwareConfigService>();
+    if (mockConfigService != null)
+    {
+        MultiRoomAudio.Audio.Mock.MockCardEnumerator.SetConfigService(mockConfigService);
+    }
+}
 
 // Configure middleware pipeline
 app.UseCors("AllowAll");

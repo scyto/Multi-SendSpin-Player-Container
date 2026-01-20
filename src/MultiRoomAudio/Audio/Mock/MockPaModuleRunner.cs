@@ -1,3 +1,4 @@
+using MultiRoomAudio.Services;
 using MultiRoomAudio.Utilities;
 
 namespace MultiRoomAudio.Audio.Mock;
@@ -9,15 +10,19 @@ namespace MultiRoomAudio.Audio.Mock;
 public class MockPaModuleRunner : IPaModuleRunner
 {
     private readonly ILogger<MockPaModuleRunner> _logger;
+    private readonly MockHardwareConfigService? _configService;
     private readonly Dictionary<int, MockModule> _modules = new();
     private readonly Dictionary<string, int> _sinkToModule = new(StringComparer.OrdinalIgnoreCase);
     private int _nextModuleIndex = 100;
 
     private record MockModule(int Index, string Type, string SinkName, string? Description);
 
-    public MockPaModuleRunner(ILogger<MockPaModuleRunner> logger)
+    public MockPaModuleRunner(
+        ILogger<MockPaModuleRunner> logger,
+        MockHardwareConfigService? configService = null)
     {
         _logger = logger;
+        _configService = configService;
         _logger.LogInformation("Mock PaModuleRunner initialized");
     }
 
@@ -127,7 +132,8 @@ public class MockPaModuleRunner : IPaModuleRunner
             return Task.FromResult(true);
 
         // Check hardware sinks from mock devices
-        var devices = MockAudioBackend.MockDeviceConfigs;
+        var devices = _configService?.GetEnabledAudioDevices()
+            ?? new List<Models.MockAudioDeviceConfig>();
         return Task.FromResult(devices.Any(d =>
             d.Id.Equals(sinkName, StringComparison.OrdinalIgnoreCase)));
     }

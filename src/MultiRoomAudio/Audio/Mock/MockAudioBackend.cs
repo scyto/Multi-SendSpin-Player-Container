@@ -10,107 +10,29 @@ namespace MultiRoomAudio.Audio.Mock;
 /// Provides fake audio devices that simulate USB DACs with multiple profiles.
 /// Channel counts are dynamically determined based on the active card profile.
 /// Also recognizes custom sinks created through the CustomSinksService.
+/// Device configuration is loaded from MockHardwareConfigService.
 /// </summary>
 public class MockAudioBackend : IBackend
 {
     private readonly ILogger<MockAudioBackend> _logger;
     private readonly CustomSinksService? _customSinksService;
+    private readonly MockHardwareConfigService? _mockConfigService;
     private readonly Dictionary<string, int> _volumes = new();
 
-    /// <summary>
-    /// Pre-configured mock devices simulating real hardware.
-    /// IDs match PulseAudio sink naming conventions.
-    /// BusPath values use Linux sysfs format matching real PulseAudio device.bus_path property.
-    /// </summary>
-    public static readonly List<MockDeviceConfig> MockDeviceConfigs = new()
-    {
-        // Intel HDA onboard audio (PCI device)
-        new(
-            Id: "alsa_output.pci-0000_00_1f.3.analog-stereo",
-            Name: "Built-in Audio Analog Stereo",
-            Description: "Built-in Audio",
-            VendorId: "8086", ProductId: "a170",
-            BusPath: "/devices/pci0000:00/0000:00:1f.3/sound/card0",
-            Serial: null,
-            Index: 0, IsDefault: true),
-
-        // ASUS Xonar DX 7.1 (PCI device)
-        new(
-            Id: "alsa_output.pci-0000_05_04.0.analog-surround-71",
-            Name: "Xonar DX Analog Surround 7.1",
-            Description: "CMI8788 [Oxygen HD Audio]",
-            VendorId: "1043", ProductId: "8275",
-            BusPath: "/devices/pci0000:00/0000:00:1c.4/0000:05:04.0/sound/card1",
-            Serial: null,
-            Index: 1, IsDefault: false),
-
-        // Schiit Modi 3 USB DAC
-        new(
-            Id: "alsa_output.usb-Schiit_Audio_Schiit_Modi_3-00.analog-stereo",
-            Name: "Schiit Modi 3 Analog Stereo",
-            Description: "Schiit Modi 3",
-            VendorId: "30be", ProductId: "0101",
-            BusPath: "/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/sound/card2",
-            Serial: "0001",
-            Index: 2, IsDefault: false),
-
-        // Focusrite Scarlett 2i2 USB audio interface
-        new(
-            Id: "alsa_output.usb-Focusrite_Scarlett_2i2_USB-00.analog-stereo",
-            Name: "Scarlett 2i2 USB Analog Stereo",
-            Description: "Scarlett 2i2 USB",
-            VendorId: "1235", ProductId: "8210",
-            BusPath: "/devices/pci0000:00/0000:00:14.0/usb1/1-3/1-3:1.0/sound/card3",
-            Serial: "Y7XXXXXX00XXXX",
-            Index: 3, IsDefault: false),
-
-        // JBL Flip 5 Bluetooth speaker (no sysfs bus_path for BT)
-        new(
-            Id: "bluez_sink.00_1A_7D_DA_71_13.a2dp_sink",
-            Name: "JBL Flip 5",
-            Description: "JBL Flip 5",
-            VendorId: null, ProductId: null,
-            BusPath: null,
-            Serial: "00:1A:7D:DA:71:13",
-            Index: 4, IsDefault: false),
-
-        // Sony WH-1000XM4 Bluetooth headphones (no sysfs bus_path for BT)
-        new(
-            Id: "bluez_sink.38_18_4C_E9_85_B2.a2dp_sink",
-            Name: "WH-1000XM4",
-            Description: "WH-1000XM4",
-            VendorId: null, ProductId: null,
-            BusPath: null,
-            Serial: "38:18:4C:E9:85:B2",
-            Index: 5, IsDefault: false),
-
-        // NVIDIA HDMI audio (PCI device - GPU)
-        new(
-            Id: "alsa_output.pci-0000_01_00.1.hdmi-stereo",
-            Name: "HDA NVidia Digital Stereo (HDMI)",
-            Description: "HDA NVidia",
-            VendorId: "10de", ProductId: "0fb9",
-            BusPath: "/devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card6",
-            Serial: null,
-            Index: 6, IsDefault: false),
-    };
-
-    public record MockDeviceConfig(
-        string Id,
-        string Name,
-        string Description,
-        string? VendorId,
-        string? ProductId,
-        string? BusPath,
-        string? Serial,
-        int Index,
-        bool IsDefault);
-
-    public MockAudioBackend(ILogger<MockAudioBackend> logger, CustomSinksService? customSinksService = null)
+    public MockAudioBackend(
+        ILogger<MockAudioBackend> logger,
+        CustomSinksService? customSinksService = null,
+        MockHardwareConfigService? mockConfigService = null)
     {
         _logger = logger;
         _customSinksService = customSinksService;
-        _logger.LogInformation("Mock audio backend initialized with {Count} devices", MockDeviceConfigs.Count);
+        _mockConfigService = mockConfigService;
+
+        var deviceCount = _mockConfigService?.GetEnabledAudioDevices().Count ?? 0;
+        _logger.LogInformation(
+            "Mock audio backend initialized with {Count} devices (config: {ConfigSource})",
+            deviceCount,
+            _mockConfigService?.UsingDefaults == true ? "defaults" : "mock_hardware.yaml");
     }
 
     /// <summary>
@@ -297,16 +219,22 @@ public class MockAudioBackend : IBackend
         return Task.FromResult(true);
     }
 
-    private static List<AudioDevice> CreateMockDevices()
+    private List<AudioDevice> CreateMockDevices()
     {
+        // Get enabled devices from config service
+        var deviceConfigs = _mockConfigService?.GetEnabledAudioDevices()
+            ?? new List<MockAudioDeviceConfig>();
+
         // Get all cards to determine active profiles and channel counts
         var cards = MockCardEnumerator.GetCards().ToList();
 
-        return MockDeviceConfigs.Select(config =>
+        return deviceConfigs.Select(config =>
         {
             // Find the corresponding card by index
             var card = cards.FirstOrDefault(c => c.Index == config.Index);
-            var channelCount = GetChannelCountForProfile(card?.ActiveProfile);
+            var channelCount = card != null
+                ? GetChannelCountForProfile(card.ActiveProfile)
+                : config.MaxChannels;
 
             // Bluetooth devices have different sample rate support
             // Detect Bluetooth from device ID (bluez_sink prefix) - matches real PulseAudio naming
