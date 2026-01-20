@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-a4df6fb
+## Development Build: sha-9c877ec
 
 **Current Dev Build Changes** (recent)
 
+- Fix relay_serial_port optional schema in dev config
 - Fix code formatting (dotnet format)
 - Fix: Read mock_hardware from HAOS options.json for DI registration
 - Add HAOS config options and mock hardware toggle
@@ -14,7 +15,6 @@
 - Refactor exception handling to use typed exceptions
 - Merge pull request #82 from scyto/feature/12v-trigger-plus-mock-hardware
 - Add logging when pactl process fails to start in diagnostics
-- Fix null coalescing operator precedence bug in SetDeviceMaxVolume
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
