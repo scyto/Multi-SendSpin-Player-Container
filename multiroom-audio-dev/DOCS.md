@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-a49d96b
+## Development Build: sha-c4ea116
 
 **Current Dev Build Changes** (recent)
 
+- Add helpful error messages for inaccessible HID relay boards
 - Merge branch 'dev' into feature/hid-multi-board-support
 - Merge pull request #87 from scyto/dev
 - cool
@@ -14,7 +15,6 @@
 - Add support for multiple identical HID relay boards
 - Fix relay_serial_port optional schema in dev config
 - Fix code formatting (dotnet format)
-- Fix: Read mock_hardware from HAOS options.json for DI registration
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
