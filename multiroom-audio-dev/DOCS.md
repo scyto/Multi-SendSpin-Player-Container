@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d7deb7e
+## Development Build: sha-dd4a428
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #93 from scyto/dev
+- small edit
+- Merge pull request #92 from scyto/dev
+- Expand HID relay documentation with Docker device mapping details
+- Merge pull request #91 from scyto/dev
 - Update docs: clarify HID relay device mapping requirements
 - Fix HID relay board hash stability across reboots
 - Add helpful error messages for inaccessible HID relay boards
 - Merge branch 'dev' into feature/hid-multi-board-support
 - Merge pull request #87 from scyto/dev
-- cool
-- Fix URL-encoded boardId in trigger API endpoints
-- Document /dev/serial/by-path for multiple Modbus boards
-- Add USB port-based identification for Modbus/CH340 relay boards
-- Add support for multiple identical HID relay boards
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
