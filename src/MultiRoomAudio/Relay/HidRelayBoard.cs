@@ -141,10 +141,10 @@ public sealed class HidRelayBoard : IRelayBoard
                     var hidrawDevice = HidRelayDeviceInfo.ExtractHidrawDevice(device.DevicePath);
                     if (hidrawDevice != null)
                     {
-                        errorDetails = $"Device found but cannot open. Add '/dev/{hidrawDevice}:/dev/{hidrawDevice}' to your Docker compose devices.";
+                        errorDetails = $"Device found but cannot open. Add '/dev/{hidrawDevice}:/dev/{hidrawDevice}' to your Docker compose devices (keep the same device number on both sides).";
                         _logger?.LogWarning(
                             "HID relay board HID:{Hash} found but cannot open. " +
-                            "Add '- /dev/{HidrawDevice}:/dev/{HidrawDevice}' to your compose.yml devices section.",
+                            "Add '- /dev/{HidrawDevice}:/dev/{HidrawDevice}' to your compose.yml devices section (keep the same device number on both sides).",
                             pathHash, hidrawDevice, hidrawDevice);
                     }
                     else
@@ -493,10 +493,10 @@ public sealed class HidRelayBoard : IRelayBoard
                         var hidrawDevice = HidRelayDeviceInfo.ExtractHidrawDevice(device.DevicePath);
                         if (hidrawDevice != null)
                         {
-                            accessError = $"Cannot open device. Add '/dev/{hidrawDevice}:/dev/{hidrawDevice}' to your Docker compose devices.";
+                            accessError = $"Cannot open device. Add '/dev/{hidrawDevice}:/dev/{hidrawDevice}' to your Docker compose devices (keep the same device number on both sides).";
                             logger?.LogWarning(
                                 "HID relay board found but cannot open: {Product} at {Path}. " +
-                                "Add '- /dev/{HidrawDevice}:/dev/{HidrawDevice}' to your compose.yml devices section. Error: {Error}",
+                                "Add '- /dev/{HidrawDevice}:/dev/{HidrawDevice}' to your compose.yml devices section (keep the same device number on both sides). Error: {Error}",
                                 productName, device.DevicePath, hidrawDevice, hidrawDevice, openEx.Message);
                         }
                         else
@@ -622,19 +622,43 @@ public record HidRelayDeviceInfo(
     /// On Linux, HidSharp returns sysfs paths like:
     /// /sys/devices/pci0000:00/0000:00:14.0/usb1/1-3/1-3:1.0/0003:16C0:05DF.0003/hidraw/hidraw1
     ///
-    /// The hidraw/hidrawN suffix can change between boots, but the USB port path (1-3)
-    /// is stable. We extract and hash only the stable portion.
+    /// Only the USB port path (e.g., "usb1/1-3") is stable across reboots.
+    /// The interface suffix (1-3:1.0), device instance (.0003), and hidraw number all change.
+    /// We extract and hash only the stable USB port portion.
     /// </remarks>
     internal static string StableHash(string input)
     {
         var pathToHash = input;
 
-        // On Linux, strip the volatile hidraw/hidrawN suffix before hashing
-        // Example: .../1-3:1.0/0003:16C0:05DF.0003/hidraw/hidraw1 -> .../1-3:1.0/0003:16C0:05DF.0003
-        var hidrawIndex = input.IndexOf("/hidraw/", StringComparison.Ordinal);
-        if (hidrawIndex > 0)
+        // On Linux, extract just the USB port path which is stable across reboots
+        // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-3/1-3:1.0/0003:16C0:05DF.0003/hidraw/hidraw1
+        // We want just "usb1/1-3" - everything after the port number can change
+        var usbIndex = input.IndexOf("/usb", StringComparison.Ordinal);
+        if (usbIndex >= 0)
         {
-            pathToHash = input.Substring(0, hidrawIndex);
+            // Find the USB port path pattern like "usb1/1-3" or "usb2/2-1.4"
+            // The port path ends at the colon (1-3:1.0) or at a VID:PID pattern
+            var usbPortion = input.Substring(usbIndex + 1); // Skip leading /
+            var colonIndex = usbPortion.IndexOf(':');
+            if (colonIndex > 0)
+            {
+                pathToHash = usbPortion.Substring(0, colonIndex);
+            }
+            else
+            {
+                // Fallback: strip hidraw suffix at minimum
+                var hidrawIndex = usbPortion.IndexOf("/hidraw/", StringComparison.Ordinal);
+                pathToHash = hidrawIndex > 0 ? usbPortion.Substring(0, hidrawIndex) : usbPortion;
+            }
+        }
+        else
+        {
+            // Non-Linux path, just strip hidraw suffix if present
+            var hidrawIndex = input.IndexOf("/hidraw/", StringComparison.Ordinal);
+            if (hidrawIndex > 0)
+            {
+                pathToHash = input.Substring(0, hidrawIndex);
+            }
         }
 
         var bytes = Encoding.UTF8.GetBytes(pathToHash);
