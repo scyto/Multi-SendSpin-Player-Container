@@ -1,3 +1,4 @@
+using System.Web;
 using Microsoft.AspNetCore.Mvc;
 using MultiRoomAudio.Models;
 using MultiRoomAudio.Services;
@@ -150,6 +151,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: GET /api/triggers/boards/{BoardId}", boardId);
 
@@ -171,6 +173,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: PUT /api/triggers/boards/{BoardId}", boardId);
 
@@ -200,6 +203,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: DELETE /api/triggers/boards/{BoardId}", boardId);
 
@@ -223,6 +227,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: POST /api/triggers/boards/{BoardId}/reconnect", boardId);
 
@@ -250,6 +255,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: GET /api/triggers/boards/{BoardId}/{Channel}", boardId, channel);
 
@@ -280,6 +286,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: PUT /api/triggers/boards/{BoardId}/{Channel}", boardId, channel);
 
@@ -322,6 +329,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: DELETE /api/triggers/boards/{BoardId}/{Channel}", boardId, channel);
 
@@ -348,6 +356,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: POST /api/triggers/boards/test?boardId={BoardId}&channel={Channel} - {On}", boardId, channel, request.On);
 
@@ -396,6 +405,7 @@ public static class TriggersEndpoint
             TriggerService service,
             ILoggerFactory lf) =>
         {
+            boardId = HttpUtility.UrlDecode(boardId);
             var logger = lf.CreateLogger("TriggersEndpoint");
             logger.LogDebug("API: POST /api/triggers/boards/{BoardId}/{Channel}/test - {On}", boardId, channel, request.On);
 

@@ -65,20 +65,28 @@ public class RealRelayDeviceEnumerator : IRelayDeviceEnumerator
         }
 
         // Enumerate USB HID relay devices
+        // Always use path-based IDs for HID boards to ensure consistency.
+        // Serial numbers on these boards are often duplicated across units from the same
+        // manufacturer, which would cause ID collisions when adding additional boards.
         try
         {
             foreach (var hid in HidRelayBoard.EnumerateDevices(_logger))
             {
+                // Use stable hash for consistent IDs across process restarts
+                var boardId = $"HID:{HidRelayDeviceInfo.StableHash(hid.DevicePath)}";
+
                 result.Add(new RelayDeviceInfo(
-                    BoardId: hid.GetBoardId(),
+                    BoardId: boardId,
                     BoardType: RelayBoardType.UsbHid,
                     SerialNumber: hid.SerialNumber,
                     Description: hid.ProductName ?? "USB HID Relay Board",
                     ChannelCount: hid.ChannelCount,
                     IsInUse: false, // We don't track this here - TriggerService manages it
                     UsbPath: hid.DevicePath,
-                    IsPathBased: hid.IsPathBased,
-                    ChannelCountDetected: hid.ChannelCountDetected
+                    IsPathBased: true,
+                    ChannelCountDetected: hid.ChannelCountDetected,
+                    IsAccessible: hid.IsAccessible,
+                    AccessError: hid.AccessError
                 ));
             }
         }
@@ -95,12 +103,12 @@ public class RealRelayDeviceEnumerator : IRelayDeviceEnumerator
                 result.Add(new RelayDeviceInfo(
                     BoardId: modbus.GetBoardId(),
                     BoardType: RelayBoardType.Modbus,
-                    SerialNumber: null, // Modbus boards don't have serial numbers
+                    SerialNumber: modbus.UsbPortPath, // Store USB port path if available
                     Description: modbus.Description,
                     ChannelCount: 16, // Default - user must configure manually
                     IsInUse: false,
-                    UsbPath: modbus.PortName,
-                    IsPathBased: true, // Serial ports are always path-based
+                    UsbPath: modbus.PortName, // Current serial port name
+                    IsPathBased: modbus.IsPathBased, // True if we have USB port path
                     ChannelCountDetected: false // Modbus boards can't auto-detect channel count
                 ));
             }
