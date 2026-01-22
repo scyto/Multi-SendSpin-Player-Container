@@ -498,13 +498,18 @@ async function openEditPlayerModal(playerName) {
 
         // Set advertised format dropdown (if advanced formats enabled)
         if (advancedFormatsEnabled) {
+            // Refresh formats first to populate options
+            await refreshFormats();
+
             // Store original format for change detection
-            document.getElementById('playerForm').dataset.originalFormat = player.advertisedFormat || 'all';
+            const originalFormat = player.advertisedFormat || 'all';
+            document.getElementById('playerForm').dataset.originalFormat = originalFormat;
+
+            // Set dropdown value AFTER options are populated
             const formatSelect = document.getElementById('advertisedFormat');
             if (formatSelect) {
-                formatSelect.value = player.advertisedFormat || 'all';
+                formatSelect.value = originalFormat;
             }
-            await refreshFormats();
         }
 
         // Set modal to Edit mode
@@ -552,14 +557,14 @@ async function savePlayer() {
 
             // Include advertised format if advanced formats enabled
             if (advancedFormatsEnabled) {
-                const advertisedFormat = document.getElementById('advertisedFormat').value;
                 const form = document.getElementById('playerForm');
                 const originalFormat = form.dataset.originalFormat || 'all';
-                const currentFormat = advertisedFormat === 'all' ? '' : advertisedFormat;
+                const currentFormat = document.getElementById('advertisedFormat').value || 'all';
 
                 // Only include if changed from original
-                if (currentFormat !== (originalFormat === 'all' ? '' : originalFormat)) {
-                    updatePayload.advertisedFormat = currentFormat;
+                if (currentFormat !== originalFormat) {
+                    // Send empty string for 'all', otherwise send the specific format
+                    updatePayload.advertisedFormat = currentFormat === 'all' ? '' : currentFormat;
                 }
             }
 
