@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-82842bd
+## Development Build: sha-6a86a6d
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #97 from scyto/dev
-- Document PA_SAMPLE_RATE and PA_SAMPLE_FORMAT environment variables
-- Merge pull request #12 from scyto/feature/conservative-audio-defaults-and-stats-improvements
-- Extract and populate hardware sample format from PulseAudio sinks
-- Merge pull request #11 from scyto/feature/conservative-audio-defaults-and-stats-improvements
-- Add hardware format display to Stats for Nerds
-- Add PulseAudio runtime configuration via environment variables
-- Merge remote dev branch with 3-point interpolation changes
-- Implement 3-point weighted interpolation for sync correction
-- Update tested product from 4-channel to 8-channel relay
+- Merge pull request #100 from scyto/dev
+- Update documentation for ENABLE_ADVANCED_FORMATS behavior
+- Merge pull request #15 from scyto/feature/per-player-format-selection
+- Apply flac-48000 default regardless of ENABLE_ADVANCED_FORMATS
+- Default to flac-48000 format for maximum MA compatibility
+- Merge pull request #14 from scyto/feature/per-player-format-selection
+- Fix format dropdown not updating and change detection issues
+- Merge pull request #13 from scyto/feature/per-player-format-selection
+- Fix: Include advertisedFormat in player creation payload
+- Add per-player audio format selection feature (dev-only)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
