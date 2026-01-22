@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-f5a8f9d
+## Development Build: sha-82842bd
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #97 from scyto/dev
+- Document PA_SAMPLE_RATE and PA_SAMPLE_FORMAT environment variables
+- Merge pull request #12 from scyto/feature/conservative-audio-defaults-and-stats-improvements
+- Extract and populate hardware sample format from PulseAudio sinks
+- Merge pull request #11 from scyto/feature/conservative-audio-defaults-and-stats-improvements
+- Add hardware format display to Stats for Nerds
+- Add PulseAudio runtime configuration via environment variables
 - Merge remote dev branch with 3-point interpolation changes
 - Implement 3-point weighted interpolation for sync correction
 - Update tested product from 4-channel to 8-channel relay
-- Update tested products and configuration details
-- Merge pull request #93 from scyto/dev
-- small edit
-- Merge pull request #92 from scyto/dev
-- Expand HID relay documentation with Docker device mapping details
-- Merge pull request #91 from scyto/dev
-- Update docs: clarify HID relay device mapping requirements
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
