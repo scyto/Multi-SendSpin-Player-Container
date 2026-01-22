@@ -165,8 +165,17 @@ new ErrorResponse(false, "Error message")
 | `AUDIO_BACKEND` | Auto-detected | `alsa` or `pulse` |
 | `CONFIG_PATH` | `/app/config` | Configuration directory (Docker mode) |
 | `LOG_PATH` | `/app/logs` | Log directory (Docker mode) |
+| `PA_SAMPLE_RATE` | `48000` | PulseAudio sample rate (Docker mode only) |
+| `PA_SAMPLE_FORMAT` | `float32le` | PulseAudio sample format (Docker mode only) |
 | `SUPERVISOR_TOKEN` | (HAOS only) | Auto-set by Home Assistant supervisor |
 | `MOCK_HARDWARE` | `false` | Enable mock relay boards for testing without hardware |
+
+**Audio Configuration Notes:**
+- `PA_SAMPLE_RATE` and `PA_SAMPLE_FORMAT` only apply in standalone Docker mode
+- These settings are applied at container startup before PulseAudio starts
+- PulseAudio will automatically negotiate down if hardware doesn't support the requested format
+- Common formats: `s16le` (16-bit), `s24le` (24-bit), `s32le` (32-bit), `float32le` (32-bit float)
+- Common rates: `44100`, `48000`, `96000`, `192000`
 
 ---
 
