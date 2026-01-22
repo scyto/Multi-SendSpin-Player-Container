@@ -484,6 +484,7 @@ async function openEditPlayerModal(playerName) {
         document.getElementById('serverUrl').value = player.serverUrl || '';
         document.getElementById('initialVolume').value = player.volume;
         document.getElementById('initialVolumeValue').textContent = player.volume + '%';
+        document.getElementById('editBufferSizeMs').value = player.bufferSizeMs || 100;
 
         // Set device dropdown
         await refreshDevices();
@@ -568,6 +569,12 @@ async function savePlayer() {
                 }
             }
 
+            // Include buffer size
+            const bufferSizeMs = parseInt(document.getElementById('editBufferSizeMs').value);
+            if (!isNaN(bufferSizeMs)) {
+                updatePayload.bufferSizeMs = bufferSizeMs;
+            }
+
             const response = await fetch(`./api/players/${encodeURIComponent(editingName)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -628,6 +635,12 @@ async function savePlayer() {
                 if (advertisedFormat && advertisedFormat !== 'all') {
                     payload.advertisedFormat = advertisedFormat;
                 }
+            }
+
+            // Include buffer size
+            const bufferSizeMs = parseInt(document.getElementById('editBufferSizeMs').value);
+            if (!isNaN(bufferSizeMs)) {
+                payload.bufferSizeMs = bufferSizeMs;
             }
 
             const response = await fetch('./api/players', {
@@ -1289,9 +1302,9 @@ function openStatsForNerds(playerName) {
     const modal = new bootstrap.Modal(document.getElementById('statsForNerdsModal'));
     modal.show();
 
-    // Start polling - reduced frequency to 2000ms (2 seconds) to minimize impact on audio pipeline
+    // Start polling
     fetchAndRenderStats();
-    statsInterval = setInterval(fetchAndRenderStats, 2000);
+    statsInterval = setInterval(fetchAndRenderStats, 500);
 
     // Stop polling when modal closes
     document.getElementById('statsForNerdsModal').addEventListener('hidden.bs.modal', () => {
