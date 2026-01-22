@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-aa1f412
+## Development Build: sha-2dff3bc
 
 **Current Dev Build Changes** (recent)
 
+- fix nerds for stats
 - Update documentation for ENABLE_ADVANCED_FORMATS behavior
 - Merge pull request #15 from scyto/feature/per-player-format-selection
 - Apply flac-48000 default regardless of ENABLE_ADVANCED_FORMATS
@@ -14,7 +15,6 @@
 - Merge pull request #13 from scyto/feature/per-player-format-selection
 - Fix: Include advertisedFormat in player creation payload
 - Add per-player audio format selection feature (dev-only)
-- Document PA_SAMPLE_RATE and PA_SAMPLE_FORMAT environment variables
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
