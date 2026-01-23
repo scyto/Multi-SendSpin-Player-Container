@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e59171d
+## Development Build: sha-28398a1
 
 **Current Dev Build Changes** (recent)
 
+- Pause auto-refresh during modal editing, slow stats polling
 - Remove buffer size UI and fix stats/format bugs
 - Merge pull request #101 from scyto/dev
 - Merge pull request #99 from scyto/feature/per-player-format-selection
@@ -14,7 +15,6 @@
 - Update documentation for ENABLE_ADVANCED_FORMATS behavior
 - Fix: Preserve "all formats" selection on player creation
 - Merge pull request #15 from scyto/feature/per-player-format-selection
-- Apply flac-48000 default regardless of ENABLE_ADVANCED_FORMATS
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
