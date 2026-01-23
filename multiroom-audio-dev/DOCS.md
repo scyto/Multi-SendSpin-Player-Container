@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e6d4db6
+## Development Build: sha-bc9a439
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #101 from scyto/dev
-- Merge pull request #99 from scyto/feature/per-player-format-selection
-- tweak stats for nerds and rwadd the bufferms per player thing
-- fix nerds for stats
-- Merge pull request #100 from scyto/dev
-- Update documentation for ENABLE_ADVANCED_FORMATS behavior
-- Fix: Preserve "all formats" selection on player creation
-- Merge pull request #15 from scyto/feature/per-player-format-selection
-- Apply flac-48000 default regardless of ENABLE_ADVANCED_FORMATS
-- Default to flac-48000 format for maximum MA compatibility
+- Fix stats for nerds buffer target to show 5000ms protocol capacity
+- Trigger rebuild
+- Update tested product from 4-channel to 8-channel relay
+- Update tested products and configuration details
+- Merge pull request #93 from scyto/dev
+- small edit
+- Merge pull request #92 from scyto/dev
+- Expand HID relay documentation with Docker device mapping details
+- Merge pull request #91 from scyto/dev
+- Update docs: clarify HID relay device mapping requirements
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
