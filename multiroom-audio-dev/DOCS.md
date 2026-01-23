@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ec0b9c2
+## Development Build: sha-cfeffea
 
 **Current Dev Build Changes** (recent)
 
+- fix format selection i hope
 - Merge branch 'dev' of https://github.com/scyto/Multi-SendSpin-Player-Container into dev
 - Fix stats for nerds buffer target to show 5000ms protocol capacity
 - Trigger rebuild
@@ -14,7 +15,6 @@
 - Remove buffer size UI and fix stats/format bugs
 - Merge pull request #101 from scyto/dev
 - Merge pull request #99 from scyto/feature/per-player-format-selection
-- tweak stats for nerds and rwadd the bufferms per player thing
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
