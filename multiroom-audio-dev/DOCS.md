@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7f3257f
+## Development Build: sha-0840fec
 
 **Current Dev Build Changes** (recent)
 
+- oh ffs
 - a fix
 - maybe fixed stats
 - Decouple stats UI from SDK access with active viewer tracking
@@ -14,7 +15,6 @@
 - Fix stats for nerds overlapping requests causing audio issues
 - Pause auto-refresh during modal editing, slow stats polling
 - Remove buffer size UI and fix stats/format bugs
-- Merge pull request #101 from scyto/dev
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
