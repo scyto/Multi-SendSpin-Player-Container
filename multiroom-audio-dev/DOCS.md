@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c91b08d
+## Development Build: sha-b96ec56
 
 **Current Dev Build Changes** (recent)
 
+- Decouple stats UI from SDK access with active viewer tracking
+- Fix stats caching: use on-demand TTL instead of background timer
 - Add background stats caching to prevent audio dropouts
 - Fix Kestrel address override warning at startup
 - Fix stats for nerds overlapping requests causing audio issues
@@ -13,8 +15,6 @@
 - Merge pull request #101 from scyto/dev
 - Merge pull request #99 from scyto/feature/per-player-format-selection
 - tweak stats for nerds and rwadd the bufferms per player thing
-- fix nerds for stats
-- Merge pull request #100 from scyto/dev
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
