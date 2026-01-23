@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fbe6bb8
+## Development Build: sha-c91b08d
 
 **Current Dev Build Changes** (recent)
 
+- Add background stats caching to prevent audio dropouts
 - Fix Kestrel address override warning at startup
 - Fix stats for nerds overlapping requests causing audio issues
 - Pause auto-refresh during modal editing, slow stats polling
@@ -14,7 +15,6 @@
 - tweak stats for nerds and rwadd the bufferms per player thing
 - fix nerds for stats
 - Merge pull request #100 from scyto/dev
-- Update documentation for ENABLE_ADVANCED_FORMATS behavior
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
