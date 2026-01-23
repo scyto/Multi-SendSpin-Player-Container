@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-28398a1
+## Development Build: sha-a6a229c
 
 **Current Dev Build Changes** (recent)
 
+- Fix stats for nerds overlapping requests causing audio issues
 - Pause auto-refresh during modal editing, slow stats polling
 - Remove buffer size UI and fix stats/format bugs
 - Merge pull request #101 from scyto/dev
@@ -14,7 +15,6 @@
 - Merge pull request #100 from scyto/dev
 - Update documentation for ENABLE_ADVANCED_FORMATS behavior
 - Fix: Preserve "all formats" selection on player creation
-- Merge pull request #15 from scyto/feature/per-player-format-selection
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
