@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-445625a
+## Development Build: sha-ec0b9c2
 
 **Current Dev Build Changes** (recent)
 
-- Merge branch 'chrisuthe:dev' into dev
-- Fix compiler warnings: nullable references and async method
-- Fix stats: revert to 2 SDK calls instead of 1 for compatibility
-- oh ffs
-- a fix
+- Merge branch 'dev' of https://github.com/scyto/Multi-SendSpin-Player-Container into dev
 - Fix stats for nerds buffer target to show 5000ms protocol capacity
 - Trigger rebuild
-- maybe fixed stats
-- Decouple stats UI from SDK access with active viewer tracking
-- Fix stats caching: use on-demand TTL instead of background timer
+- Fix Kestrel address override warning at startup
+- Fix stats for nerds overlapping requests causing audio issues
+- Pause auto-refresh during modal editing, slow stats polling
+- Remove buffer size UI and fix stats/format bugs
+- Merge pull request #101 from scyto/dev
+- Merge pull request #99 from scyto/feature/per-player-format-selection
+- tweak stats for nerds and rwadd the bufferms per player thing
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
