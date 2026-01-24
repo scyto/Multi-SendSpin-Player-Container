@@ -1848,6 +1848,11 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     {
         return (_, group) =>
         {
+            // Log all GroupState events for debugging sync issues
+            _logger.LogDebug(
+                "GROUPSTATE Player '{Name}': received vol={ServerVol}% muted={ServerMuted} (local vol={LocalVol}% muted={LocalMuted})",
+                name, group.Volume, group.Muted, context.Config.Volume, context.Player.IsMuted);
+
             // Clamp volume to valid range
             var serverVolume = Math.Clamp(group.Volume, 0, 100);
 
@@ -1924,6 +1929,22 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
                 context.Pipeline.SetMuted(group.Muted);
                 context.Player.IsMuted = group.Muted;
+
+                // Echo mute state back to MA to confirm receipt (like we do for volume)
+                FireAndForget(async () =>
+                {
+                    try
+                    {
+                        await context.Client.SendPlayerStateAsync(context.Config.Volume, group.Muted);
+                        _logger.LogDebug("MUTE [StateEcho] Player '{Name}': echoed {State} to server",
+                            name, group.Muted ? "muted" : "unmuted");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to echo mute state for '{Name}'", name);
+                    }
+                }, $"Mute state echo for '{name}'", _logger);
+
                 _ = BroadcastStatusAsync();
             }
         };
