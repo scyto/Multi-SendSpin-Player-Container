@@ -328,6 +328,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         public DateTime? ConnectedAt { get; set; }
         public int InitialVolume { get; init; } // Store initial volume to detect resets
         public long SamplesPlayed { get; set; }
+        public bool? LastConfirmedMuted { get; set; } // Track last mute state echoed to server
 
         // Event handler references for proper cleanup (prevents memory leaks)
         public EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateHandler { get; set; }
@@ -1153,13 +1154,36 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
 
     /// <summary>
     /// Sets the mute state for a player.
+    /// Applies software mute to the audio pipeline (not the hardware sink).
+    /// Also syncs mute state to Music Assistant server.
     /// </summary>
     public bool SetMuted(string name, bool muted)
     {
         if (!_players.TryGetValue(name, out var context))
             return false;
 
+        _logger.LogInformation("MUTE [UserToggle] Player '{Name}': {State}",
+            name, muted ? "muted" : "unmuted");
+
         context.Pipeline.SetMuted(muted);
+        context.Player.IsMuted = muted;
+
+        // Sync mute state to Music Assistant server (bidirectional sync)
+        FireAndForget(async () =>
+        {
+            try
+            {
+                await context.Client.SendPlayerStateAsync(context.Config.Volume, muted);
+                context.LastConfirmedMuted = muted;
+                _logger.LogInformation("MUTE [StateEcho] Player '{Name}': synced {State} to server",
+                    name, muted ? "muted" : "unmuted");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to sync mute state for '{Name}'", name);
+            }
+        }, $"Mute state sync for '{name}'", _logger);
+
         return true;
     }
 
@@ -1682,7 +1706,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             if (args.NewState == ConnectionState.Connected)
             {
                 context.ConnectedAt = DateTime.UtcNow;
-                _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': grace period started for {Duration}s",
+                _logger.LogInformation("VOLUME [GracePeriod] Player '{Name}': grace period started for {Duration}s",
                     name, VolumeGracePeriod.TotalSeconds);
                 _ = PushVolumeToServerAsync(name, context);
             }
@@ -1826,6 +1850,11 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
     {
         return (_, group) =>
         {
+            // Log all GroupState events for debugging sync issues
+            _logger.LogInformation(
+                "GROUPSTATE Player '{Name}': received vol={ServerVol}% muted={ServerMuted} (local vol={LocalVol}% muted={LocalMuted})",
+                name, group.Volume, group.Muted, context.Config.Volume, context.Player.IsMuted);
+
             // Clamp volume to valid range
             var serverVolume = Math.Clamp(group.Volume, 0, 100);
 
@@ -1850,7 +1879,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                         try
                         {
                             await context.Client.SetVolumeAsync(context.Config.Volume);
-                            _logger.LogDebug("VOLUME [GracePeriod] Player '{Name}': pushed startup volume {Volume}% back to MA",
+                            _logger.LogInformation("VOLUME [GracePeriod] Player '{Name}': pushed startup volume {Volume}% back to MA",
                                 name, context.Config.Volume);
                         }
                         catch (Exception ex)
@@ -1879,7 +1908,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     try
                     {
                         await context.Client.SendPlayerStateAsync(serverVolume, context.Player.IsMuted);
-                        _logger.LogDebug("VOLUME [StateEcho] Player '{Name}': echoed client/state with {Volume}%",
+                        _logger.LogInformation("VOLUME [StateEcho] Player '{Name}': echoed client/state with {Volume}%",
                             name, serverVolume);
                     }
                     catch (Exception ex)
@@ -1889,6 +1918,40 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 }, $"Player state echo for '{name}'", _logger);
 
                 // Broadcast to UI so slider updates
+                _ = BroadcastStatusAsync();
+            }
+
+            // Handle mute state from server (bidirectional sync)
+            // Compare against LastConfirmedMuted, not Player.IsMuted, because the SDK
+            // updates Player.IsMuted when it receives the mute command BEFORE GroupState arrives.
+            // We need to echo back to confirm to the server that we processed the mute.
+            if (group.Muted != context.LastConfirmedMuted)
+            {
+                _logger.LogInformation("MUTE [ServerSync] Player '{Name}': {OldState} -> {NewState}",
+                    name,
+                    context.LastConfirmedMuted switch { true => "muted", false => "unmuted", null => "unknown" },
+                    group.Muted ? "muted" : "unmuted");
+
+                // Update local state (may already be set by SDK, but ensure consistency)
+                context.Pipeline.SetMuted(group.Muted);
+                context.Player.IsMuted = group.Muted;
+
+                // Echo mute state back to MA to confirm receipt (like we do for volume)
+                FireAndForget(async () =>
+                {
+                    try
+                    {
+                        await context.Client.SendPlayerStateAsync(context.Config.Volume, group.Muted);
+                        context.LastConfirmedMuted = group.Muted;
+                        _logger.LogInformation("MUTE [StateEcho] Player '{Name}': echoed {State} to server",
+                            name, group.Muted ? "muted" : "unmuted");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to echo mute state for '{Name}'", name);
+                    }
+                }, $"Mute state echo for '{name}'", _logger);
+
                 _ = BroadcastStatusAsync();
             }
         };
