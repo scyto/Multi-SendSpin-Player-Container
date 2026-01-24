@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c4952d7
+## Development Build: sha-6f5d845
 
 **Current Dev Build Changes** (recent)
 
+- Revert stats timer caching - keep simple direct-access approach
 - Merge pull request #17 from scyto/feature/denkovi-ftdi-support
 - Fix FTDI OpenByPathHash crash: use single context for enumeration and open
 - 3d box
@@ -14,7 +15,6 @@
 - Add FTDI relay hardware state verification and logging
 - Use synchronous bit-bang mode for FTDI relay boards
 - fix format selection i hope
-- Merge branch 'dev' of https://github.com/scyto/Multi-SendSpin-Player-Container into dev
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
