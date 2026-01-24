@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5db9f06
+## Development Build: sha-eef4c9e
 
 **Current Dev Build Changes** (recent)
 
+- Refactor stats panel to update values incrementally instead of full DOM rebuild
+- Cache hardware info in frontend on first stats fetch
+- Cache device info to remove pactl from stats hot path
 - Fix whitespace formatting in PlayerStatsMapper
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
 - Fix stats for nerds blocking at high bitrates (192kHz 24-bit)
@@ -12,9 +15,6 @@
 - Fix FTDI OpenByPathHash crash: use single context for enumeration and open
 - Use USB path-based IDs for all FTDI boards (multi-board support)
 - Add Denkovi 4/8 channel relay board support with model-specific UI
-- Add FTDI relay hardware state verification and logging
-- Use synchronous bit-bang mode for FTDI relay boards
-- Merge branch 'main' into dev
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
