@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-53fa442
+## Development Build: sha-432f789
 
 **Current Dev Build Changes** (recent)
 
+- Fix mute state not syncing: update Player.IsMuted after pipeline mute
 - Add mute button to player card with bidirectional MA sync
 - Refactor stats panel to update values incrementally instead of full DOM rebuild
 - Cache hardware info in frontend on first stats fetch
@@ -14,7 +15,6 @@
 - Fix stats for nerds blocking at high bitrates (192kHz 24-bit)
 - Merge pull request #107 from scyto/ftdi-clean
 - Fix FTDI OpenByPathHash crash: use single context for enumeration and open
-- Use USB path-based IDs for all FTDI boards (multi-board support)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
