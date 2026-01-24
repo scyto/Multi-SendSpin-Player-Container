@@ -78,7 +78,7 @@ internal static class PlayerStatsMapper
             OutputSampleRate: outputFormat?.SampleRate ?? 0,
             OutputChannels: outputFormat?.Channels ?? 2,
             OutputBitDepth: 32,  // Always float32 (PulseAudio converts to device format)
-            // Hardware sink format from PulseAudio (what the DAC actually receives)
+                                 // Hardware sink format from PulseAudio (what the DAC actually receives)
             HardwareFormat: device?.SampleFormat?.ToUpperInvariant(),
             HardwareSampleRate: device?.DefaultSampleRate,
             HardwareBitDepth: device?.BitDepth
