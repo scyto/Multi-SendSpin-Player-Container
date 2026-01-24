@@ -1,19 +1,18 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-6f5d845
+## Development Build: sha-d5ea40e
 
 **Current Dev Build Changes** (recent)
 
-- Revert stats timer caching - keep simple direct-access approach
-- Merge pull request #17 from scyto/feature/denkovi-ftdi-support
+- Merge pull request #107 from scyto/ftdi-clean
 - Fix FTDI OpenByPathHash crash: use single context for enumeration and open
-- 3d box
-- Merge pull request #16 from scyto/feature/denkovi-ftdi-support
 - Use USB path-based IDs for all FTDI boards (multi-board support)
 - Add Denkovi 4/8 channel relay board support with model-specific UI
 - Add FTDI relay hardware state verification and logging
 - Use synchronous bit-bang mode for FTDI relay boards
+- Merge branch 'main' into dev
+- Merge pull request #103 from scyto/dev
 - fix format selection i hope
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
