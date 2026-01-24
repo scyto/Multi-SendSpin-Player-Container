@@ -328,6 +328,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
         public DateTime? ConnectedAt { get; set; }
         public int InitialVolume { get; init; } // Store initial volume to detect resets
         public long SamplesPlayed { get; set; }
+        public bool? LastConfirmedMuted { get; set; } // Track last mute state echoed to server
 
         // Event handler references for proper cleanup (prevents memory leaks)
         public EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateHandler { get; set; }
@@ -1173,6 +1174,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             try
             {
                 await context.Client.SendPlayerStateAsync(context.Config.Volume, muted);
+                context.LastConfirmedMuted = muted;
                 _logger.LogInformation("MUTE [StateEcho] Player '{Name}': synced {State} to server",
                     name, muted ? "muted" : "unmuted");
             }
@@ -1920,13 +1922,17 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
             }
 
             // Handle mute state from server (bidirectional sync)
-            if (group.Muted != context.Player.IsMuted)
+            // Compare against LastConfirmedMuted, not Player.IsMuted, because the SDK
+            // updates Player.IsMuted when it receives the mute command BEFORE GroupState arrives.
+            // We need to echo back to confirm to the server that we processed the mute.
+            if (group.Muted != context.LastConfirmedMuted)
             {
                 _logger.LogInformation("MUTE [ServerSync] Player '{Name}': {OldState} -> {NewState}",
                     name,
-                    context.Player.IsMuted ? "muted" : "unmuted",
+                    context.LastConfirmedMuted switch { true => "muted", false => "unmuted", null => "unknown" },
                     group.Muted ? "muted" : "unmuted");
 
+                // Update local state (may already be set by SDK, but ensure consistency)
                 context.Pipeline.SetMuted(group.Muted);
                 context.Player.IsMuted = group.Muted;
 
@@ -1936,6 +1942,7 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                     try
                     {
                         await context.Client.SendPlayerStateAsync(context.Config.Volume, group.Muted);
+                        context.LastConfirmedMuted = group.Muted;
                         _logger.LogInformation("MUTE [StateEcho] Player '{Name}': echoed {State} to server",
                             name, group.Muted ? "muted" : "unmuted");
                     }
