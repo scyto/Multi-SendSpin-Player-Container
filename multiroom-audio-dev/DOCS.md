@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fe0dc47
+## Development Build: sha-44d2e96
 
 **Current Dev Build Changes** (recent)
 
+- Fix local volume changes not updating MA UI
 - Fix volume control: player is now authoritative for its own volume
 - Fix volume sync: use SendPlayerStateAsync to update MA state
 - Fix Kestrel address override warning in Docker
@@ -14,7 +15,6 @@
 - Fix mute sync: echo state back to MA and add GroupState debug logging
 - Fix mute state not syncing: update Player.IsMuted after pipeline mute
 - Add mute button to player card with bidirectional MA sync
-- Refactor stats panel to update values incrementally instead of full DOM rebuild
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
