@@ -1,10 +1,29 @@
 # Multi-Room Audio Controller
 
 <!-- VERSION_INFO_START -->
-## Latest Release: 3.0.0
+## Latest Release: 4.0.0
 
 
 
+### Highlights
+- **aarch64 (ARM64) Support** - Now works on Home Assistant Green, Raspberry Pi 4/5, and other ARM64 devices
+- **SendSpin.SDK 5.2.0** - Major SDK upgrade with improved protocol handling
+- **Dual-Volume System** - Separate startup and runtime volume controls for better multi-room sync
+- **Volume Preservation** - Volume now persists across track changes
+- **Boot Mute Control** - Configure sound cards to start muted or unmuted
+
+### Added
+- ARM64 architecture support for HAOS add-on (Home Assistant Green, Raspberry Pi 4/5)
+- Automatic page reload when backend version changes (detects upgrades automatically)
+- Volume grace period to resolve startup volume sync battles with Music Assistant
+- Boot mute preferences for sound cards (persisted to `card-profiles.yaml`)
+- Real-time mute toggle for sound cards from web UI
+- Controller and metadata roles for player registration
+- Hardware volume slider always visible on player cards
+- Custom sink names for display
+- Automatic reconnection for failed autostart players
+- Onboarding wizard for first-time setup
+- Custom sink creation and management
 
 [View full changelog](https://github.com/chrisuthe/Multi-SendSpin-Player-Container/blob/main/multiroom-audio/CHANGELOG.md)
 <!-- VERSION_INFO_END -->
@@ -132,8 +151,18 @@ automatic power-on/off of amplifiers when playback starts and stops.
 
 **FTDI Relay Boards:**
 
-- Denkovi USB 8 Relay Board (DAE0006K or similar with FT245RL chip)
-- Any FTDI FT245RL-based relay board (1-16 channels)
+| Model                         | Channels | Description                       |
+|-------------------------------|----------|-----------------------------------|
+| **Denkovi DAE-CB/Ro8-USB**    | 8        | Denkovi USB 8 Relay Board         |
+| **Denkovi DAE-CB/Ro4-USB**    | 4        | Denkovi USB 4 Relay Board         |
+| **Generic FTDI**              | 8        | Standard 8-channel FTDI relay     |
+
+These boards use the FT245RL chip with synchronous bitbang mode (0x04).
+
+**Notes:**
+
+- The Denkovi 4-channel board uses different pin mappings internally (odd pins D1, D3, D5, D7). When adding an FTDI board in the UI, select the correct model to ensure proper relay control.
+- **Multiple FTDI boards:** Fully supported. Boards with unique serial numbers use the serial for identification. Boards with identical or missing serials use USB port path (stable across reboots as long as boards stay in the same USB ports).
 
 **USB HID Relay Boards:**
 

@@ -3,10 +3,13 @@
 // State
 let players = {};
 let devices = [];
+let formats = [];
+let advancedFormatsEnabled = false;
 let connection = null;
 let currentBuildVersion = null; // Stored build version for comparison
 let isUserInteracting = false; // Track if user is dragging a slider
 let pendingUpdate = null; // Store pending updates during interaction
+let isModalOpen = false; // Pause auto-refresh while modal is open
 
 function formatBuildVersion(apiInfo) {
     const version = apiInfo?.version;
@@ -253,6 +256,7 @@ function getBusTypeLabel(busType) {
 document.addEventListener('DOMContentLoaded', async () => {
     // Load initial data
     await Promise.all([
+        checkAdvancedFormats(),
         refreshBuildInfo(),
         refreshStatus(),
         refreshDevices()
@@ -352,7 +356,12 @@ function setupSignalR() {
 }
 
 // API calls
-async function refreshStatus() {
+async function refreshStatus(force = false) {
+    // Skip auto-refresh while modal is open (unless forced)
+    if (isModalOpen && !force) {
+        return;
+    }
+
     try {
         const response = await fetch('./api/players');
         if (!response.ok) throw new Error('Failed to fetch players');
@@ -367,6 +376,47 @@ async function refreshStatus() {
     } catch (error) {
         console.error('Error refreshing status:', error);
         showAlert('Failed to load players', 'danger');
+    }
+}
+
+async function checkAdvancedFormats() {
+    try {
+        const response = await fetch('./api/players/formats');
+        advancedFormatsEnabled = response.ok;
+
+        if (advancedFormatsEnabled) {
+            document.getElementById('advertisedFormatGroup').style.display = 'block';
+        }
+    } catch (error) {
+        advancedFormatsEnabled = false;
+    }
+}
+
+async function refreshFormats() {
+    if (!advancedFormatsEnabled) return;
+
+    try {
+        const response = await fetch('./api/players/formats');
+        if (!response.ok) throw new Error('Failed to fetch formats');
+
+        const data = await response.json();
+        formats = data.formats || [];
+
+        const formatSelect = document.getElementById('advertisedFormat');
+        if (formatSelect) {
+            const currentValue = formatSelect.value;
+            formatSelect.innerHTML = '';
+            formats.forEach(format => {
+                const option = document.createElement('option');
+                option.value = format.id;
+                option.textContent = format.label;
+                option.title = format.description;
+                formatSelect.appendChild(option);
+            });
+            if (currentValue) formatSelect.value = currentValue;
+        }
+    } catch (error) {
+        console.error('Error refreshing formats:', error);
     }
 }
 
@@ -397,7 +447,9 @@ async function refreshDevices() {
 }
 
 // Open the modal in Add mode
-function openAddPlayerModal() {
+async function openAddPlayerModal() {
+    isModalOpen = true;
+
     // Reset form
     document.getElementById('playerForm').reset();
     document.getElementById('editingPlayerName').value = '';
@@ -409,14 +461,25 @@ function openAddPlayerModal() {
     document.getElementById('playerModalSubmitIcon').className = 'fas fa-plus me-1';
     document.getElementById('playerModalSubmitText').textContent = 'Add Player';
 
-    // Refresh devices and show modal
-    refreshDevices();
+    // Refresh devices and formats
+    await refreshDevices();
+    if (advancedFormatsEnabled) {
+        await refreshFormats();
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('playerModal'));
     modal.show();
+
+    // Reset flag when modal closes
+    document.getElementById('playerModal').addEventListener('hidden.bs.modal', () => {
+        isModalOpen = false;
+    }, { once: true });
 }
 
 // Open the modal in Edit mode with player data
 async function openEditPlayerModal(playerName) {
+    isModalOpen = true;
+
     try {
         // Fetch current player data
         const response = await fetch(`./api/players/${encodeURIComponent(playerName)}`);
@@ -448,6 +511,22 @@ async function openEditPlayerModal(playerName) {
             }
         }
 
+        // Set advertised format dropdown (if advanced formats enabled)
+        if (advancedFormatsEnabled) {
+            // Refresh formats first to populate options
+            await refreshFormats();
+
+            // Store original format for change detection (default to flac-48000 for compatibility)
+            const originalFormat = player.advertisedFormat || 'flac-48000';
+            document.getElementById('playerForm').dataset.originalFormat = originalFormat;
+
+            // Set dropdown value AFTER options are populated
+            const formatSelect = document.getElementById('advertisedFormat');
+            if (formatSelect) {
+                formatSelect.value = originalFormat;
+            }
+        }
+
         // Set modal to Edit mode
         document.getElementById('playerModalIcon').className = 'fas fa-edit me-2';
         document.getElementById('playerModalTitleText').textContent = 'Edit Player';
@@ -456,7 +535,13 @@ async function openEditPlayerModal(playerName) {
 
         const modal = new bootstrap.Modal(document.getElementById('playerModal'));
         modal.show();
+
+        // Reset flag when modal closes
+        document.getElementById('playerModal').addEventListener('hidden.bs.modal', () => {
+            isModalOpen = false;
+        }, { once: true });
     } catch (error) {
+        isModalOpen = false;
         console.error('Error opening edit modal:', error);
         showAlert(error.message, 'danger');
     }
@@ -491,6 +576,19 @@ async function savePlayer() {
                 volume
             };
 
+            // Include advertised format if advanced formats enabled
+            if (advancedFormatsEnabled) {
+                const form = document.getElementById('playerForm');
+                const originalFormat = form.dataset.originalFormat || 'flac-48000';
+                const currentFormat = document.getElementById('advertisedFormat').value || 'flac-48000';
+
+                // Only include if changed from original
+                if (currentFormat !== originalFormat) {
+                    // Send the specific format
+                    updatePayload.advertisedFormat = currentFormat;
+                }
+            }
+
             const response = await fetch(`./api/players/${encodeURIComponent(editingName)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -506,47 +604,60 @@ async function savePlayer() {
             const finalName = result.playerName || name;
             const wasRenamed = name !== editingName;
 
-            // Close modal and refresh
+            // Close modal and reset form
             bootstrap.Modal.getInstance(document.getElementById('playerModal')).hide();
             document.getElementById('playerForm').reset();
             document.getElementById('initialVolumeValue').textContent = '75%';
-            await refreshStatus();
 
             // Show appropriate message based on changes
             if (result.needsRestart) {
                 if (wasRenamed) {
                     // For renames, offer to restart rather than auto-restart
                     // The name change is saved locally, but Music Assistant needs a restart to see it
+                    await refreshStatus(true);
                     showAlert(
                         `Player renamed to "${finalName}". Restart the player for the name to appear in Music Assistant.`,
                         'info',
                         8000 // Show for longer since it's actionable
                     );
                 } else {
-                    // For other changes requiring restart (e.g., server URL), auto-restart
+                    // For other changes requiring restart (e.g., server URL, format), auto-restart
                     const restartResponse = await fetch(`./api/players/${encodeURIComponent(finalName)}/restart`, {
                         method: 'POST'
                     });
                     if (!restartResponse.ok) {
                         console.warn('Restart request failed, player may need manual restart');
                     }
+                    // Refresh status AFTER restart completes
+                    await refreshStatus(true);
                     showAlert(`Player "${finalName}" updated and restarted`, 'success');
                 }
             } else {
+                await refreshStatus(true);
                 showAlert(`Player "${finalName}" updated successfully`, 'success');
             }
         } else {
             // Add mode: Create new player
+            const payload = {
+                name,
+                device: device || null,
+                serverUrl: serverUrl || null,
+                volume,
+                persist: true
+            };
+
+            // Include advertised format if advanced formats enabled
+            if (advancedFormatsEnabled) {
+                const advertisedFormat = document.getElementById('advertisedFormat').value;
+                if (advertisedFormat) {
+                    payload.advertisedFormat = advertisedFormat;
+                }
+            }
+
             const response = await fetch('./api/players', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    device: device || null,
-                    serverUrl: serverUrl || null,
-                    volume,
-                    persist: true
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -558,7 +669,7 @@ async function savePlayer() {
             bootstrap.Modal.getInstance(document.getElementById('playerModal')).hide();
             document.getElementById('playerForm').reset();
             document.getElementById('initialVolumeValue').textContent = '75%';
-            await refreshStatus();
+            await refreshStatus(true);
 
             showAlert(`Player "${name}" created successfully`, 'success');
         }
@@ -1188,8 +1299,15 @@ function showPrompt(title, label, defaultValue = '', placeholder = '') {
 // ========== Stats for Nerds ==========
 let statsInterval = null;
 let currentStatsPlayer = null;
+let isStatsFetching = false;
 
 function openStatsForNerds(playerName) {
+    // Clear any existing interval first to prevent multiple polling loops
+    if (statsInterval) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+    }
+
     currentStatsPlayer = playerName;
 
     // Update player name in modal header
@@ -1223,7 +1341,9 @@ function openStatsForNerds(playerName) {
 
 async function fetchAndRenderStats() {
     if (!currentStatsPlayer) return;
+    if (isStatsFetching) return; // Prevent overlapping requests
 
+    isStatsFetching = true;
     try {
         const response = await fetch(`./api/players/${encodeURIComponent(currentStatsPlayer)}/stats`);
         if (!response.ok) {
@@ -1240,6 +1360,8 @@ async function fetchAndRenderStats() {
                 <p class="text-muted mb-0">Failed to load stats</p>
             </div>
         `;
+    } finally {
+        isStatsFetching = false;
     }
 }
 
@@ -1264,6 +1386,12 @@ function renderStatsPanel(stats) {
                 <span class="stats-label">Output</span>
                 <span class="stats-value info">${escapeHtml(stats.audioFormat.outputFormat)}</span>
             </div>
+            ${stats.audioFormat.hardwareFormat ? `
+            <div class="stats-row">
+                <span class="stats-label">Hardware</span>
+                <span class="stats-value info">${escapeHtml(stats.audioFormat.hardwareFormat)} ${stats.audioFormat.hardwareSampleRate}Hz ${stats.audioFormat.hardwareBitDepth}-bit</span>
+            </div>
+            ` : ''}
         </div>
 
         <!-- Sync Status Section -->
@@ -3142,6 +3270,12 @@ function renderTriggers() {
             `;
         }).join('');
 
+        // Board type badge
+        const boardTypeLabel = board.boardType === 'Ftdi' ? 'FTDI' : (board.boardType === 'UsbHid' ? 'HID' : board.boardType);
+        const boardTypeBadge = board.boardType
+            ? `<span class="badge ${board.boardType === 'Ftdi' ? 'bg-primary' : 'bg-info'} ms-2">${boardTypeLabel}</span>`
+            : '';
+
         return `
             <div class="accordion-item">
                 <h2 class="accordion-header">
@@ -3149,6 +3283,7 @@ function renderTriggers() {
                             data-bs-toggle="collapse" data-bs-target="#board-${boardIdSafe}">
                         <span class="me-2"><i class="fas fa-microchip"></i></span>
                         <span class="fw-bold">${escapeHtml(board.displayName || board.boardId)}</span>
+                        ${boardTypeBadge}
                         <span class="ms-2 small ${boardStatusClass}">${boardStatusText}</span>
                         ${portWarning}
                         <span class="ms-auto me-3 small text-muted">${board.channelCount} channels</span>
@@ -3292,10 +3427,12 @@ async function showAddBoardDialog() {
                 availableDevices.map(d => {
                     // Use boardId as the value (consistent with RelayDeviceInfo)
                     const id = d.boardId;
-                    // Build label showing type, description and simplified port
+                    // Build label showing type
                     const typeLabel = d.boardType === 'UsbHid' ? 'HID' : 'FTDI';
-                    const channelPart = d.channelCount ? ` - ${d.channelCount}ch` : '';
-                    const detectedNote = d.channelCountDetected ? ' (auto)' : '';
+                    // For FTDI boards, don't show channel count in label (user will select model)
+                    const isFtdi = d.boardType === 'Ftdi';
+                    const channelPart = !isFtdi && d.channelCount ? ` - ${d.channelCount}ch` : '';
+                    const detectedNote = !isFtdi && d.channelCountDetected ? ' (auto)' : '';
                     // Always show USB port for differentiation, plus serial if available
                     const usbPort = extractUsbPort(d.usbPath);
                     const portPart = usbPort || '';
@@ -3310,28 +3447,41 @@ async function showAddBoardDialog() {
     }
 
     const channelCountSelect = document.getElementById('addBoardChannelCount');
-    const channelCountGroup = channelCountSelect.closest('.mb-3');
+    const channelCountGroup = document.getElementById('addBoardChannelCountGroup');
+    const ftdiModelGroup = document.getElementById('addBoardFtdiModelGroup');
+    const ftdiModelSelect = document.getElementById('addBoardFtdiModel');
 
-    // Update port warning visibility and channel count on selection change
+    // Update port warning visibility and channel count/model selector on selection change
     select.onchange = function() {
         const option = this.options[this.selectedIndex];
         const isPortBased = option?.dataset?.portBased === 'true';
         const channelDetected = option?.dataset?.channelDetected === 'true';
         const channelCount = option?.dataset?.channelCount;
+        const boardType = option?.dataset?.boardType;
+        const isFtdi = boardType === 'Ftdi';
 
         document.getElementById('addBoardPortWarning').classList.toggle('d-none', !isPortBased);
 
-        // Auto-fill channel count from detected value
-        if (channelCount) {
-            channelCountSelect.value = channelCount;
-        }
+        // Show FTDI model selector for FTDI boards, channel count for others
+        ftdiModelGroup.classList.toggle('d-none', !isFtdi);
+        channelCountGroup.classList.toggle('d-none', isFtdi);
 
-        // Disable channel count selector if auto-detected
-        channelCountSelect.disabled = channelDetected;
-        if (channelDetected) {
-            channelCountGroup.title = 'Channel count auto-detected from device';
+        if (isFtdi) {
+            // For FTDI boards, default to 8-channel model
+            ftdiModelSelect.value = 'Ro8';
         } else {
-            channelCountGroup.title = '';
+            // Auto-fill channel count from detected value for HID boards
+            if (channelCount) {
+                channelCountSelect.value = channelCount;
+            }
+
+            // Disable channel count selector if auto-detected
+            channelCountSelect.disabled = channelDetected;
+            if (channelDetected) {
+                channelCountGroup.title = 'Channel count auto-detected from device';
+            } else {
+                channelCountGroup.title = '';
+            }
         }
     };
 
@@ -3339,6 +3489,9 @@ async function showAddBoardDialog() {
     channelCountSelect.value = '8';
     channelCountSelect.disabled = false;
     channelCountGroup.title = '';
+    ftdiModelSelect.value = 'Ro8';
+    ftdiModelGroup.classList.add('d-none');
+    channelCountGroup.classList.remove('d-none');
     document.getElementById('addBoardPortWarning').classList.add('d-none');
 
     addBoardModal.show();
@@ -3349,11 +3502,23 @@ async function addBoard() {
     const select = document.getElementById('addBoardDeviceSelect');
     const boardId = select.value;
     const displayName = document.getElementById('addBoardDisplayName').value.trim();
-    const channelCount = parseInt(document.getElementById('addBoardChannelCount').value, 10);
 
     // Get board type from selected option
     const selectedOption = select.options[select.selectedIndex];
     const boardType = selectedOption?.dataset?.boardType || 'Unknown';
+    const isFtdi = boardType === 'Ftdi';
+
+    // Get channel count from appropriate selector based on board type
+    let channelCount;
+    if (isFtdi) {
+        // For FTDI boards, get channel count from model selector
+        const ftdiModelSelect = document.getElementById('addBoardFtdiModel');
+        const selectedModel = ftdiModelSelect.options[ftdiModelSelect.selectedIndex];
+        channelCount = parseInt(selectedModel.dataset.channels, 10);
+    } else {
+        // For HID and other boards, use the channel count selector
+        channelCount = parseInt(document.getElementById('addBoardChannelCount').value, 10);
+    }
 
     if (!boardId) {
         showAlert('Please select a device', 'danger');
@@ -3417,10 +3582,13 @@ async function editBoard(boardId) {
     const board = triggersData?.boards?.find(b => b.boardId === boardId);
     if (!board) return;
 
-    // Check if this device has auto-detected channel count
+    // Check board type
+    const isFtdi = board.boardType === 'Ftdi';
+
+    // Check if this device has auto-detected channel count (only relevant for non-FTDI)
     // Look up the device in the detected devices list
     let channelCountDetected = false;
-    if (ftdiDevicesData?.devices) {
+    if (!isFtdi && ftdiDevicesData?.devices) {
         const device = ftdiDevicesData.devices.find(d => {
             // Match by board ID (could be serial-based or path-based)
             const deviceBoardId = d.boardId ||
@@ -3440,17 +3608,33 @@ async function editBoard(boardId) {
     const channelCountSelect = document.getElementById('editBoardChannelCount');
     const channelCountGroup = document.getElementById('editBoardChannelCountGroup');
     const channelCountHelp = document.getElementById('editBoardChannelCountHelp');
+    const ftdiModelGroup = document.getElementById('editBoardFtdiModelGroup');
+    const ftdiModelSelect = document.getElementById('editBoardFtdiModel');
     const boardIdInput = document.getElementById('editBoardId');
+    const boardTypeInput = document.getElementById('editBoardType');
     const saveBtn = document.getElementById('editBoardSaveBtn');
 
     // Populate form
     boardIdInput.value = boardId;
+    boardTypeInput.value = board.boardType || '';
     displayNameInput.value = board.displayName || '';
-    channelCountSelect.value = String(board.channelCount);
 
-    // Disable channel count if auto-detected
-    channelCountSelect.disabled = channelCountDetected;
-    channelCountHelp.classList.toggle('d-none', !channelCountDetected);
+    // Show appropriate selector based on board type
+    if (isFtdi) {
+        // For FTDI boards, show model selector
+        ftdiModelGroup.classList.remove('d-none');
+        channelCountGroup.classList.add('d-none');
+        // Set model based on current channel count (4 = Ro4, 8 = Ro8 or Generic8)
+        ftdiModelSelect.value = board.channelCount === 4 ? 'Ro4' : 'Ro8';
+    } else {
+        // For HID and other boards, show channel count selector
+        ftdiModelGroup.classList.add('d-none');
+        channelCountGroup.classList.remove('d-none');
+        channelCountSelect.value = String(board.channelCount);
+        // Disable channel count if auto-detected
+        channelCountSelect.disabled = channelCountDetected;
+        channelCountHelp.classList.toggle('d-none', !channelCountDetected);
+    }
 
     const bsModal = new bootstrap.Modal(modal);
 
@@ -3460,7 +3644,15 @@ async function editBoard(boardId) {
 
     newSaveBtn.addEventListener('click', async () => {
         const newName = displayNameInput.value.trim();
-        const newCount = parseInt(channelCountSelect.value, 10);
+
+        // Get channel count from appropriate selector based on board type
+        let newCount;
+        if (isFtdi) {
+            const selectedModel = ftdiModelSelect.options[ftdiModelSelect.selectedIndex];
+            newCount = parseInt(selectedModel.dataset.channels, 10);
+        } else {
+            newCount = parseInt(channelCountSelect.value, 10);
+        }
 
         try {
             const response = await fetch(`./api/triggers/boards/${encodeURIComponent(boardId)}`, {
