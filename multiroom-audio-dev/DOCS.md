@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-432f789
+## Development Build: sha-67a451b
 
 **Current Dev Build Changes** (recent)
 
+- Fix mute sync: echo state back to MA and add GroupState debug logging
 - Fix mute state not syncing: update Player.IsMuted after pipeline mute
 - Add mute button to player card with bidirectional MA sync
 - Refactor stats panel to update values incrementally instead of full DOM rebuild
@@ -14,7 +15,6 @@
 - Merge branch 'dev' of https://github.com/chrisuthe/Multi-SendSpin-Player-Container into dev
 - Fix stats for nerds blocking at high bitrates (192kHz 24-bit)
 - Merge pull request #107 from scyto/ftdi-clean
-- Fix FTDI OpenByPathHash crash: use single context for enumeration and open
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
