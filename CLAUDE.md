@@ -104,6 +104,41 @@ docker build -f docker/Dockerfile \
 
 ---
 
+## Testing Guidelines
+
+When testing locally on macOS/Windows (where PulseAudio is not available):
+
+1. **Always use mock hardware mode**: Run with `MOCK_HARDWARE=true` to get simulated audio devices
+
+   ```bash
+   MOCK_HARDWARE=true dotnet run --project src/MultiRoomAudio/MultiRoomAudio.csproj
+   ```
+
+2. **Check for existing instances**: Before starting the app, check if an old instance is running
+
+   ```bash
+   pgrep -f "MultiRoomAudio"
+   ```
+
+3. **Kill only MultiRoomAudio processes**: When stopping, target only the specific process
+
+   ```bash
+   pkill -f "MultiRoomAudio"
+   ```
+
+4. **Clear test data between runs**: Remove temporary config files created during testing
+
+   ```bash
+   rm -f src/MultiRoomAudio/config/sinks.yaml
+   rm -f src/MultiRoomAudio/config/players.yaml  # if needed
+   ```
+
+5. **Test data locations** (local dev mode):
+   - Config files: `src/MultiRoomAudio/config/`
+   - Log files: `src/MultiRoomAudio/logs/`
+
+---
+
 ## Code Style Guidelines
 
 ### C#
