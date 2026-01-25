@@ -619,8 +619,8 @@ const Wizard = {
                 </div>
             `).join('');
 
-        // Build device options for remap sink (exclude hidden)
-        const multiChannelDevices = visibleDevices.filter(d => d.maxChannels >= 4);
+        // Build device options for remap sink (exclude hidden and remap sinks)
+        const multiChannelDevices = visibleDevices.filter(d => d.maxChannels >= 4 && d.sinkType !== 'Remap');
         const deviceOptions = multiChannelDevices.map(d => `
             <option value="${escapeHtml(d.id)}" data-channels="${d.maxChannels}">
                 ${escapeHtml(this.deviceState[d.id]?.alias || d.alias || d.name)} (${d.maxChannels}ch)
