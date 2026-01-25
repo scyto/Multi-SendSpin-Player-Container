@@ -104,6 +104,57 @@ docker build -f docker/Dockerfile \
 
 ---
 
+## Testing Guidelines
+
+When testing locally on macOS (where PulseAudio is not available):
+
+1. **Always use mock hardware mode**: Run with `MOCK_HARDWARE=true` to get simulated audio devices
+
+   ```bash
+   MOCK_HARDWARE=true dotnet run --project src/MultiRoomAudio/MultiRoomAudio.csproj
+   ```
+
+2. **Check for existing instances**: Before starting the app, check if an old instance is running
+
+   ```bash
+   pgrep -f "MultiRoomAudio"
+   ```
+
+3. **Kill only MultiRoomAudio processes**: When stopping, target only the specific process
+
+   ```bash
+   pkill -f "MultiRoomAudio"
+   ```
+
+4. **Always run the app for user testing**: Before committing changes, start the app so the user can test interactively
+
+5. **Verify process state changes**: When starting or stopping the app:
+   - Wait **5 seconds** after starting before checking if it spawned
+   - Wait **5 seconds** after killing before checking if it's gone
+   - Use `pgrep -f "MultiRoomAudio"` to verify the process state
+   - If the expected state isn't found, **retry the check once** before reporting failure
+
+6. **Clear test data between runs**: Remove temporary config files created during testing
+
+   ```bash
+   rm -f src/MultiRoomAudio/config/sinks.yaml
+   rm -f src/MultiRoomAudio/config/players.yaml  # if needed
+   ```
+
+7. **Test data locations** (local dev mode):
+   - Config files: `src/MultiRoomAudio/config/`
+   - Log files: `src/MultiRoomAudio/logs/`
+
+---
+
+## AI Agent Guidelines
+
+1. **Remembering things**: When the user asks to "remember" something, add it to this CLAUDE.md file so it persists across sessions.
+
+2. **UI changes and onboarding wizard**: When adding new UI elements to the main app, ask if the same change should also be applied to the onboarding wizard (`wwwroot/js/wizard.js`). Skip asking if explicitly told to add it there.
+
+---
+
 ## Code Style Guidelines
 
 ### C#

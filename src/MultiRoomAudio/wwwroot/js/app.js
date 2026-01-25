@@ -1986,27 +1986,43 @@ function openRemapSinkModal(editData = null) {
     nameInput.disabled = !!editData; // Disable name field when editing, enable for create
     document.getElementById('remapSinkDesc').value = editData?.description || '';
 
-    // Populate master device dropdown
+    // Populate master device dropdown (exclude remap sinks - they can't be masters of other remap sinks)
     const masterSelect = document.getElementById('remapMasterDevice');
+    const eligibleDevices = devices.filter(d => d.sinkType !== 'Remap');
     masterSelect.innerHTML = '<option value="">Select a device...</option>' +
-        devices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.alias || d.name)} (${d.maxChannels}ch)</option>`).join('');
+        eligibleDevices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.alias || d.name)} (${d.maxChannels}ch)</option>`).join('');
 
     // Set master device if editing
     if (editData?.masterSink) {
         masterSelect.value = editData.masterSink;
     }
 
+    // Determine output mode from channel mappings (mono if single 'mono' output channel)
+    const isMono = editData?.channelMappings?.length === 1 &&
+                   editData.channelMappings[0].outputChannel === 'mono';
+
+    // Set output mode toggle
+    document.getElementById('outputModeMono').checked = isMono;
+    document.getElementById('outputModeStereo').checked = !isMono;
+
     updateChannelPicker();
 
     // Set channel mappings if editing
-    if (editData?.channelMappings && editData.channelMappings.length >= 2) {
-        const leftMapping = editData.channelMappings.find(m => m.outputChannel === 'front-left');
-        const rightMapping = editData.channelMappings.find(m => m.outputChannel === 'front-right');
-        if (leftMapping) {
-            document.getElementById('leftChannel').value = leftMapping.masterChannel;
-        }
-        if (rightMapping) {
-            document.getElementById('rightChannel').value = rightMapping.masterChannel;
+    if (editData?.channelMappings) {
+        if (isMono) {
+            const monoMapping = editData.channelMappings[0];
+            if (monoMapping) {
+                document.getElementById('monoChannel').value = monoMapping.masterChannel;
+            }
+        } else if (editData.channelMappings.length >= 2) {
+            const leftMapping = editData.channelMappings.find(m => m.outputChannel === 'front-left');
+            const rightMapping = editData.channelMappings.find(m => m.outputChannel === 'front-right');
+            if (leftMapping) {
+                document.getElementById('leftChannel').value = leftMapping.masterChannel;
+            }
+            if (rightMapping) {
+                document.getElementById('rightChannel').value = rightMapping.masterChannel;
+            }
         }
     }
 
@@ -2025,11 +2041,11 @@ function openRemapSinkModal(editData = null) {
     remapSinkModalInstance.show();
 }
 
-// Update channel picker based on selected master device
+// Update channel picker based on selected master device and output mode
 function updateChannelPicker() {
     const masterSelect = document.getElementById('remapMasterDevice');
-    const leftChannel = document.getElementById('leftChannel');
-    const rightChannel = document.getElementById('rightChannel');
+    const channelPicker = document.getElementById('channelPicker');
+    const isMono = document.getElementById('outputModeMono').checked;
 
     // Get channel count from selected device
     const selectedDevice = devices.find(d => d.id === masterSelect.value);
@@ -2068,12 +2084,57 @@ function updateChannelPicker() {
         `<option value="${ch.value}">${ch.label}</option>`
     ).join('');
 
-    leftChannel.innerHTML = optionsHtml;
-    rightChannel.innerHTML = optionsHtml;
-
-    // Set defaults
-    leftChannel.value = 'front-left';
-    rightChannel.value = 'front-right';
+    if (isMono) {
+        // Mono mode: single channel picker
+        channelPicker.innerHTML = `
+            <div class="channel-pair mb-2 d-flex align-items-center">
+                <span class="output-label">Output</span>
+                <i class="fas fa-arrow-left mx-2 text-muted"></i>
+                <select class="form-select form-select-sm channel-select" id="monoChannel">
+                    ${optionsHtml}
+                </select>
+                <button class="btn btn-outline-primary btn-sm ms-2"
+                        id="monoChannelTestBtn"
+                        onclick="playChannelTestTone('mono')"
+                        title="Play test tone">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+        `;
+        document.getElementById('monoChannel').value = 'front-left';
+    } else {
+        // Stereo mode: left and right channel pickers
+        channelPicker.innerHTML = `
+            <div class="channel-pair mb-2 d-flex align-items-center">
+                <span class="output-label">Left Output</span>
+                <i class="fas fa-arrow-left mx-2 text-muted"></i>
+                <select class="form-select form-select-sm channel-select" id="leftChannel">
+                    ${optionsHtml}
+                </select>
+                <button class="btn btn-outline-primary btn-sm ms-2"
+                        id="leftChannelTestBtn"
+                        onclick="playChannelTestTone('left')"
+                        title="Play test tone">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+            <div class="channel-pair mb-2 d-flex align-items-center">
+                <span class="output-label">Right Output</span>
+                <i class="fas fa-arrow-left mx-2 text-muted"></i>
+                <select class="form-select form-select-sm channel-select" id="rightChannel">
+                    ${optionsHtml}
+                </select>
+                <button class="btn btn-outline-primary btn-sm ms-2"
+                        id="rightChannelTestBtn"
+                        onclick="playChannelTestTone('right')"
+                        title="Play test tone">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+        `;
+        document.getElementById('leftChannel').value = 'front-left';
+        document.getElementById('rightChannel').value = 'front-right';
+    }
 }
 
 // Create or update combine sink
@@ -2134,8 +2195,7 @@ async function createRemapSink() {
     const name = document.getElementById('remapSinkName').value.trim();
     const description = document.getElementById('remapSinkDesc').value.trim();
     const masterSink = document.getElementById('remapMasterDevice').value;
-    const leftChannel = document.getElementById('leftChannel').value;
-    const rightChannel = document.getElementById('rightChannel').value;
+    const isMono = document.getElementById('outputModeMono').checked;
     const isEditing = !!editingRemapSink;
 
     if (!name) {
@@ -2148,10 +2208,24 @@ async function createRemapSink() {
         return;
     }
 
-    const channelMappings = [
-        { outputChannel: 'front-left', masterChannel: leftChannel },
-        { outputChannel: 'front-right', masterChannel: rightChannel }
-    ];
+    // Build channel mappings based on output mode
+    let channelMappings;
+    let channels;
+    if (isMono) {
+        const monoChannel = document.getElementById('monoChannel').value;
+        channelMappings = [
+            { outputChannel: 'mono', masterChannel: monoChannel }
+        ];
+        channels = 1;
+    } else {
+        const leftChannel = document.getElementById('leftChannel').value;
+        const rightChannel = document.getElementById('rightChannel').value;
+        channelMappings = [
+            { outputChannel: 'front-left', masterChannel: leftChannel },
+            { outputChannel: 'front-right', masterChannel: rightChannel }
+        ];
+        channels = 2;
+    }
 
     try {
         // If editing, delete the old sink first
@@ -2166,6 +2240,7 @@ async function createRemapSink() {
         }
 
         // Create the sink (new or recreated with updates)
+        // remix: true for mono (downmix stereo L+R to mono), false for stereo (1:1 mapping)
         const response = await fetch('./api/sinks/remap', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2173,9 +2248,9 @@ async function createRemapSink() {
                 name,
                 description: description || null,
                 masterSink,
-                channels: 2,
+                channels,
                 channelMappings,
-                remix: false
+                remix: isMono
             })
         });
 
@@ -2284,8 +2359,15 @@ async function playTestToneForSink(name) {
 // Play test tone for a specific channel in remap sink modal
 async function playChannelTestTone(channel) {
     const masterSelect = document.getElementById('remapMasterDevice');
-    const channelSelect = document.getElementById(channel === 'left' ? 'leftChannel' : 'rightChannel');
-    const btn = document.getElementById(channel === 'left' ? 'leftChannelTestBtn' : 'rightChannelTestBtn');
+    let channelSelect, btn;
+
+    if (channel === 'mono') {
+        channelSelect = document.getElementById('monoChannel');
+        btn = document.getElementById('monoChannelTestBtn');
+    } else {
+        channelSelect = document.getElementById(channel === 'left' ? 'leftChannel' : 'rightChannel');
+        btn = document.getElementById(channel === 'left' ? 'leftChannelTestBtn' : 'rightChannelTestBtn');
+    }
 
     if (!masterSelect.value) {
         showAlert('Please select a master device first', 'warning');
