@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4ee7c2b
+## Development Build: sha-8213377
 
 **Current Dev Build Changes** (recent)
 
+- Filter remap sinks from wizard master device dropdown
+- Add testing guidelines to CLAUDE.md
+- Filter remap sinks from master device dropdown
+- Merge pull request #116 from scyto/dev
 - Add editable alias field to sound card modal
+- Merge pull request #115 from scyto/dev
 - Fix local volume changes not updating MA UI
 - Fix volume control: player is now authoritative for its own volume
+- Merge pull request #114 from scyto/dev
 - Fix volume sync: use SendPlayerStateAsync to update MA state
-- Fix Kestrel address override warning in Docker
-- Fix mute state not echoing back to MA server
-- Promote mute and volume sync logs from debug to info level
-- Fix LOG_LEVEL env var not working due to appsettings.json override
-- Fix mute sync: echo state back to MA and add GroupState debug logging
-- Fix mute state not syncing: update Player.IsMuted after pipeline mute
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
