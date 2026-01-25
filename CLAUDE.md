@@ -106,7 +106,7 @@ docker build -f docker/Dockerfile \
 
 ## Testing Guidelines
 
-When testing locally on macOS/Windows (where PulseAudio is not available):
+When testing locally on macOS (where PulseAudio is not available):
 
 1. **Always use mock hardware mode**: Run with `MOCK_HARDWARE=true` to get simulated audio devices
 
@@ -126,14 +126,22 @@ When testing locally on macOS/Windows (where PulseAudio is not available):
    pkill -f "MultiRoomAudio"
    ```
 
-4. **Clear test data between runs**: Remove temporary config files created during testing
+4. **Always run the app for user testing**: Before committing changes, start the app so the user can test interactively
+
+5. **Verify process state changes**: When starting or stopping the app:
+   - Wait **5 seconds** after starting before checking if it spawned
+   - Wait **5 seconds** after killing before checking if it's gone
+   - Use `pgrep -f "MultiRoomAudio"` to verify the process state
+   - If the expected state isn't found, **retry the check once** before reporting failure
+
+6. **Clear test data between runs**: Remove temporary config files created during testing
 
    ```bash
    rm -f src/MultiRoomAudio/config/sinks.yaml
    rm -f src/MultiRoomAudio/config/players.yaml  # if needed
    ```
 
-5. **Test data locations** (local dev mode):
+7. **Test data locations** (local dev mode):
    - Config files: `src/MultiRoomAudio/config/`
    - Log files: `src/MultiRoomAudio/logs/`
 

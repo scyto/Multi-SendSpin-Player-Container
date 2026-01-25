@@ -360,38 +360,18 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label class="form-label">Output Mode</label>
+                                    <div class="btn-group w-100 mb-3" role="group" id="outputModeGroup">
+                                        <input type="radio" class="btn-check" name="outputMode" id="outputModeMono" value="mono" onchange="updateChannelPicker()">
+                                        <label class="btn btn-outline-primary" for="outputModeMono">Mono</label>
+                                        <input type="radio" class="btn-check" name="outputMode" id="outputModeStereo" value="stereo" checked onchange="updateChannelPicker()">
+                                        <label class="btn btn-outline-primary" for="outputModeStereo">Stereo</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label">Channel Mapping</label>
                                     <div class="channel-picker" id="channelPicker">
-                                        <div class="channel-pair mb-2 d-flex align-items-center">
-                                            <span class="output-label">Left Output</span>
-                                            <i class="fas fa-arrow-left mx-2 text-muted"></i>
-                                            <select class="form-select form-select-sm channel-select" id="leftChannel">
-                                                <option value="front-left">Front Left</option>
-                                                <option value="rear-left">Rear Left</option>
-                                                <option value="side-left">Side Left</option>
-                                            </select>
-                                            <button class="btn btn-outline-primary btn-sm ms-2"
-                                                    id="leftChannelTestBtn"
-                                                    onclick="playChannelTestTone('left')"
-                                                    title="Play test tone">
-                                                <i class="fas fa-volume-up"></i>
-                                            </button>
-                                        </div>
-                                        <div class="channel-pair mb-2 d-flex align-items-center">
-                                            <span class="output-label">Right Output</span>
-                                            <i class="fas fa-arrow-left mx-2 text-muted"></i>
-                                            <select class="form-select form-select-sm channel-select" id="rightChannel">
-                                                <option value="front-right">Front Right</option>
-                                                <option value="rear-right">Rear Right</option>
-                                                <option value="side-right">Side Right</option>
-                                            </select>
-                                            <button class="btn btn-outline-primary btn-sm ms-2"
-                                                    id="rightChannelTestBtn"
-                                                    onclick="playChannelTestTone('right')"
-                                                    title="Play test tone">
-                                                <i class="fas fa-volume-up"></i>
-                                            </button>
-                                        </div>
+                                        <!-- Dynamically populated by updateChannelPicker() -->
                                     </div>
                                     <small class="text-muted">Map output channels to source channels</small>
                                 </div>
