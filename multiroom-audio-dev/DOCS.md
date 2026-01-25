@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c644bf1
+## Development Build: sha-7c8ad34
 
 **Current Dev Build Changes** (recent)
 
+- Fix startup volume being overwritten by current volume in edit modal
+- Add GitHub issue templates for bug reports and feature requests
 - Fix sinkType not set for custom sinks from PulseAudio backend
 - Add mono output mode for remap sinks
 - Add AI agent guidelines to CLAUDE.md
@@ -13,8 +15,6 @@
 - Filter remap sinks from master device dropdown
 - Merge pull request #116 from scyto/dev
 - Add editable alias field to sound card modal
-- Merge pull request #115 from scyto/dev
-- Fix local volume changes not updating MA UI
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
