@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d3b308d
+## Development Build: sha-0fb5d22
 
 **Current Dev Build Changes** (recent)
 
+- Add AI agent guidelines to CLAUDE.md
 - Filter remap sinks from wizard master device dropdown
 - Add testing guidelines to CLAUDE.md
 - Filter remap sinks from master device dropdown
@@ -14,7 +15,6 @@
 - Fix local volume changes not updating MA UI
 - Fix volume control: player is now authoritative for its own volume
 - Merge pull request #114 from scyto/dev
-- Fix volume sync: use SendPlayerStateAsync to update MA state
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
