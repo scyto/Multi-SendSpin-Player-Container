@@ -1802,13 +1802,6 @@ public class PlayerManagerService : IHostedService, IAsyncDisposable, IDisposabl
                 _logger.LogWarning("Player '{Name}' received unknown pipeline state: {State}", name, state);
             }
 
-            // Push volume to server when playback starts to ensure correct level
-            // This handles the case where SDK sends volume:100 in initial hello
-            if (state == AudioPipelineState.Playing || state == AudioPipelineState.Buffering)
-            {
-                _ = PushVolumeToServerAsync(name, context);
-            }
-
             // Notify trigger service of playback state changes
             // Activate when transitioning TO an active state (Playing/Buffering) from inactive
             // Deactivate when transitioning TO a stopped state (Idle/Stopping) from active
