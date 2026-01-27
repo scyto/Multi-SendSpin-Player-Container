@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d032146
+## Development Build: sha-fd9766c
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #122 from scyto/fix/cleanup-stale-sdk-comments
+- Clean up stale SDK version comments and add GroupId to diagnostics
+- Merge pull request #121 from scyto/dev
 - removed stale comment
 - Fix volume delta bug during seek/skip for grouped players
 - Update SendSpin.SDK from 5.4.1 to 6.0.0
@@ -12,9 +15,6 @@
 - Merge pull request #118 from scyto/dev
 - Fix startup volume being overwritten by current volume in edit modal
 - Add GitHub issue templates for bug reports and feature requests
-- Merge pull request #117 from scyto/dev
-- Fix sinkType not set for custom sinks from PulseAudio backend
-- Add mono output mode for remap sinks
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
