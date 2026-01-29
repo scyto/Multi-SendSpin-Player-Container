@@ -337,6 +337,7 @@ public sealed class BufferedAudioSampleSource : IAudioSampleSource
         // Update state machine with hysteresis to prevent oscillation.
         // Transitions: Idle→Dropping, Idle→Inserting, Dropping→Idle, Inserting→Idle
         // Direct Dropping↔Inserting transitions are NOT allowed (must go through Idle)
+        // Also exits to Idle if sync error sign flips (overshoot detection)
         switch (_currentMode)
         {
             case CorrectionMode.Idle:
@@ -351,16 +352,18 @@ public sealed class BufferedAudioSampleSource : IAudioSampleSource
                 break;
 
             case CorrectionMode.Dropping:
-                // Exit to Idle when error is well within acceptable range
-                if (absError < ExitThresholdMicroseconds)
+                // Exit to Idle when error is small OR sign flipped (we overshot)
+                // Sign flip: we were behind (positive error) but now ahead (negative)
+                if (absError < ExitThresholdMicroseconds || syncError < 0)
                 {
                     _currentMode = CorrectionMode.Idle;
                 }
                 break;
 
             case CorrectionMode.Inserting:
-                // Exit to Idle when error is well within acceptable range
-                if (absError < ExitThresholdMicroseconds)
+                // Exit to Idle when error is small OR sign flipped (we overshot)
+                // Sign flip: we were ahead (negative error) but now behind (positive)
+                if (absError < ExitThresholdMicroseconds || syncError > 0)
                 {
                     _currentMode = CorrectionMode.Idle;
                 }
