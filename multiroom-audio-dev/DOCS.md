@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-56d3266
+## Development Build: sha-43e9faa
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #24 from scyto/feature/fix-haos-audio-crackling
+- Add full_access and capabilities to DEV add-on config
 - Merge pull request #23 from scyto/feature/fix-haos-audio-crackling
 - Add full_access and additional capabilities for HAOS debugging
 - Merge pull request #22 from scyto/feature/fix-haos-audio-crackling
@@ -13,8 +15,6 @@
 - Expose HAOS add-on options as environment variables
 - Update SDK to 6.1.1 and fix scheduled start timing issue
 - Merge pull request #21 from scyto/feature/fix-haos-audio-crackling
-- Add diagnostic logging for abnormal PA latency
-- Align SyncToleranceMs with entry threshold (5→15ms)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
