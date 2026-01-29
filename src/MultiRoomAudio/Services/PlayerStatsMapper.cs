@@ -175,7 +175,7 @@ internal static class PlayerStatsMapper
             Mode: correctionMode,
             FramesDropped: framesDropped,
             FramesInserted: framesInserted,
-            ThresholdMs: 5  // Our 5ms threshold
+            ThresholdMs: 15  // Entry threshold with hysteresis (exits at 3ms)
         );
     }
 
