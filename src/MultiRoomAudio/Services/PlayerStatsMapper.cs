@@ -1,3 +1,4 @@
+using MultiRoomAudio.Audio.PulseAudio;
 using MultiRoomAudio.Models;
 using Sendspin.SDK.Audio;
 using Sendspin.SDK.Models;
@@ -123,6 +124,13 @@ internal static class PlayerStatsMapper
     {
         // Note: Use Player.OutputLatencyMs directly instead of Pipeline.DetectedOutputLatencyMs
         // because the pipeline's value may not reflect real-time measurements from pa_stream_get_latency()
+
+        // Try to get IsLatencyLocked from PulseAudioPlayer (our implementation).
+        // The SDK's IAudioPlayer interface doesn't expose this property, so we need to cast.
+        // For other player implementations (e.g., ALSA), this will be false.
+        var isLatencyLocked = player is PulseAudioPlayer paPlayer
+            && paPlayer.IsLatencyLocked;
+
         return new ClockSyncStats(
             IsSynchronized: clockStatus.IsConverged,
             ClockOffsetMs: clockStatus.OffsetMilliseconds,
@@ -131,7 +139,8 @@ internal static class PlayerStatsMapper
             IsDriftReliable: clockStatus.IsDriftReliable,
             MeasurementCount: clockStatus.MeasurementCount,
             OutputLatencyMs: player.OutputLatencyMs,
-            StaticDelayMs: (int)clockSync.StaticDelayMs
+            StaticDelayMs: (int)clockSync.StaticDelayMs,
+            IsLatencyLocked: isLatencyLocked
         );
     }
 

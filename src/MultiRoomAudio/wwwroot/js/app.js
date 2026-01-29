@@ -1975,7 +1975,8 @@ function renderStatsPanel(stats) {
         `${stats.clockSync.driftRatePpm.toFixed(1)} ppm ${stats.clockSync.isDriftReliable ? '' : '(unstable)'}`,
         stats.clockSync.isDriftReliable ? '' : 'muted');
     updateStatsValue('stats-measurements', formatCount(stats.clockSync.measurementCount));
-    updateStatsValue('stats-output-latency', `${stats.clockSync.outputLatencyMs}ms`);
+    updateStatsValue('stats-output-latency',
+        `${stats.clockSync.outputLatencyMs}ms ${stats.clockSync.isLatencyLocked ? '(locked)' : '(measuring)'}`);
     updateStatsValue('stats-static-delay', `${stats.clockSync.staticDelayMs}ms`);
 
     // Throughput

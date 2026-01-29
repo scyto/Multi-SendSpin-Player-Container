@@ -62,7 +62,12 @@ public record ClockSyncStats(
     bool IsDriftReliable,
     int MeasurementCount,
     int OutputLatencyMs,
-    int StaticDelayMs
+    int StaticDelayMs,
+    /// <summary>
+    /// Whether the output latency value has been locked (stabilized).
+    /// When true, OutputLatencyMs is frozen at the median of ~100 measurements.
+    /// </summary>
+    bool IsLatencyLocked
 );
 
 /// <summary>
