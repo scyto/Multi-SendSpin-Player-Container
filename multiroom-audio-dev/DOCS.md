@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-43e9faa
+## Development Build: sha-d529d08
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #25 from scyto/feature/fix-haos-audio-crackling
+- Increase sync correction deadband to 50ms for VM jitter tolerance
 - Merge pull request #24 from scyto/feature/fix-haos-audio-crackling
 - Add full_access and capabilities to DEV add-on config
 - Merge pull request #23 from scyto/feature/fix-haos-audio-crackling
@@ -13,8 +15,6 @@
 - Merge upstream/dev: SDK 6.1.1, latency lock-in, HAOS env vars
 - Add latency lock-in to reduce sync corrections from PulseAudio jitter
 - Expose HAOS add-on options as environment variables
-- Update SDK to 6.1.1 and fix scheduled start timing issue
-- Merge pull request #21 from scyto/feature/fix-haos-audio-crackling
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
