@@ -103,8 +103,10 @@ public sealed class BufferedAudioSampleSource : IAudioSampleSource
     private readonly int _channels;
     private readonly int _sampleRate;
 
-    // Correction threshold - within 5ms is acceptable, beyond that we correct
-    private const long CorrectionThresholdMicroseconds = 5_000;  // 5ms deadband
+    // Correction threshold - within tolerance is acceptable, beyond that we correct.
+    // Increased from 5ms to 15ms to tolerate PulseAudio latency measurement jitter
+    // while staying below the ~20-30ms threshold where multi-room delay becomes audible.
+    private const long CorrectionThresholdMicroseconds = 15_000;  // 15ms deadband
 
     // Correction rate limits (frames between corrections)
     private const int MinCorrectionInterval = 10;   // Most aggressive: correct every 10 frames
