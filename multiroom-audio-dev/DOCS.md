@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-55228a6
+## Development Build: sha-c11e9f4
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #33 from scyto/feature/adaptive-resampling
+- Fix SRC_DATA struct for 64-bit Linux (LP64 data model)
 - Merge pull request #31 from scyto/feature/adaptive-resampling
 - Fix adaptive resampling ratio direction and leftover sample handling
 - Add adaptive resampling for clock drift compensation
@@ -13,8 +15,6 @@
 - Update stats display to match 15ms correction threshold
 - Add latency lock-in to reduce sync corrections from PulseAudio jitter
 - Expose HAOS add-on options as environment variables
-- Update SDK to 6.1.1 and fix scheduled start timing issue
-- Merge pull request #125 from scyto/feature/handle-all-pipeline-states
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
