@@ -344,7 +344,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         DateTime CreatedAt,
         CancellationTokenSource Cts,
         DeviceCapabilities? DeviceCapabilities = null,
-        AudioDevice? CachedDevice = null
+        AudioDevice? CachedDevice = null,
+        AdaptiveResampledAudioSource? AdaptiveSource = null
     )
     {
         public Models.PlayerState State { get; set; } = Models.PlayerState.Created;
@@ -388,7 +389,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         IAudioPipeline Pipeline,
         SendspinConnection Connection,
         ISendspinClient Client,
-        DeviceCapabilities? DeviceCapabilities
+        DeviceCapabilities? DeviceCapabilities,
+        AdaptiveResampledAudioSource? AdaptiveSource = null
     );
 
     public PlayerManagerService(
@@ -765,7 +767,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                 DateTime.UtcNow,
                 cts,
                 components.DeviceCapabilities,
-                cachedDevice)
+                cachedDevice,
+                components.AdaptiveSource)
             {
                 State = Models.PlayerState.Created,
                 InitialVolume = request.Volume
@@ -847,6 +850,9 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         // Create audio player using the appropriate backend
         var player = _backendFactory.CreatePlayer(request.Device, _loggerFactory);
 
+        // Capture adaptive source for stats access (closure variable)
+        AdaptiveResampledAudioSource? adaptiveSource = null;
+
         // Create audio pipeline with proper factories
         var decoderFactory = new AudioDecoderFactory();
         var pipeline = new AudioPipeline(
@@ -871,10 +877,11 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                 // adjustment, which works better on VMs with timing jitter.
                 if (UseAdaptiveResampling)
                 {
-                    return new AdaptiveResampledAudioSource(
+                    adaptiveSource = new AdaptiveResampledAudioSource(
                         buffer,
                         timeFunc,
                         _loggerFactory.CreateLogger<AdaptiveResampledAudioSource>());
+                    return adaptiveSource;
                 }
 
                 return new BufferedAudioSampleSource(
@@ -907,7 +914,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             pipeline,
             connection,
             client,
-            deviceCapabilities);
+            deviceCapabilities,
+            adaptiveSource);
     }
 
     /// <summary>
@@ -2233,6 +2241,9 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         if (!_players.TryGetValue(name, out var context))
             return null;
 
+        // Get resample ratio if using adaptive resampling
+        var resampleRatio = context.AdaptiveSource?.CurrentResampleRatio;
+
         // Use cached device info (captured at player creation)
         // This avoids running pactl every time stats are requested
         return PlayerStatsMapper.BuildStats(
@@ -2240,7 +2251,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             context.Pipeline,
             context.ClockSync,
             context.Player,
-            context.CachedDevice);
+            context.CachedDevice,
+            resampleRatio);
     }
 
     private static string GenerateClientId(string name)
