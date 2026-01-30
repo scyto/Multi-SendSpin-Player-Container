@@ -25,8 +25,8 @@ namespace MultiRoomAudio.Audio;
 /// A PLL-like control loop continuously measures sync error and adjusts the resampling ratio:
 /// </para>
 /// <list type="bullet">
-///   <item><description>Behind schedule (positive error): ratio > 1.0 (speed up playback)</description></item>
-///   <item><description>Ahead of schedule (negative error): ratio &lt; 1.0 (slow down playback)</description></item>
+///   <item><description>Behind schedule (positive error): ratio &lt; 1.0 (consume input faster to catch up)</description></item>
+///   <item><description>Ahead of schedule (negative error): ratio > 1.0 (consume input slower to let buffer fill)</description></item>
 ///   <item><description>Ratio changes are smoothed to prevent audible pitch wobble</description></item>
 /// </list>
 ///
@@ -46,9 +46,14 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
     private readonly AdaptiveSampleRateConverter _resampler;
 
     // Intermediate buffer for reading from SDK (before resampling)
-    // We need slightly more input samples when ratio < 1.0 (slowing down)
+    // We need slightly more input samples when ratio < 1.0 (speeding up = consuming more)
     private const double MaxRatioDeviation = 0.02; // 2% margin for buffer sizing
     private float[]? _inputBuffer;
+
+    // Leftover buffer for samples not consumed by the resampler
+    // libsamplerate may not use all input due to filter delay or ratio changes
+    private float[]? _leftoverBuffer;
+    private int _leftoverCount;
 
     // Debug logging rate limiter
     private long _lastDebugLogTime;
@@ -97,7 +102,7 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
     public long CurrentTimeMicroseconds => _getCurrentTimeMicroseconds();
 
     /// <summary>
-    /// Current resampling ratio. 1.0 = no change, >1.0 = speeding up, &lt;1.0 = slowing down.
+    /// Current resampling ratio. 1.0 = no change, &lt;1.0 = speeding up (catching up), >1.0 = slowing down.
     /// </summary>
     public double CurrentResampleRatio => _resampler.CurrentRatio;
 
@@ -167,8 +172,8 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
         _resampler.UpdateSyncError((long)syncError);
 
         // Calculate how many input samples we need based on current ratio
-        // If ratio > 1.0 (speeding up), we need more input samples
-        // If ratio < 1.0 (slowing down), we need fewer input samples
+        // If ratio < 1.0 (speeding up/catching up), we need more input samples
+        // If ratio > 1.0 (slowing down), we need fewer input samples
         var outputFrames = count / _channels;
         var ratio = _resampler.CurrentRatio;
 
@@ -176,45 +181,66 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
         var inputFramesNeeded = (int)Math.Ceiling(outputFrames / ratio * (1.0 + MaxRatioDeviation)) + 16;
         var inputSamplesNeeded = inputFramesNeeded * _channels;
 
-        // Ensure input buffer is large enough
+        // Account for leftover samples from previous call
+        var samplesToReadFromBuffer = Math.Max(0, inputSamplesNeeded - _leftoverCount);
+
+        // Ensure input buffer is large enough for leftovers + new samples
         EnsureInputBuffer(inputSamplesNeeded);
 
-        // Read raw samples from the timed buffer
-        var rawRead = _buffer.ReadRaw(_inputBuffer.AsSpan(0, inputSamplesNeeded), currentTime);
-
-        if (rawRead > 0)
+        // Copy leftover samples to the beginning of input buffer
+        if (_leftoverCount > 0 && _leftoverBuffer != null)
         {
-            _successfulReads++;
-            _lastSuccessfulReadTime = currentTime;
+            _leftoverBuffer.AsSpan(0, _leftoverCount).CopyTo(_inputBuffer.AsSpan());
+        }
 
-            // Log first successful read
-            if (!_hasEverReceivedSamples)
+        // Read raw samples from the timed buffer (after leftovers)
+        var rawRead = 0;
+        if (samplesToReadFromBuffer > 0)
+        {
+            rawRead = _buffer.ReadRaw(
+                _inputBuffer.AsSpan(_leftoverCount, samplesToReadFromBuffer),
+                currentTime);
+        }
+
+        var totalInputSamples = _leftoverCount + rawRead;
+        _leftoverCount = 0; // Will be set again if there are leftovers
+
+        if (totalInputSamples > 0)
+        {
+            if (rawRead > 0)
             {
-                _hasEverReceivedSamples = true;
-                var elapsedMs = (currentTime - _firstReadTime) / 1000.0;
-                _logger?.LogInformation(
-                    "First samples received (adaptive): elapsedMs={ElapsedMs:F1}, " +
-                    "totalReads={TotalReads}, zeroReads={ZeroReads}",
-                    elapsedMs, _totalReads, _zeroReads);
+                _successfulReads++;
+                _lastSuccessfulReadTime = currentTime;
+
+                // Log first successful read
+                if (!_hasEverReceivedSamples)
+                {
+                    _hasEverReceivedSamples = true;
+                    var elapsedMs = (currentTime - _firstReadTime) / 1000.0;
+                    _logger?.LogInformation(
+                        "First samples received (adaptive): elapsedMs={ElapsedMs:F1}, " +
+                        "totalReads={TotalReads}, zeroReads={ZeroReads}",
+                        elapsedMs, _totalReads, _zeroReads);
+                }
             }
 
             // Resample the audio
             var outputFramesGen = _resampler.Process(
-                _inputBuffer.AsSpan(0, rawRead),
+                _inputBuffer.AsSpan(0, totalInputSamples),
                 buffer.AsSpan(offset, count),
                 out var inputFramesUsed);
 
             var outputSamples = outputFramesGen * _channels;
-
-            // Notify SDK of samples consumed (important for accurate sync tracking)
-            // With adaptive resampling, we consume inputFramesUsed and output outputFramesGen
-            // The difference is handled by the ratio, not by dropping/inserting
             var inputSamplesUsed = inputFramesUsed * _channels;
-            if (inputSamplesUsed != rawRead)
+
+            // Save unused samples as leftovers for next call
+            // This prevents audio discontinuities when libsamplerate doesn't use all input
+            var unusedSamples = totalInputSamples - inputSamplesUsed;
+            if (unusedSamples > 0)
             {
-                // Some samples weren't used - this is normal, resampler may buffer internally
-                // We should ideally carry these over, but for simplicity we'll read fresh next time
-                // The SDK buffer handles this gracefully
+                EnsureLeftoverBuffer(unusedSamples);
+                _inputBuffer.AsSpan(inputSamplesUsed, unusedSamples).CopyTo(_leftoverBuffer.AsSpan());
+                _leftoverCount = unusedSamples;
             }
 
             // Fill remainder with silence if needed
@@ -257,6 +283,7 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
         _lastKnownDroppedSamples = 0;
         _lastKnownOverrunCount = 0;
         _hasLoggedOverrunStart = false;
+        _leftoverCount = 0;
 
         _logger?.LogDebug("AdaptiveResampledAudioSource reset");
     }
@@ -269,6 +296,17 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
             var newSize = Math.Max(minSize, 4096);
             newSize = (int)Math.Pow(2, Math.Ceiling(Math.Log2(newSize)));
             _inputBuffer = new float[newSize];
+        }
+    }
+
+    private void EnsureLeftoverBuffer(int minSize)
+    {
+        if (_leftoverBuffer == null || _leftoverBuffer.Length < minSize)
+        {
+            // Round up to power of 2 for efficiency
+            var newSize = Math.Max(minSize, 1024);
+            newSize = (int)Math.Pow(2, Math.Ceiling(Math.Log2(newSize)));
+            _leftoverBuffer = new float[newSize];
         }
     }
 

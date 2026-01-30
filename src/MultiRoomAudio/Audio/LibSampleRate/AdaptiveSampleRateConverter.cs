@@ -135,14 +135,21 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
         else
         {
             // Calculate target ratio to eliminate error over CorrectionTimeSeconds
-            // Formula: ratio = 1.0 + (error_seconds / correction_time_seconds)
+            //
+            // libsamplerate ratio = output_samples / input_samples
+            // - ratio > 1.0: more output per input = consume FEWER input samples = slow down
+            // - ratio < 1.0: fewer output per input = consume MORE input samples = speed up
+            //
+            // So we SUBTRACT the error to get the correct direction:
+            // - Behind schedule (positive error): need to speed up = ratio < 1.0
+            // - Ahead of schedule (negative error): need to slow down = ratio > 1.0
             //
             // Example: If 10ms behind (error = +10,000us):
             //   error_seconds = 0.01
-            //   ratio = 1.0 + (0.01 / 2.0) = 1.005
-            //   This means we play 0.5% faster, eliminating 10ms error in 2 seconds.
+            //   ratio = 1.0 - (0.01 / 2.0) = 0.995
+            //   This consumes input 0.5% faster, eliminating 10ms error in 2 seconds.
             var syncErrorSeconds = syncErrorMicroseconds / 1_000_000.0;
-            _targetRatio = 1.0 + (syncErrorSeconds / CorrectionTimeSeconds);
+            _targetRatio = 1.0 - (syncErrorSeconds / CorrectionTimeSeconds);
         }
 
         // Clamp to maximum deviation

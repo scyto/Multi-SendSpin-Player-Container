@@ -86,7 +86,7 @@ public record SyncCorrectionStats(
     int ThresholdMs,
     /// <summary>
     /// Current resampling ratio when using adaptive resampling (null otherwise).
-    /// 1.0 = no change, >1.0 = speeding up, &lt;1.0 = slowing down.
+    /// 1.0 = no change, &lt;1.0 = speeding up (catching up), >1.0 = slowing down.
     /// Typical values are within ±0.1% (1000 ppm) of 1.0.
     /// </summary>
     double? ResampleRatio = null
