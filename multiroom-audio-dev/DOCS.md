@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-0190d8c
+## Development Build: sha-8a94132
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #29 from scyto/feature/fix-haos-audio-crackling
+- Adjust sync thresholds to 40ms/10ms (35ms still caused warbling)
 - Merge pull request #28 from scyto/feature/fix-haos-audio-crackling
 - Adjust sync thresholds to 35ms/10ms (30ms/8ms caused warbling)
 - Merge pull request #27 from scyto/feature/fix-haos-audio-crackling
@@ -13,8 +15,6 @@
 - Add latency lock status to Stats for Nerds
 - Merge pull request #25 from scyto/feature/fix-haos-audio-crackling
 - Increase sync correction deadband to 50ms for VM jitter tolerance
-- Merge pull request #24 from scyto/feature/fix-haos-audio-crackling
-- Add full_access and capabilities to DEV add-on config
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
