@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-310fec5
+## Development Build: sha-cc16483
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #27 from scyto/feature/fix-haos-audio-crackling
+- Tighten sync correction thresholds to 30ms/8ms for better multi-room sync
 - Merge pull request #26 from scyto/feature/fix-haos-audio-crackling
 - Add latency lock status to Stats for Nerds
 - Merge pull request #25 from scyto/feature/fix-haos-audio-crackling
@@ -13,8 +15,6 @@
 - Add full_access and capabilities to DEV add-on config
 - Merge pull request #23 from scyto/feature/fix-haos-audio-crackling
 - Add full_access and additional capabilities for HAOS debugging
-- Merge pull request #22 from scyto/feature/fix-haos-audio-crackling
-- Merge upstream/dev: SDK 6.1.1, latency lock-in, HAOS env vars
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
