@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ea4d899
+## Development Build: sha-f8f69af
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #30 from scyto/feature/fix-haos-audio-crackling
-- Increase sync threshold to 50ms for HAOS VM cross-container jitter
-- Merge pull request #29 from scyto/feature/fix-haos-audio-crackling
-- Adjust sync thresholds to 40ms/10ms (35ms still caused warbling)
-- Merge pull request #28 from scyto/feature/fix-haos-audio-crackling
-- Adjust sync thresholds to 35ms/10ms (30ms/8ms caused warbling)
-- Merge pull request #27 from scyto/feature/fix-haos-audio-crackling
-- Tighten sync correction thresholds to 30ms/8ms for better multi-room sync
-- Merge pull request #26 from scyto/feature/fix-haos-audio-crackling
-- Add latency lock status to Stats for Nerds
+- Persist volume changes to survive container restarts
+- Add anti-oscillation debounce to sync correction
+- Update stats display to match 15ms correction threshold
+- Add latency lock-in to reduce sync corrections from PulseAudio jitter
+- Expose HAOS add-on options as environment variables
+- Update SDK to 6.1.1 and fix scheduled start timing issue
+- Merge pull request #125 from scyto/feature/handle-all-pipeline-states
+- Merge pull request #124 from chrisuthe/feature/graceful-start-stop-and-disconnects
+- Update SendSpin.SDK package version to 6.0.1
+- Merge pull request #123 from scyto/dev
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
