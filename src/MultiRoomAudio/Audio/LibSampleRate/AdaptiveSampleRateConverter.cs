@@ -61,10 +61,18 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
     private const double FastAcquisitionMaxRatio = 0.02;
 
     /// <summary>
-    /// Number of Process calls for fast acquisition mode (~10 seconds at typical rates).
+    /// Base number of Process calls for fast acquisition mode at 48kHz.
     /// At 48kHz with 1024-frame buffers, ~47 calls/second, so 500 calls ≈ 10 seconds.
+    /// Scaled proportionally for other sample rates to maintain ~10 second window.
     /// </summary>
-    private const int FastAcquisitionCalls = 500;
+    private const int BaseFastAcquisitionCalls = 500;
+    private const int BaseSampleRate = 48000;
+
+    /// <summary>
+    /// Actual fast acquisition call count, scaled by sample rate.
+    /// 48kHz: 500 calls, 96kHz: 1000 calls, 192kHz: 2000 calls.
+    /// </summary>
+    private readonly int _fastAcquisitionCalls;
 
     // Current state
     private double _currentRatio = 1.0;
@@ -86,11 +94,13 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
     /// Creates a new adaptive sample rate converter.
     /// </summary>
     /// <param name="channels">Number of audio channels (1 for mono, 2 for stereo).</param>
+    /// <param name="sampleRate">Sample rate in Hz (used to scale fast acquisition duration).</param>
     /// <param name="quality">Converter quality (default: SincMediumQuality for good balance).</param>
     /// <param name="logger">Optional logger for diagnostics.</param>
     /// <exception cref="InvalidOperationException">If libsamplerate fails to initialize.</exception>
     public AdaptiveSampleRateConverter(
         int channels,
+        int sampleRate = 48000,
         int quality = SampleRateInterop.ConverterType.SincMediumQuality,
         ILogger? logger = null)
     {
@@ -100,6 +110,10 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
         _channels = channels;
         _logger = logger;
 
+        // Scale fast acquisition calls by sample rate to maintain ~10 second window
+        // 48kHz: 500 calls (~10.6s), 96kHz: 1000 calls (~10.6s), 192kHz: 2000 calls (~10.6s)
+        _fastAcquisitionCalls = BaseFastAcquisitionCalls * sampleRate / BaseSampleRate;
+
         _state = SampleRateInterop.New(quality, channels, out int error);
         if (_state == IntPtr.Zero)
         {
@@ -108,8 +122,10 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
         }
 
         _logger?.LogDebug(
-            "Created adaptive resampler: {Channels} channels, quality={Quality} ({QualityName})",
-            channels, quality, SampleRateInterop.GetConverterName(quality));
+            "Created adaptive resampler: {Channels} channels, sampleRate={SampleRate}, " +
+            "quality={Quality} ({QualityName}), fastAcquisitionCalls={FastAcqCalls}",
+            channels, sampleRate, quality, SampleRateInterop.GetConverterName(quality),
+            _fastAcquisitionCalls);
     }
 
     /// <summary>
@@ -197,7 +213,7 @@ public sealed class AdaptiveSampleRateConverter : IDisposable
 
         // Use higher limit during fast acquisition mode (first ~10 seconds)
         // This allows faster initial sync without affecting steady-state stability
-        var maxDeviation = _processCallCount < FastAcquisitionCalls
+        var maxDeviation = _processCallCount < _fastAcquisitionCalls
             ? FastAcquisitionMaxRatio
             : MaxRatioDeviation;
 
