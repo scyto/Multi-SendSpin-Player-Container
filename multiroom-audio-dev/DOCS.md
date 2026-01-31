@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4284153
+## Development Build: sha-a512b26
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #35 from scyto/feature/adaptive-resampling
+- new player ui elements
 - Merge pull request #34 from scyto/feature/adaptive-resampling
 - Wire adaptive resampling ratio to Stats for Nerds
 - updated yamp, PR to main
@@ -13,8 +15,6 @@
 - Merge pull request #31 from scyto/feature/adaptive-resampling
 - Fix adaptive resampling ratio direction and leftover sample handling
 - Add adaptive resampling for clock drift compensation
-- Persist volume changes to survive container restarts
-- Add anti-oscillation debounce to sync correction
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
