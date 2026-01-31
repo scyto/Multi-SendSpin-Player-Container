@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fa8b5bb
+## Development Build: sha-cd40a4b
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #43 from scyto/feature/adaptive-resampling
+- Fix 96kHz player re-anchoring loop by scaling fast acquisition by sample rate
 - Merge pull request #42 from scyto/feature/adaptive-resampling
 - Add card caching and player names to SDK log messages
 - Merge pull request #41 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Merge pull request #40 from scyto/feature/adaptive-resampling
 - Add fast acquisition mode and preserve drift on reset
 - Implement drift-based adaptive resampling algorithm
-- Merge pull request #39 from scyto/feature/adaptive-resampling
-- Increase deadband and time constant for VM stability
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
