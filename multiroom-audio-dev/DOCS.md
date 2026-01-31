@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-368a570
+## Development Build: sha-84f9e28
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #39 from scyto/feature/adaptive-resampling
+- Increase deadband and time constant for VM stability
 - Merge remote-tracking branch 'origin/feature/adaptive-resampling' into dev
 - Add Sink:/Device: prefix to device dropdown
 - Tune adaptive resampling control loop for stability
@@ -13,8 +15,6 @@
 - Fix adaptive resampling stats not displaying in Stats for Nerds
 - new player ui elements
 - Wire adaptive resampling ratio to Stats for Nerds
-- updated yamp, PR to main
-- Fix SRC_DATA struct for 64-bit Linux (LP64 data model)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
