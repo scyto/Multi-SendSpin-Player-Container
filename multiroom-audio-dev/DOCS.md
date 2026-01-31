@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-6699347
+## Development Build: sha-07375a1
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #41 from scyto/feature/adaptive-resampling
+- Merge origin/dev: combine device caching with duplicate filtering
+- Add device enumeration caching to prevent audio disruption
 - Merge pull request #40 from scyto/feature/adaptive-resampling
 - Add fast acquisition mode and preserve drift on reset
 - Implement drift-based adaptive resampling algorithm
@@ -12,9 +15,6 @@
 - Increase deadband and time constant for VM stability
 - Merge remote-tracking branch 'origin/feature/adaptive-resampling' into dev
 - Add Sink:/Device: prefix to device dropdown
-- Tune adaptive resampling control loop for stability
-- Fix Codex review issues for device dropdown handling
-- Unify device hiding and rename Sound Card to Audio Device
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
