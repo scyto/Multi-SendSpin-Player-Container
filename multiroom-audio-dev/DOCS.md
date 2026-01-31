@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-cd40a4b
+## Development Build: sha-51d91d1
 
 **Current Dev Build Changes** (recent)
 
+- Fix card index mismatch causing wrong device names in UI
 - Merge pull request #43 from scyto/feature/adaptive-resampling
 - Fix 96kHz player re-anchoring loop by scaling fast acquisition by sample rate
 - Merge pull request #42 from scyto/feature/adaptive-resampling
@@ -14,7 +15,6 @@
 - Add device enumeration caching to prevent audio disruption
 - Merge pull request #40 from scyto/feature/adaptive-resampling
 - Add fast acquisition mode and preserve drift on reset
-- Implement drift-based adaptive resampling algorithm
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
