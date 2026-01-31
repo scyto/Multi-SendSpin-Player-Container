@@ -332,6 +332,7 @@ public class DeviceMatchingService
     /// Includes both hardware devices and custom sinks.
     /// Results are cached for 10 seconds to avoid running pactl on every page load,
     /// which can cause audio underflows when grouped players are active.
+    /// Custom sinks take precedence over raw hardware devices with the same ID to avoid duplicates.
     /// </summary>
     public IEnumerable<AudioDevice> GetEnrichedDevices()
     {
@@ -347,43 +348,46 @@ public class DeviceMatchingService
             // Cache miss - enumerate devices
             _logger.LogDebug("Device cache miss, enumerating devices via pactl");
 
-            // Get hardware devices
-            var hardwareDevices = _backend.GetOutputDevices().Select(EnrichWithConfig);
+            // Get custom sinks first to build exclusion set
+            var customSinksResponse = _customSinks.GetAllSinks();
+            var loadedCustomSinks = customSinksResponse.Sinks
+                .Where(sink => sink.State == CustomSinkState.Loaded && !string.IsNullOrEmpty(sink.PulseAudioSinkName))
+                .ToList();
 
-            // Get custom sinks and convert to AudioDevice format
-            var customSinkDevices = GetCustomSinkDevices();
+            // Build set of PulseAudio sink names that belong to custom sinks
+            var customSinkIds = loadedCustomSinks
+                .Select(sink => sink.PulseAudioSinkName!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // Combine and cache
+            // Get hardware devices, excluding any that are custom sinks (to avoid duplicates)
+            var hardwareDevices = _backend.GetOutputDevices()
+                .Where(device => !customSinkIds.Contains(device.Id))
+                .Select(EnrichWithConfig);
+
+            // Convert custom sinks to AudioDevice format
+            var customSinkDevices = loadedCustomSinks
+                .Select(sink => new AudioDevice(
+                    Index: -1,  // Custom sinks don't have an index
+                    Id: sink.PulseAudioSinkName!,
+                    Name: sink.Name,
+                    MaxChannels: sink.Channels ?? 2,  // Default to stereo if not specified
+                    DefaultSampleRate: 48000,  // Standard sample rate for custom sinks
+                    DefaultLowLatencyMs: 0,
+                    DefaultHighLatencyMs: 0,
+                    IsDefault: false,
+                    Capabilities: null,
+                    Identifiers: null,
+                    Alias: sink.Description,  // Use description as alias (null if not set)
+                    Hidden: false,
+                    SinkType: sink.Type.ToString()  // "Combine" or "Remap"
+                ));
+
+            // Combine and cache: hardware devices first, then custom sinks
             _cachedDevices = hardwareDevices.Concat(customSinkDevices).ToList();
             _cacheExpiry = now + CacheTtl;
 
             return _cachedDevices;
         }
-    }
-
-    /// <summary>
-    /// Gets custom sinks as AudioDevice objects.
-    /// </summary>
-    private IEnumerable<AudioDevice> GetCustomSinkDevices()
-    {
-        var customSinksResponse = _customSinks.GetAllSinks();
-        return customSinksResponse.Sinks
-            .Where(sink => sink.State == CustomSinkState.Loaded && !string.IsNullOrEmpty(sink.PulseAudioSinkName))
-            .Select(sink => new AudioDevice(
-                Index: -1,  // Custom sinks don't have an index
-                Id: sink.PulseAudioSinkName!,
-                Name: sink.Name,
-                MaxChannels: sink.Channels ?? 2,  // Default to stereo if not specified
-                DefaultSampleRate: 48000,  // Standard sample rate for custom sinks
-                DefaultLowLatencyMs: 0,
-                DefaultHighLatencyMs: 0,
-                IsDefault: false,
-                Capabilities: null,
-                Identifiers: null,
-                Alias: sink.Description ?? sink.Name,  // Use description as alias, fallback to name
-                Hidden: false,
-                SinkType: sink.Type.ToString()  // "Combine" or "Remap"
-            ));
     }
 
     /// <summary>
