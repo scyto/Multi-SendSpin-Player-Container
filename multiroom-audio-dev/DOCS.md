@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-f9c7d8d
+## Development Build: sha-863028d
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #38 from scyto/feature/adaptive-resampling
+- Tune adaptive resampling control loop for stability
 - Merge pull request #36 from scyto/feature/adaptive-resampling
 - Fix adaptive resampling stats not displaying in Stats for Nerds
 - Merge pull request #35 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Wire adaptive resampling ratio to Stats for Nerds
 - updated yamp, PR to main
 - Merge pull request #33 from scyto/feature/adaptive-resampling
-- Fix SRC_DATA struct for 64-bit Linux (LP64 data model)
-- Merge pull request #31 from scyto/feature/adaptive-resampling
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
