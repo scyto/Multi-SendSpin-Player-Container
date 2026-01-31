@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-84f9e28
+## Development Build: sha-6699347
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #40 from scyto/feature/adaptive-resampling
+- Add fast acquisition mode and preserve drift on reset
+- Implement drift-based adaptive resampling algorithm
 - Merge pull request #39 from scyto/feature/adaptive-resampling
 - Increase deadband and time constant for VM stability
 - Merge remote-tracking branch 'origin/feature/adaptive-resampling' into dev
@@ -12,9 +15,6 @@
 - Tune adaptive resampling control loop for stability
 - Fix Codex review issues for device dropdown handling
 - Unify device hiding and rename Sound Card to Audio Device
-- Fix adaptive resampling stats not displaying in Stats for Nerds
-- new player ui elements
-- Wire adaptive resampling ratio to Stats for Nerds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
