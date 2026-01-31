@@ -147,9 +147,10 @@ public sealed class AdaptiveResampledAudioSource : IAudioSampleSource, IDisposab
             throw new ArgumentException("Audio format must have at least one channel.", nameof(buffer));
         }
 
-        // Create the adaptive resampler
+        // Create the adaptive resampler with sample rate for proper fast acquisition scaling
         _resampler = new AdaptiveSampleRateConverter(
             _channels,
+            _sampleRate,
             resamplerQuality,
             logger as ILogger);
 
