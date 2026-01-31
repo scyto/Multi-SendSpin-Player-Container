@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-863028d
+## Development Build: sha-e45b988
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #38 from scyto/feature/adaptive-resampling
-- Tune adaptive resampling control loop for stability
-- Merge pull request #36 from scyto/feature/adaptive-resampling
-- Fix adaptive resampling stats not displaying in Stats for Nerds
-- Merge pull request #35 from scyto/feature/adaptive-resampling
-- new player ui elements
-- Merge pull request #34 from scyto/feature/adaptive-resampling
-- Wire adaptive resampling ratio to Stats for Nerds
-- updated yamp, PR to main
-- Merge pull request #33 from scyto/feature/adaptive-resampling
+- Add Sink:/Device: prefix to device dropdown
+- Fix Codex review issues for device dropdown handling
+- Unify device hiding and rename Sound Card to Audio Device
+- Persist volume changes to survive container restarts
+- Add anti-oscillation debounce to sync correction
+- Update stats display to match 15ms correction threshold
+- Add latency lock-in to reduce sync corrections from PulseAudio jitter
+- Expose HAOS add-on options as environment variables
+- Update SDK to 6.1.1 and fix scheduled start timing issue
+- Merge pull request #125 from scyto/feature/handle-all-pipeline-states
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
