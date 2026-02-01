@@ -1393,6 +1393,19 @@ async function showPlayerStats(name) {
                 </table>
             </div>
         </div>
+        ${player.currentTrack?.title ? `
+        <div class="now-playing-section mt-3 p-3 bg-dark rounded">
+            <h6 class="text-muted text-uppercase small mb-2"><i class="fas fa-music me-1"></i>Now Playing</h6>
+            <div class="d-flex align-items-center">
+                ${player.currentTrack.artworkUrl ? `<img src="${escapeHtml(player.currentTrack.artworkUrl)}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;" alt="Album art">` : ''}
+                <div>
+                    <div class="fw-semibold">${escapeHtml(player.currentTrack.title)}</div>
+                    ${player.currentTrack.artist ? `<div class="text-muted small">${escapeHtml(player.currentTrack.artist)}</div>` : ''}
+                    ${player.currentTrack.album ? `<div class="text-muted small">${escapeHtml(player.currentTrack.album)}</div>` : ''}
+                </div>
+            </div>
+        </div>
+        ` : ''}
         <h6 class="text-muted text-uppercase small mt-3">Delay Offset</h6>
         <p class="text-muted small mb-2">
             <i class="fas fa-info-circle me-1"></i>
@@ -1422,16 +1435,16 @@ async function showPlayerStats(name) {
     // Fetch receiving format if player is playing (one-time fetch, not in audio hot path)
     if (isPlaying) {
         try {
-            const response = await fetch(`/api/players/${encodeURIComponent(name)}/stats`);
+            const response = await fetch(`./api/players/${encodeURIComponent(name)}/stats`);
             if (response.ok) {
                 const stats = await response.json();
                 const receivingEl = document.getElementById('receivingFormat');
-                if (receivingEl && stats.inputFormat) {
-                    const fmt = stats.inputFormat;
+                if (receivingEl && stats.audioFormat) {
+                    const fmt = stats.audioFormat;
                     // Format: "FLAC 48kHz 1411kbps"
-                    const codec = fmt.codec || 'Unknown';
-                    const sampleRate = fmt.sampleRate ? formatSampleRate(fmt.sampleRate) : '';
-                    const bitrate = fmt.bitrate ? `${Math.round(fmt.bitrate / 1000)}kbps` : '';
+                    const codec = fmt.inputFormat || 'Unknown';
+                    const sampleRate = fmt.inputSampleRate ? formatSampleRate(fmt.inputSampleRate) : '';
+                    const bitrate = fmt.inputBitrate || '';
                     receivingEl.textContent = [codec, sampleRate, bitrate].filter(Boolean).join(' ');
                 } else if (receivingEl) {
                     receivingEl.textContent = '—';
