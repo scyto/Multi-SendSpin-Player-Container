@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-cb16280
+## Development Build: sha-5192e6e
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #46 from scyto/feature/fix-card-mute-name-matching
+- Fix card mute by using name-based sink matching
 - Merge pull request #45 from scyto/feature/flexible-player-names-clean
 - Allow flexible player names with international character support
 - Fix header dropdown buttons turning white when active
@@ -13,8 +15,6 @@
 - Fix 96kHz player re-anchoring loop by scaling fast acquisition by sample rate
 - Merge pull request #42 from scyto/feature/adaptive-resampling
 - Add card caching and player names to SDK log messages
-- Merge pull request #41 from scyto/feature/adaptive-resampling
-- Merge origin/dev: combine device caching with duplicate filtering
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
