@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-f030bb0
+## Development Build: sha-cb16280
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #45 from scyto/feature/flexible-player-names-clean
+- Allow flexible player names with international character support
 - Fix header dropdown buttons turning white when active
 - Fix card index mismatch causing wrong device names in UI
 - Merge pull request #43 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Add card caching and player names to SDK log messages
 - Merge pull request #41 from scyto/feature/adaptive-resampling
 - Merge origin/dev: combine device caching with duplicate filtering
-- Add device enumeration caching to prevent audio disruption
-- Merge pull request #40 from scyto/feature/adaptive-resampling
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
