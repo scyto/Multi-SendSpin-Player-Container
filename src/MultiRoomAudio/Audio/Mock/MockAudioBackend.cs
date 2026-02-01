@@ -72,6 +72,25 @@ public class MockAudioBackend : IBackend
         };
     }
 
+    /// <summary>
+    /// Extracts the device identifier from a PulseAudio sink name.
+    /// E.g., "alsa_output.pci-0000_01_00.0.analog-stereo" → "pci-0000_01_00.0"
+    /// </summary>
+    private static string? ExtractDeviceIdentifier(string sinkName)
+    {
+        // Remove alsa_output. prefix
+        var identifier = sinkName.Replace("alsa_output.", "");
+
+        // Remove the profile suffix (last dot-separated segment like .analog-stereo)
+        var lastDot = identifier.LastIndexOf('.');
+        if (lastDot > 0)
+        {
+            identifier = identifier.Substring(0, lastDot);
+        }
+
+        return string.IsNullOrEmpty(identifier) ? null : identifier;
+    }
+
     /// <inheritdoc />
     public string Name => "mock";
 
@@ -230,9 +249,11 @@ public class MockAudioBackend : IBackend
 
         return deviceConfigs.Select(config =>
         {
-            // Find the corresponding card by CardIndex
-            var card = config.CardIndex.HasValue
-                ? cards.FirstOrDefault(c => c.Index == config.CardIndex.Value)
+            // Find the corresponding card by matching device identifier in card name
+            // E.g., device "alsa_output.pci-0000_01_00.0.analog-stereo" matches card "alsa_card.pci-0000_01_00.0"
+            var identifier = ExtractDeviceIdentifier(config.Id);
+            var card = !string.IsNullOrEmpty(identifier)
+                ? cards.FirstOrDefault(c => c.Name.Contains(identifier, StringComparison.OrdinalIgnoreCase))
                 : null;
             var channelCount = card != null
                 ? GetChannelCountForProfile(card.ActiveProfile)
