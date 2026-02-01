@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-6dfd460
+## Development Build: sha-0eff6bf
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #48 from scyto/feature/player-details-refactor
+- Refactor Player Details modal and add device capabilities display
 - Merge pull request #47 from scyto/feature/fix-card-mute-name-matching
 - Fix MockAudioBackend to use name-based card matching
 - Merge pull request #46 from scyto/feature/fix-card-mute-name-matching
@@ -13,8 +15,6 @@
 - Allow flexible player names with international character support
 - Fix header dropdown buttons turning white when active
 - Fix card index mismatch causing wrong device names in UI
-- Merge pull request #43 from scyto/feature/adaptive-resampling
-- Fix 96kHz player re-anchoring loop by scaling fast acquisition by sample rate
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
