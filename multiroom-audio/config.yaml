@@ -20,6 +20,7 @@ usb: true
 # Explicit device mapping for audio access
 devices:
   - "/dev/snd:/dev/snd"
+  - "/proc/asound:/host/asound:ro"
 
 # Permissions for audio processing
 privileged:
