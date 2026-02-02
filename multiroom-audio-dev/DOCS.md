@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-b1e4dea
+## Development Build: sha-258ffca
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #50 from scyto/feature/player-details-refactor
+- Add ALSA capability service for hardware capabilities
 - Merge pull request #49 from scyto/feature/player-details-refactor
 - Add Now Playing track info to Player Details modal
 - Fix receiving format display to use correct API response structure
@@ -13,8 +15,6 @@
 - Merge pull request #47 from scyto/feature/fix-card-mute-name-matching
 - Fix MockAudioBackend to use name-based card matching
 - Merge pull request #46 from scyto/feature/fix-card-mute-name-matching
-- Fix card mute by using name-based sink matching
-- Merge pull request #45 from scyto/feature/flexible-player-names-clean
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
