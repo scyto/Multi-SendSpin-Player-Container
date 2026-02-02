@@ -6,6 +6,7 @@
 
 **Installation**
 * [HAOS Add-on Guide](HAOS_ADDON_GUIDE)
+* [Docker Dev Builds](DOCKER_DEV)
 
 **Configuration**
 * [12V Triggers](12V-TRIGGERS)
