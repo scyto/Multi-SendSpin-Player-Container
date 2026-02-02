@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-09fd778
+## Development Build: sha-ae41f1e
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #52 from scyto/feature/player-details-refactor
+- Fix ALSA capability service to use actual channel count
 - Merge pull request #51 from scyto/feature/player-details-refactor
 - Fix Player Details to show Sink vs Device label correctly
 - Merge pull request #50 from scyto/feature/player-details-refactor
@@ -13,8 +15,6 @@
 - Add Now Playing track info to Player Details modal
 - Fix receiving format display to use correct API response structure
 - Merge pull request #48 from scyto/feature/player-details-refactor
-- Refactor Player Details modal and add device capabilities display
-- Merge pull request #47 from scyto/feature/fix-card-mute-name-matching
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
