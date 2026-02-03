@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-56a2af7
+## Development Build: sha-8cbca4b
 
 **Current Dev Build Changes** (recent)
 
+- Improve sync correction with cosine crossfade and cubic interpolation
 - Add SCHED_FIFO real-time scheduling to audio callback thread
 - Set process nice priority to -11 for real-time audio
 - Woops, SDK Fix.
@@ -14,7 +15,6 @@
 - Add sync architecture documentation
 - Bump Sendspin.SDK to 6.3.2 for timing source visibility
 - Add server-side log download endpoint to export all logs
-- Bump Sendspin.SDK to 6.3.1 for sync correction logging
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
