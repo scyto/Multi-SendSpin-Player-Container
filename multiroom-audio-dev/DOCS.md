@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-a9b02be
+## Development Build: sha-56a2af7
 
 **Current Dev Build Changes** (recent)
 
+- Add SCHED_FIFO real-time scheduling to audio callback thread
 - Set process nice priority to -11 for real-time audio
 - Woops, SDK Fix.
 - Use smoothed sync error in Stats for Nerds display
@@ -14,7 +15,6 @@
 - Bump Sendspin.SDK to 6.3.2 for timing source visibility
 - Add server-side log download endpoint to export all logs
 - Bump Sendspin.SDK to 6.3.1 for sync correction logging
-- Fix audio clock to return Unix epoch microseconds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
