@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-049d6d4
+## Development Build: sha-dc01bea
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #59 from scyto/feature/adaptive-resampling
+- Update SDK to 6.3.0 with VM-stable sync error fix
 - Merge pull request #58 from scyto/feature/adaptive-resampling
 - Set CalibratedStartupLatencyMicroseconds BEFORE playback starts
 - Merge pull request #57 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Enable SDK 6.2.0 enhanced tracking and add RTT stats to Stats for Nerds
 - Merge pull request #55 from scyto/feature/adaptive-resampling
 - Fix Docker build: copy nuget.config and local packages for SDK 6.2.0
-- Merge pull request #54 from scyto/feature/adaptive-resampling
-- Add local SDK 6.2.0 package for CI testing
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
