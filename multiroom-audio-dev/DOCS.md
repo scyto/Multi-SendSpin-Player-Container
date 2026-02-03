@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fdd416b
+## Development Build: sha-218f412
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #57 from scyto/feature/adaptive-resampling
+- Fix sync error swings by calibrating SDK buffer with output latency
 - Merge pull request #56 from scyto/feature/adaptive-resampling
 - Enable SDK 6.2.0 enhanced tracking and add RTT stats to Stats for Nerds
 - Merge pull request #55 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Add local SDK 6.2.0 package for CI testing
 - Merge pull request #53 from scyto/feature/adaptive-resampling
 - Update SendSpin.SDK to 6.2.0 and expose RTT tracking stats
-- Merge pull request #52 from scyto/feature/player-details-refactor
-- Fix ALSA capability service to use actual channel count
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
