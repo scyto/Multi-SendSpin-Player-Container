@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-8cbca4b
+## Development Build: sha-82556b4
 
 **Current Dev Build Changes** (recent)
 
-- Improve sync correction with cosine crossfade and cubic interpolation
-- Add SCHED_FIFO real-time scheduling to audio callback thread
-- Set process nice priority to -11 for real-time audio
+- Fix audio clock baseline capture timing
+- Fix audio clock offset causing players to be ahead of other players
+- Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
+- Add SDK version and server time to Stats for Nerds
 - Woops, SDK Fix.
 - Use smoothed sync error in Stats for Nerds display
 - Reduce UI polling frequency to minimize VM scheduling impact
 - Add hero section and timing source to Stats for Nerds
 - Add sync architecture documentation
 - Bump Sendspin.SDK to 6.3.2 for timing source visibility
-- Add server-side log download endpoint to export all logs
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
