@@ -329,7 +329,7 @@ public class CustomSinksService : IAsyncDisposable
     /// <summary>
     /// Import a sink detected from default.pa.
     /// </summary>
-    public async Task<CustomSinkResponse> ImportSinkAsync(
+    public Task<CustomSinkResponse> ImportSinkAsync(
         DetectedSink detected,
         CancellationToken cancellationToken = default)
     {
@@ -396,7 +396,7 @@ public class CustomSinksService : IAsyncDisposable
         _logger.LogInformation("Imported {Type}-sink '{Name}' from default.pa",
             detected.Type, detected.SinkName);
 
-        return ToResponse(detected.SinkName, context);
+        return Task.FromResult(ToResponse(detected.SinkName, context));
     }
 
     /// <summary>
