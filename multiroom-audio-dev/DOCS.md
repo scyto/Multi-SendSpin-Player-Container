@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-218f412
+## Development Build: sha-049d6d4
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #58 from scyto/feature/adaptive-resampling
+- Set CalibratedStartupLatencyMicroseconds BEFORE playback starts
 - Merge pull request #57 from scyto/feature/adaptive-resampling
 - Fix sync error swings by calibrating SDK buffer with output latency
 - Merge pull request #56 from scyto/feature/adaptive-resampling
@@ -13,8 +15,6 @@
 - Fix Docker build: copy nuget.config and local packages for SDK 6.2.0
 - Merge pull request #54 from scyto/feature/adaptive-resampling
 - Add local SDK 6.2.0 package for CI testing
-- Merge pull request #53 from scyto/feature/adaptive-resampling
-- Update SendSpin.SDK to 6.2.0 and expose RTT tracking stats
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
