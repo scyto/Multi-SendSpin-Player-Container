@@ -914,6 +914,10 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                     bufferCapacityMs: LocalBufferCapacityMs,
                     syncOptions: PulseAudioSyncOptions);
                 buffer.TargetBufferMilliseconds = PlaybackStartThresholdMs;
+                // Set initial latency estimate BEFORE playback starts (anchor uses this value).
+                // PulseAudio typically has 70-150ms output latency; 100ms is a reasonable default.
+                // This prevents sync error from starting with a large offset.
+                buffer.CalibratedStartupLatencyMicroseconds = 100_000;
                 // Capture buffer for latency calibration when PulseAudioPlayer locks
                 bufferHolder.Buffer = buffer;
                 return buffer;
