@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7e41aee
+## Development Build: sha-805b4c6
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #63 from scyto/feature/sdk-6.3.4-hybrid-sync
+- Update SDK to 6.3.4 with hybrid sync (sample counting + drift detection)
 - Merge pull request #62 from scyto/feature/sdk-6.3.3-clock-monotonic-raw
 - Update SDK to 6.3.3 with CLOCK_MONOTONIC_RAW for VM-stable drift detection
 - Merge pull request #61 from scyto/feature/sdk-6.3.2-sample-counting
@@ -13,8 +15,6 @@
 - Update SDK to 6.3.1 with ReadRaw() stopwatch fix
 - Merge pull request #59 from scyto/feature/adaptive-resampling
 - Update SDK to 6.3.0 with VM-stable sync error fix
-- Merge pull request #58 from scyto/feature/adaptive-resampling
-- Set CalibratedStartupLatencyMicroseconds BEFORE playback starts
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
