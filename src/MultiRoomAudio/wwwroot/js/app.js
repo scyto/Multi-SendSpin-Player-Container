@@ -1977,6 +1977,14 @@ function renderStatsPanel(stats) {
                     <span class="stats-label">Client ID</span>
                     <span id="stats-client-id" class="stats-value"><code></code></span>
                 </div>
+                <div class="stats-row">
+                    <span class="stats-label">SDK Version</span>
+                    <span id="stats-sdk-version" class="stats-value info"></span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Server Time</span>
+                    <span id="stats-server-time" class="stats-value"></span>
+                </div>
             </div>
 
             <!-- Audio Format Section -->
@@ -2161,6 +2169,10 @@ function renderStatsPanel(stats) {
             clientIdEl.innerHTML = `<code>${escapeHtml(player.clientId)}</code>`;
         }
     }
+
+    // SDK version and server time for debugging
+    updateStatsValue('stats-sdk-version', stats.sdkVersion || 'unknown');
+    updateStatsValue('stats-server-time', stats.serverTime || '--');
 
     updateStatsValue('stats-input-format', stats.audioFormat.inputFormat);
 

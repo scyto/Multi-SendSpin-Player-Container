@@ -1,3 +1,4 @@
+using System.Reflection;
 using MultiRoomAudio.Models;
 using Sendspin.SDK.Audio;
 using Sendspin.SDK.Models;
@@ -54,8 +55,31 @@ internal static class PlayerStatsMapper
             ClockSync: BuildClockSyncStats(clockStatus, player, clockSync, bufferStats),
             Throughput: BuildThroughputStats(bufferStats),
             Correction: BuildSyncCorrectionStats(bufferStats),
-            Diagnostics: BuildBufferDiagnostics(bufferStats, pipelineState)
+            Diagnostics: BuildBufferDiagnostics(bufferStats, pipelineState),
+            SdkVersion: GetSdkVersion(),
+            ServerTime: DateTime.Now.ToString("HH:mm:ss")
         );
+    }
+
+    /// <summary>
+    /// Gets the Sendspin SDK version from assembly metadata.
+    /// </summary>
+    private static string GetSdkVersion()
+    {
+        try
+        {
+            var sdkAssembly = typeof(IAudioPipeline).Assembly;
+            var version = sdkAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? sdkAssembly.GetName().Version?.ToString()
+                ?? "unknown";
+            // Strip source link hash if present (e.g., "6.3.4+abc123" -> "6.3.4")
+            var plusIndex = version.IndexOf('+');
+            return plusIndex > 0 ? version[..plusIndex] : version;
+        }
+        catch
+        {
+            return "unknown";
+        }
     }
 
     /// <summary>

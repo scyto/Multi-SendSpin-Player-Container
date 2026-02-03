@@ -11,7 +11,11 @@ public record PlayerStatsResponse(
     ClockSyncStats ClockSync,
     ThroughputStats Throughput,
     SyncCorrectionStats Correction,
-    BufferDiagnostics Diagnostics
+    BufferDiagnostics Diagnostics,
+    /// <summary>SDK version for debugging.</summary>
+    string SdkVersion = "unknown",
+    /// <summary>Server time matching log timestamps.</summary>
+    string ServerTime = ""
 );
 
 /// <summary>
