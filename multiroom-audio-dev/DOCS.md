@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ae41f1e
+## Development Build: sha-caf5d56
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #55 from scyto/feature/adaptive-resampling
+- Fix Docker build: copy nuget.config and local packages for SDK 6.2.0
+- Merge pull request #54 from scyto/feature/adaptive-resampling
+- Add local SDK 6.2.0 package for CI testing
+- Merge pull request #53 from scyto/feature/adaptive-resampling
+- Update SendSpin.SDK to 6.2.0 and expose RTT tracking stats
 - Merge pull request #52 from scyto/feature/player-details-refactor
 - Fix ALSA capability service to use actual channel count
 - Merge pull request #51 from scyto/feature/player-details-refactor
 - Fix Player Details to show Sink vs Device label correctly
-- Merge pull request #50 from scyto/feature/player-details-refactor
-- Add ALSA capability service for hardware capabilities
-- Merge pull request #49 from scyto/feature/player-details-refactor
-- Add Now Playing track info to Player Details modal
-- Fix receiving format display to use correct API response structure
-- Merge pull request #48 from scyto/feature/player-details-refactor
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
