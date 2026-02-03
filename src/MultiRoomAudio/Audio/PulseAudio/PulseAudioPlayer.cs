@@ -103,6 +103,10 @@ public class PulseAudioPlayer : IAudioPlayer
     private DateTime _playbackStartTime;
     private bool _hasLoggedFirstAudio;
 
+    // Audio clock: Unix epoch microseconds when playback started.
+    // Used to convert pa_stream_get_time() (relative) to absolute Unix time.
+    private long _playbackStartUnixMicroseconds;
+
     public AudioPlayerState State { get; private set; } = AudioPlayerState.Uninitialized;
 
     private volatile float _volume = 1.0f;
@@ -160,6 +164,7 @@ public class PulseAudioPlayer : IAudioPlayer
         // after the null check but before ThreadedMainloopLock(), causing a segfault.
         IntPtr mainloop;
         IntPtr stream;
+        long startTimeUs;
 
         lock (_lock)
         {
@@ -169,9 +174,10 @@ public class PulseAudioPlayer : IAudioPlayer
                 return null;
             }
 
-            // Capture handles while holding _lock - these won't change while we hold the lock
+            // Capture handles and start time while holding _lock
             mainloop = _mainloop;
             stream = _stream;
+            startTimeUs = _playbackStartUnixMicroseconds;
         }
 
         // Check if we're already on the PulseAudio mainloop thread (i.e., called from a callback).
@@ -186,10 +192,14 @@ public class PulseAudioPlayer : IAudioPlayer
 
         try
         {
-            // StreamGetTime returns 0 on success, negative on error
-            if (StreamGetTime(stream, out var timeUs) == 0)
+            // StreamGetTime returns 0 on success, negative on error.
+            // The returned value is μs since stream started (relative time).
+            // We add the Unix epoch start time to convert to absolute time.
+            if (StreamGetTime(stream, out var streamTimeUs) == 0)
             {
-                return (long)timeUs;
+                // Return Unix epoch microseconds: start_time + stream_position
+                // This is compatible with SDK's HighPrecisionTimer format.
+                return startTimeUs + (long)streamTimeUs;
             }
 
             // Timing info not available (PA_ERR_NODATA)
@@ -471,6 +481,11 @@ public class PulseAudioPlayer : IAudioPlayer
             _underflowCount = 0;
             _hasLoggedFirstAudio = false;
             _playbackStartTime = DateTime.UtcNow;
+
+            // Capture Unix epoch time for audio clock conversion.
+            // pa_stream_get_time() returns μs since stream start; we add this base
+            // to convert to Unix epoch μs (what the SDK expects).
+            _playbackStartUnixMicroseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000;
 
             // Uncork the stream to start/resume playback.
             // Stream is connected with StartCorked flag, so we must uncork to begin.
