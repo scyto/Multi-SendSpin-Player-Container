@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-805b4c6
+## Development Build: sha-b29af64
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #63 from scyto/feature/sdk-6.3.4-hybrid-sync
-- Update SDK to 6.3.4 with hybrid sync (sample counting + drift detection)
-- Merge pull request #62 from scyto/feature/sdk-6.3.3-clock-monotonic-raw
-- Update SDK to 6.3.3 with CLOCK_MONOTONIC_RAW for VM-stable drift detection
-- Merge pull request #61 from scyto/feature/sdk-6.3.2-sample-counting
-- Update SDK to 6.3.2 with true VM-safe sample counting
-- Merge pull request #60 from scyto/feature/sdk-6.3.1-vm-fix
-- Update SDK to 6.3.1 with ReadRaw() stopwatch fix
-- Merge pull request #59 from scyto/feature/adaptive-resampling
-- Update SDK to 6.3.0 with VM-stable sync error fix
+- Bump Sendspin.SDK to 6.3.2 for timing source visibility
+- Add server-side log download endpoint to export all logs
+- Bump Sendspin.SDK to 6.3.1 for sync correction logging
+- Fix audio clock to return Unix epoch microseconds
+- Fix audio clock crash when called from PulseAudio callback thread
+- segfault crash fix woops
+- Add audio hardware clock support for VM-resilient sync timing
+- Merge pull request #140 from scyto/bug/docs-revisions
+- Remove async from importSink (nothing is async) add logging via SDK 6.2.0-preview2
+- Bump SDK to Attempt Monotonic Timer Fix
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
