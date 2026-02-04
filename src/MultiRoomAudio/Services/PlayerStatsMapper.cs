@@ -202,7 +202,7 @@ internal static class PlayerStatsMapper
             Mode: correctionMode,
             FramesDropped: framesDropped,
             FramesInserted: framesInserted,
-            ThresholdMs: 15  // Our 15ms threshold
+            ThresholdMs: (int)SyncToleranceMs  // Must match CorrectionThresholdMicroseconds
         );
     }
 
