@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d3a71b2
+## Development Build: sha-d76a544
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #65 from scyto/bug/onboarding-lock-recursion
+- Fix lock recursion error when skipping/completing onboarding
+- Merge pull request #64 from scyto/bug/startup-overlay-race
+- Fix audio playing on wrong device when USB is unplugged
+- Fix startup overlay stuck when SignalR connects after phases complete
 - Fix startup overlay stuck when SignalR connects after phases complete
 - Add Multi-Room Sync Summary UI showing inter-player drift
 - Add adaptive resampling for clock drift compensation
 - Fix Stats for Nerds ThresholdMs display to match actual 30ms threshold
 - Increase sync correction threshold from 15ms to 30ms
-- Increase PA write buffer to 128ms for VM compatibility
-- Fix audio clock baseline capture timing
-- Fix audio clock offset causing players to be ahead of other players
-- Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
-- Add SDK version and server time to Stats for Nerds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
