@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-bbf9264
+## Development Build: sha-b9e1bcd
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #66 from scyto/bug/usb-unplug-deadlock
+- Fix deadlock when USB audio device is unplugged
 - Merge pull request #65 from scyto/bug/onboarding-lock-recursion
 - Fix lock recursion error when skipping/completing onboarding
 - Merge pull request #64 from scyto/bug/startup-overlay-race
@@ -13,8 +15,6 @@
 - Fix startup overlay stuck when SignalR connects after phases complete
 - Add Multi-Room Sync Summary UI showing inter-player drift
 - Add adaptive resampling for clock drift compensation
-- Fix Stats for Nerds ThresholdMs display to match actual 30ms threshold
-- Increase sync correction threshold from 15ms to 30ms
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
