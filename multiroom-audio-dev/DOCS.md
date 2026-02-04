@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-82556b4
+## Development Build: sha-1bb4a8b
 
 **Current Dev Build Changes** (recent)
 
+- Add drift-based sync correction with inter-room monitoring
 - Fix audio clock baseline capture timing
 - Fix audio clock offset causing players to be ahead of other players
 - Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
@@ -14,7 +15,6 @@
 - Reduce UI polling frequency to minimize VM scheduling impact
 - Add hero section and timing source to Stats for Nerds
 - Add sync architecture documentation
-- Bump Sendspin.SDK to 6.3.2 for timing source visibility
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
