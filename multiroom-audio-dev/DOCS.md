@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-64cd56b
+## Development Build: sha-830cae7
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #69 from scyto/bug/device-reconnect-pipeline-fix
+- Fix device loss detection in pipeline error handler
 - Merge pull request #68 from scyto/feature/device-auto-reconnect
 - Add auto-restart when USB audio device reconnects
 - Merge pull request #66 from scyto/bug/usb-unplug-deadlock
@@ -13,8 +15,6 @@
 - Fix lock recursion error when skipping/completing onboarding
 - Merge pull request #64 from scyto/bug/startup-overlay-race
 - Fix audio playing on wrong device when USB is unplugged
-- Fix startup overlay stuck when SignalR connects after phases complete
-- Fix startup overlay stuck when SignalR connects after phases complete
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
