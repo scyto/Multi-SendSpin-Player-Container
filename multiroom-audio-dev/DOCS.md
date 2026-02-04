@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-a54f477
+## Development Build: sha-c32fcb5
 
 **Current Dev Build Changes** (recent)
 
+- Pass audio clock to SDK for VM-safe sync error calculation
 - Simplify sync correction to use sync error after clock convergence
 - Add drift-based sync correction with inter-room monitoring
 - Fix audio clock baseline capture timing
@@ -14,7 +15,6 @@
 - Woops, SDK Fix.
 - Use smoothed sync error in Stats for Nerds display
 - Reduce UI polling frequency to minimize VM scheduling impact
-- Add hero section and timing source to Stats for Nerds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
