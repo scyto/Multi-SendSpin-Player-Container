@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7e39483
+## Development Build: sha-d3a71b2
 
 **Current Dev Build Changes** (recent)
 
+- Fix startup overlay stuck when SignalR connects after phases complete
 - Add Multi-Room Sync Summary UI showing inter-player drift
 - Add adaptive resampling for clock drift compensation
 - Fix Stats for Nerds ThresholdMs display to match actual 30ms threshold
@@ -14,7 +15,6 @@
 - Fix audio clock offset causing players to be ahead of other players
 - Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
 - Add SDK version and server time to Stats for Nerds
-- Woops, SDK Fix.
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
