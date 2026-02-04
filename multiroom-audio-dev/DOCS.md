@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-111a5e6
+## Development Build: sha-ac538cb
 
 **Current Dev Build Changes** (recent)
 
+- Increase sync correction threshold from 15ms to 30ms
 - Increase PA write buffer to 128ms for VM compatibility
 - Add PA latency stats and request size to SyncDebug logging
 - Add comprehensive SyncDebug logging with 20+ datapoints
@@ -14,7 +15,6 @@
 - Simplify sync correction to use sync error after clock convergence
 - Add drift-based sync correction with inter-room monitoring
 - Fix audio clock baseline capture timing
-- Fix audio clock offset causing players to be ahead of other players
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
