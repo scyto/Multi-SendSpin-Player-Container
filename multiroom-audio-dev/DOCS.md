@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4c6f0a5
+## Development Build: sha-111a5e6
 
 **Current Dev Build Changes** (recent)
 
+- Increase PA write buffer to 128ms for VM compatibility
 - Add PA latency stats and request size to SyncDebug logging
 - Add comprehensive SyncDebug logging with 20+ datapoints
 - Enhance sync debug logging with Kalman and buffer details
@@ -14,7 +15,6 @@
 - Add drift-based sync correction with inter-room monitoring
 - Fix audio clock baseline capture timing
 - Fix audio clock offset causing players to be ahead of other players
-- Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
