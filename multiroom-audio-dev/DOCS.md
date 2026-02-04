@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-2dbf4f0
+## Development Build: sha-7e39483
 
 **Current Dev Build Changes** (recent)
 
+- Add Multi-Room Sync Summary UI showing inter-player drift
 - Add adaptive resampling for clock drift compensation
 - Fix Stats for Nerds ThresholdMs display to match actual 30ms threshold
 - Increase sync correction threshold from 15ms to 30ms
@@ -14,7 +15,6 @@
 - Bump SendSpin.SDK to 6.3.5 to fix timer jump warnings
 - Add SDK version and server time to Stats for Nerds
 - Woops, SDK Fix.
-- Use smoothed sync error in Stats for Nerds display
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
