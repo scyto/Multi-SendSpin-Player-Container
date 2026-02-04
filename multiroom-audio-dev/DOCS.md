@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-1bb4a8b
+## Development Build: sha-a54f477
 
 **Current Dev Build Changes** (recent)
 
+- Simplify sync correction to use sync error after clock convergence
 - Add drift-based sync correction with inter-room monitoring
 - Fix audio clock baseline capture timing
 - Fix audio clock offset causing players to be ahead of other players
@@ -14,7 +15,6 @@
 - Use smoothed sync error in Stats for Nerds display
 - Reduce UI polling frequency to minimize VM scheduling impact
 - Add hero section and timing source to Stats for Nerds
-- Add sync architecture documentation
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
