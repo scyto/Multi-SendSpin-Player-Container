@@ -1940,7 +1940,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             if (args.NewState == ConnectionState.Disconnected &&
                 previousState != Models.PlayerState.Stopped &&  // Not user-stopped
                 previousState != Models.PlayerState.Error &&    // Not already errored
-                !_pendingReconnections.ContainsKey(name))        // Not already pending reconnection
+                !_pendingReconnections.ContainsKey(name) &&     // Not already pending server reconnection
+                !_devicePendingPlayers.ContainsKey(name))       // Not waiting for device reconnection
             {
                 _logger.LogWarning("Player '{Name}' disconnected unexpectedly, queuing for reconnection", name);
 
@@ -2034,7 +2035,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
 
     /// <summary>
     /// Creates handler for pipeline errors (decoder failures, etc.).
-    /// Auto-stops the player to prevent resource waste.
+    /// Detects device loss errors and queues for device reconnection if possible.
     /// </summary>
     private EventHandler<AudioPipelineError> CreatePipelineErrorHandler(
         string name, PlayerContext context)
@@ -2045,11 +2046,27 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                 name, error.Message);
             context.ErrorMessage = error.Message;
 
-            // Auto-stop player on pipeline error to prevent resource waste
-            _logger.LogWarning("Auto-stopping player '{Name}' due to pipeline error", name);
-            FireAndForget(
-                StopPlayerInternalAsync(name, "Pipeline error: " + error.Message),
-                $"StopPlayerInternalAsync for '{name}' (pipeline error)", _logger);
+            // Check if this is a device loss error (USB unplug with DontMove flag)
+            var isDeviceLoss = error.Message.Contains("Audio device lost") ||
+                               error.Message.Contains("Entity killed") ||
+                               error.Message.Contains("No such entity");
+
+            if (isDeviceLoss && _subscriptionService != null)
+            {
+                // Queue for device reconnection instead of just stopping
+                _logger.LogWarning("Player '{Name}' lost audio device (pipeline), queuing for device reconnection", name);
+                FireAndForget(
+                    QueueForDeviceReconnectionAsync(name, context),
+                    $"QueueForDeviceReconnectionAsync for '{name}' (pipeline)", _logger);
+            }
+            else
+            {
+                // Auto-stop player on pipeline error to prevent resource waste
+                _logger.LogWarning("Auto-stopping player '{Name}' due to pipeline error", name);
+                FireAndForget(
+                    StopPlayerInternalAsync(name, "Pipeline error: " + error.Message),
+                    $"StopPlayerInternalAsync for '{name}' (pipeline error)", _logger);
+            }
         };
     }
 
@@ -2097,6 +2114,14 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     /// </summary>
     private async Task QueueForDeviceReconnectionAsync(string name, PlayerContext context)
     {
+        // Guard against double-handling (both pipeline and player error handlers may fire)
+        // Guard against double-handling (both pipeline and player error handlers may fire)
+        if (_devicePendingPlayers.ContainsKey(name))
+        {
+            _logger.LogDebug("Player '{Name}' already queued for device reconnection, skipping duplicate", name);
+            return;
+        }
+
         // Get persisted config for later restart
         var persistedConfig = _config.Players.TryGetValue(name, out var cfg) ? cfg : null;
         if (persistedConfig == null)
@@ -2111,17 +2136,27 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             ? _config.GetDeviceConfigBySinkName(context.Config.DeviceId)
             : null;
 
-        // Store for later matching when device reappears
+        // IMPORTANT: Add to device-pending queue FIRST, before any operations that might
+        // trigger other handlers. This prevents the connection state handler from
+        // queueing for server reconnection.
         _devicePendingPlayers[name] = new DevicePendingState(
             persistedConfig,
             deviceConfig,
             DateTime.UtcNow);
 
-        // Update player state for UI
-        context.State = Models.PlayerState.WaitingForDevice;
-        context.ErrorMessage = "Waiting for audio device to reconnect...";
+        _logger.LogInformation(
+            "Player '{Name}' queued for device reconnection. Device: {Device}, Identifiers: Serial={Serial}, BusPath={BusPath}",
+            name,
+            context.Config.DeviceId ?? "(default)",
+            deviceConfig?.Identifiers?.Serial ?? "(none)",
+            deviceConfig?.Identifiers?.BusPath ?? "(none)");
 
-        // Stop pipeline but keep player registered so it shows in UI
+        // Update player state for UI - show as Stopped with error message
+        // (not Reconnecting - we're waiting for the physical device, not the server)
+        context.State = Models.PlayerState.Stopped;
+        context.ErrorMessage = "Audio device disconnected. Will auto-restart when device is reconnected.";
+
+        // Stop the player properly
         try
         {
             await context.Pipeline.StopAsync().WaitAsync(DisposalTimeout);
@@ -2141,13 +2176,6 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         }
 
         _ = BroadcastStatusAsync();
-
-        _logger.LogInformation(
-            "Player '{Name}' queued for device reconnection. Device: {Device}, Identifiers: Serial={Serial}, BusPath={BusPath}",
-            name,
-            context.Config.DeviceId ?? "(default)",
-            deviceConfig?.Identifiers?.Serial ?? "(none)",
-            deviceConfig?.Identifiers?.BusPath ?? "(none)");
     }
 
     /// <summary>
