@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-0efb4c7
+## Development Build: sha-1375190
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #74 from scyto/feature/hot-path-diagnostics-toggle
+- Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback
 - Merge pull request #73 from scyto/feature/auto-resume-playback
 - Add auto-resume playback after device reconnection
 - Merge pull request #72 from scyto/bug/device-reconnect-event-fix
@@ -13,8 +15,6 @@
 - Fix device loss detection in pipeline error handler
 - Merge pull request #69 from scyto/bug/device-reconnect-pipeline-fix
 - Fix device loss detection in pipeline error handler
-- Merge pull request #68 from scyto/feature/device-auto-reconnect
-- Add auto-restart when USB audio device reconnects
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
