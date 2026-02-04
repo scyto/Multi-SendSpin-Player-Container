@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3af3bfc
+## Development Build: sha-9d824c4
 
 **Current Dev Build Changes** (recent)
 
+- Fix Stats for Nerds ThresholdMs display to match actual 30ms threshold
 - Increase sync correction threshold from 15ms to 30ms
 - Increase PA write buffer to 128ms for VM compatibility
 - Fix audio clock baseline capture timing
@@ -14,7 +15,6 @@
 - Woops, SDK Fix.
 - Use smoothed sync error in Stats for Nerds display
 - Reduce UI polling frequency to minimize VM scheduling impact
-- Add hero section and timing source to Stats for Nerds
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
