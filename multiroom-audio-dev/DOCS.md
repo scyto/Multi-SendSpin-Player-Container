@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-635ea64
+## Development Build: sha-e698224
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #72 from scyto/bug/device-reconnect-event-fix
+- Fix device auto-reconnect: PA subscription events and device identifiers
 - Merge pull request #71 from scyto/bug/device-reconnect-flow-fix
 - Fix device loss detection in pipeline error handler
 - Merge pull request #69 from scyto/bug/device-reconnect-pipeline-fix
@@ -13,8 +15,6 @@
 - Add auto-restart when USB audio device reconnects
 - Merge pull request #66 from scyto/bug/usb-unplug-deadlock
 - Fix deadlock when USB audio device is unplugged
-- Merge pull request #65 from scyto/bug/onboarding-lock-recursion
-- Fix lock recursion error when skipping/completing onboarding
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
