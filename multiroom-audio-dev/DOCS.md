@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-b9e1bcd
+## Development Build: sha-64cd56b
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #68 from scyto/feature/device-auto-reconnect
+- Add auto-restart when USB audio device reconnects
 - Merge pull request #66 from scyto/bug/usb-unplug-deadlock
 - Fix deadlock when USB audio device is unplugged
 - Merge pull request #65 from scyto/bug/onboarding-lock-recursion
@@ -13,8 +15,6 @@
 - Fix audio playing on wrong device when USB is unplugged
 - Fix startup overlay stuck when SignalR connects after phases complete
 - Fix startup overlay stuck when SignalR connects after phases complete
-- Add Multi-Room Sync Summary UI showing inter-player drift
-- Add adaptive resampling for clock drift compensation
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
