@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3298375
+## Development Build: sha-6e2da72
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #79 from scyto/feature/pa-timing-diagnostics
-- Fix HAOS add-on image URL to use scyto's registry
-- Merge pull request #78 from scyto/feature/pa-timing-diagnostics
-- Add configurable PA_BUFFER_MS for VM timing jitter
-- Merge pull request #77 from scyto/feature/pa-timing-diagnostics
-- Fix TimingInfo struct marshaling for pa_timing_info
-- Merge pull request #76 from scyto/feature/pa-timing-diagnostics
-- Add PulseAudio overflow callback and timing diagnostics
-- Merge pull request #75 from scyto/revert/hot-path-diagnostics
-- Revert "Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback"
+- Merge pull request #148 from scyto/bug/usb-unplug-wrong-device
+- Fix audio playing on wrong device when USB is unplugged
+- Merge pull request #147 from scyto/bug/usb-unplug-deadlock-upstream
+- Fix deadlock when USB audio device is unplugged
+- Merge pull request #143 from scyto/feature/sync-thresholds
+- Merge pull request #146 from scyto/bug/onboarding-lock-recursion-upstream
+- Fix lock recursion error when skipping/completing onboarding
+- Merge pull request #144 from scyto/bug/startup-overlay-race
+- Fix startup overlay stuck when SignalR connects after phases complete
+- Increase sync correction threshold from 15ms to 30ms
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
