@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5222feb
+## Development Build: sha-aed1e49
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #88 from scyto/bug/hid-mute-state-sync
+- Fix HID mute toggle using actual player state instead of cached state
 - Merge pull request #87 from scyto/bug/hid-mute-race-condition
 - Read HID events directly from /dev/input instead of PA events
 - Merge pull request #86 from scyto/bug/hid-mute-race-condition
@@ -13,8 +15,6 @@
 - Use SetMuted for HID mute to match UI behavior
 - Merge pull request #84 from scyto/bug/hid-controls-wrong-sink
 - Pass sink name to module-mmkbd-evdev for per-device control
-- Merge pull request #83 from scyto/bug/hid-checkbox-wrong-device
-- Use USB port as primary HID matching criteria
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
