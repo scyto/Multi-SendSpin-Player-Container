@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4ad630c
+## Development Build: sha-2957549
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #85 from scyto/bug/hid-mute-uses-wrong-api
+- Use SetMuted for HID mute to match UI behavior
 - Merge pull request #84 from scyto/bug/hid-controls-wrong-sink
 - Pass sink name to module-mmkbd-evdev for per-device control
 - Merge pull request #83 from scyto/bug/hid-checkbox-wrong-device
@@ -13,8 +15,6 @@
 - Merge pull request #82 from scyto/bug/hid-checkbox-wrong-device
 - Fix HID checkbox showing on wrong device (PCIe instead of USB)
 - Merge pull request #81 from scyto/feature/hid-helper-text
-- Add helper text to HID buttons checkbox
-- Merge pull request #80 from scyto/feature/hid-button-support
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
