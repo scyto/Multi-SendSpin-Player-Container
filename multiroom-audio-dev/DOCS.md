@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3f47e72
+## Development Build: sha-e7436e1
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #82 from scyto/bug/hid-checkbox-wrong-device
+- Fix HID checkbox showing on wrong device (PCIe instead of USB)
 - Merge pull request #81 from scyto/feature/hid-helper-text
 - Add helper text to HID buttons checkbox
 - Merge pull request #80 from scyto/feature/hid-button-support
@@ -13,8 +15,6 @@
 - Auto-track devices and cards at startup and on discovery
 - Merge pull request #151 from scyto/bug/sync-threshold
 - Revert sync correction threshold from 30ms back to 15ms
-- Merge pull request #150 from scyto/feature/remove-default-device-option
-- Remove 'Default Device' option from player device dropdown
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
