@@ -935,8 +935,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                         buffer,
                         timeFunc,
                         _loggerFactory.CreateLogger<AdaptiveResampledAudioSource>(),
-                        getDriftRate,
-                        enableHotPathDiagnostics: _environment.EnableHotPathDiagnostics);
+                        getDriftRate);
                     adaptiveSourceHolder.Source = source;  // Capture for stats access
                     return source;
                 }
@@ -944,8 +943,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                 return new BufferedAudioSampleSource(
                     buffer,
                     timeFunc,
-                    _loggerFactory.CreateLogger<BufferedAudioSampleSource>(),
-                    _environment.EnableHotPathDiagnostics);
+                    _loggerFactory.CreateLogger<BufferedAudioSampleSource>());
             },
             waitForConvergence: true,
             convergenceTimeoutMs: 1000);
