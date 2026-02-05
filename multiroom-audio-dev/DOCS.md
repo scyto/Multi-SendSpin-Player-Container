@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-0e018c3
+## Development Build: sha-4ad630c
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #84 from scyto/bug/hid-controls-wrong-sink
+- Pass sink name to module-mmkbd-evdev for per-device control
 - Merge pull request #83 from scyto/bug/hid-checkbox-wrong-device
 - Use USB port as primary HID matching criteria
 - Use USB port matching for multiple identical HID devices
@@ -13,8 +15,6 @@
 - Merge pull request #81 from scyto/feature/hid-helper-text
 - Add helper text to HID buttons checkbox
 - Merge pull request #80 from scyto/feature/hid-button-support
-- Add USB audio HID button support for hardware volume/mute controls
-- Merge pull request #152 from scyto/feature/auto-track-devices-cards
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
