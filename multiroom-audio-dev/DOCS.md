@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-2957549
+## Development Build: sha-bf6cf5c
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #86 from scyto/bug/hid-mute-race-condition
+- Add grace period for mute changes to prevent race condition
 - Merge pull request #85 from scyto/bug/hid-mute-uses-wrong-api
 - Use SetMuted for HID mute to match UI behavior
 - Merge pull request #84 from scyto/bug/hid-controls-wrong-sink
@@ -13,8 +15,6 @@
 - Use USB port as primary HID matching criteria
 - Use USB port matching for multiple identical HID devices
 - Merge pull request #82 from scyto/bug/hid-checkbox-wrong-device
-- Fix HID checkbox showing on wrong device (PCIe instead of USB)
-- Merge pull request #81 from scyto/feature/hid-helper-text
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
