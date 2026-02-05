@@ -2157,7 +2157,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                                error.Message.Contains("Entity killed") ||
                                error.Message.Contains("No such entity");
 
-            if (isDeviceLoss && _subscriptionService != null)
+            if (isDeviceLoss && _subscriptionService?.IsReady == true)
             {
                 // Start grace period - don't immediately disconnect from MA
                 // USB bus glitches can briefly kill streams on other devices on the same controller
@@ -2166,6 +2166,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             else
             {
                 // Auto-stop player on pipeline error to prevent resource waste
+                // Also falls back here if subscription service isn't ready (PA failed)
                 _logger.LogWarning("Auto-stopping player '{Name}' due to pipeline error", name);
                 FireAndForget(
                     StopPlayerInternalAsync(name, "Pipeline error: " + error.Message),
@@ -2191,7 +2192,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             var isDeviceLoss = error.Message.Contains("Audio device lost") ||
                                error.Message.Contains("No such entity");
 
-            if (isDeviceLoss && _subscriptionService != null)
+            if (isDeviceLoss && _subscriptionService?.IsReady == true)
             {
                 // Start grace period - don't immediately disconnect from MA
                 // USB bus glitches can briefly kill streams on other devices on the same controller
@@ -2200,6 +2201,7 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             else
             {
                 // Original behavior for non-device errors
+                // Also falls back here if subscription service isn't ready (PA failed)
                 _logger.LogWarning("Auto-stopping player '{Name}' due to audio error", name);
                 FireAndForget(
                     StopPlayerInternalAsync(name, "Audio error: " + error.Message),
