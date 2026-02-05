@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e626473
+## Development Build: sha-40659b6
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #80 from scyto/feature/hid-button-support
+- Add USB audio HID button support for hardware volume/mute controls
 - Merge pull request #152 from scyto/feature/auto-track-devices-cards
 - Auto-track devices and cards at startup and on discovery
 - Merge pull request #151 from scyto/bug/sync-threshold
@@ -13,8 +15,6 @@
 - Remove 'Default Device' option from player device dropdown
 - Merge pull request #149 from scyto/dev
 - Use bus path as primary key for device/card config persistence
-- Merge pull request #148 from scyto/bug/usb-unplug-wrong-device
-- Fix audio playing on wrong device when USB is unplugged
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
