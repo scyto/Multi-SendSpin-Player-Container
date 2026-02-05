@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5db58fb
+## Development Build: sha-3298375
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #79 from scyto/feature/pa-timing-diagnostics
+- Fix HAOS add-on image URL to use scyto's registry
 - Merge pull request #78 from scyto/feature/pa-timing-diagnostics
 - Add configurable PA_BUFFER_MS for VM timing jitter
 - Merge pull request #77 from scyto/feature/pa-timing-diagnostics
@@ -13,8 +15,6 @@
 - Add PulseAudio overflow callback and timing diagnostics
 - Merge pull request #75 from scyto/revert/hot-path-diagnostics
 - Revert "Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback"
-- Merge pull request #74 from scyto/feature/hot-path-diagnostics-toggle
-- Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
