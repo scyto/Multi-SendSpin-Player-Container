@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5a1c01a
+## Development Build: sha-eb82b46
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #94 from scyto/bug/hid-enable-on-running-player
+- Merge pull request #93 from scyto/feature/device-loss-grace-period
+- Start HID reader immediately when enabling on running player
+- Check subscription service IsReady before device reconnection
+- Add exception handling to grace period task
+- Add device loss grace period for USB bus glitch handling
 - Merge pull request #92 from scyto/feature/recover-auto-reconnect
 - Add scheduled device check after queuing for reconnection
 - Merge pull request #91 from scyto/feature/recover-auto-reconnect
 - Fix invalid goodbye reason for device loss
-- Merge pull request #90 from scyto/feature/recover-auto-reconnect
-- Add auto-resume playback after device reconnection
-- Fix device auto-reconnect: PA subscription events and device identifiers
-- Fix device loss detection in pipeline error handler
-- Fix device loss detection in pipeline error handler
-- Add auto-restart when USB audio device reconnects
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
