@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-ad9d355
+## Development Build: sha-5db58fb
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #78 from scyto/feature/pa-timing-diagnostics
+- Add configurable PA_BUFFER_MS for VM timing jitter
 - Merge pull request #77 from scyto/feature/pa-timing-diagnostics
 - Fix TimingInfo struct marshaling for pa_timing_info
 - Merge pull request #76 from scyto/feature/pa-timing-diagnostics
@@ -13,8 +15,6 @@
 - Revert "Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback"
 - Merge pull request #74 from scyto/feature/hot-path-diagnostics-toggle
 - Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback
-- Merge pull request #73 from scyto/feature/auto-resume-playback
-- Add auto-resume playback after device reconnection
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
