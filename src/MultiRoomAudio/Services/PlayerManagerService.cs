@@ -92,6 +92,18 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     private readonly ConcurrentDictionary<string, DevicePendingState> _devicePendingPlayers = new();
 
     /// <summary>
+    /// Tracks players with pending device loss (waiting for grace period before deciding to disconnect).
+    /// Used to handle USB bus glitches where sink temporarily disappears but device stays plugged in.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _deviceLossGracePeriods = new();
+
+    /// <summary>
+    /// Grace period before reacting to device loss errors.
+    /// USB bus glitches are very brief - the sink typically reappears within a second.
+    /// </summary>
+    private const int DeviceLossGracePeriodMs = 1500;
+
+    /// <summary>
     /// State for a player waiting for device reconnection.
     /// </summary>
     private record DevicePendingState(
@@ -2145,17 +2157,16 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                                error.Message.Contains("Entity killed") ||
                                error.Message.Contains("No such entity");
 
-            if (isDeviceLoss && _subscriptionService != null)
+            if (isDeviceLoss && _subscriptionService?.IsReady == true)
             {
-                // Queue for device reconnection instead of just stopping
-                _logger.LogWarning("Player '{Name}' lost audio device (pipeline), queuing for device reconnection", name);
-                FireAndForget(
-                    QueueForDeviceReconnectionAsync(name, context),
-                    $"QueueForDeviceReconnectionAsync for '{name}' (pipeline)", _logger);
+                // Start grace period - don't immediately disconnect from MA
+                // USB bus glitches can briefly kill streams on other devices on the same controller
+                StartDeviceLossGracePeriod(name, context, "pipeline");
             }
             else
             {
                 // Auto-stop player on pipeline error to prevent resource waste
+                // Also falls back here if subscription service isn't ready (PA failed)
                 _logger.LogWarning("Auto-stopping player '{Name}' due to pipeline error", name);
                 FireAndForget(
                     StopPlayerInternalAsync(name, "Pipeline error: " + error.Message),
@@ -2181,17 +2192,16 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             var isDeviceLoss = error.Message.Contains("Audio device lost") ||
                                error.Message.Contains("No such entity");
 
-            if (isDeviceLoss && _subscriptionService != null)
+            if (isDeviceLoss && _subscriptionService?.IsReady == true)
             {
-                // Queue for device reconnection instead of just stopping
-                _logger.LogWarning("Player '{Name}' lost audio device, queuing for device reconnection", name);
-                FireAndForget(
-                    QueueForDeviceReconnectionAsync(name, context),
-                    $"QueueForDeviceReconnectionAsync for '{name}'", _logger);
+                // Start grace period - don't immediately disconnect from MA
+                // USB bus glitches can briefly kill streams on other devices on the same controller
+                StartDeviceLossGracePeriod(name, context, "audio");
             }
             else
             {
                 // Original behavior for non-device errors
+                // Also falls back here if subscription service isn't ready (PA failed)
                 _logger.LogWarning("Auto-stopping player '{Name}' due to audio error", name);
                 FireAndForget(
                     StopPlayerInternalAsync(name, "Audio error: " + error.Message),
@@ -2201,6 +2211,120 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     }
 
     #region Device Auto-Reconnection
+
+    /// <summary>
+    /// Starts a grace period before reacting to device loss.
+    /// USB bus glitches can briefly kill streams on devices sharing the same controller.
+    /// By waiting briefly, we can often recover the stream without disconnecting from MA.
+    /// </summary>
+    private void StartDeviceLossGracePeriod(string name, PlayerContext context, string source)
+    {
+        // Cancel any existing grace period for this player (debounce multiple errors)
+        if (_deviceLossGracePeriods.TryRemove(name, out var existingCts))
+        {
+            existingCts.Cancel();
+            existingCts.Dispose();
+        }
+
+        var cts = new CancellationTokenSource();
+        _deviceLossGracePeriods[name] = cts;
+
+        _logger.LogWarning(
+            "Player '{Name}' detected device loss ({Source}), starting {Ms}ms grace period before disconnect",
+            name, source, DeviceLossGracePeriodMs);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(DeviceLossGracePeriodMs, cts.Token);
+                await HandleDeviceLossAfterGracePeriodAsync(name, context);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogDebug("Grace period cancelled for '{Name}'", name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Grace period handler failed for '{Name}', falling back to reconnection queue", name);
+                // Don't leave the player stuck - queue for reconnection as fallback
+                try
+                {
+                    await QueueForDeviceReconnectionAsync(name, context);
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogError(innerEx, "Failed to queue '{Name}' for reconnection after grace period failure", name);
+                }
+            }
+            finally
+            {
+                _deviceLossGracePeriods.TryRemove(name, out _);
+                cts.Dispose();
+            }
+        });
+    }
+
+    /// <summary>
+    /// Handles device loss after grace period expires.
+    /// If the sink is still available, attempts stream recovery without disconnecting from MA.
+    /// If the sink is gone, falls back to full disconnect/reconnect.
+    /// </summary>
+    private async Task HandleDeviceLossAfterGracePeriodAsync(string name, PlayerContext context)
+    {
+        // Check if player was already stopped/removed during grace period
+        if (!_players.ContainsKey(name))
+        {
+            _logger.LogDebug("Player '{Name}' no longer exists after grace period", name);
+            return;
+        }
+
+        // Check if sink is still available
+        var sinkName = context.Config.DeviceId;
+        var device = !string.IsNullOrEmpty(sinkName) ? _backendFactory.GetDevice(sinkName) : null;
+
+        if (device != null)
+        {
+            // Sink still exists! Try to recreate just the PA stream (no MA disconnect)
+            _logger.LogInformation(
+                "Player '{Name}' sink still available after grace period, attempting stream recovery",
+                name);
+
+            try
+            {
+                await RecoverPlayerStreamAsync(name, context);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Stream recovery failed for '{Name}', falling back to full reconnect", name);
+            }
+        }
+
+        // Sink gone or recovery failed - do full disconnect/reconnect
+        _logger.LogWarning("Player '{Name}' sink unavailable after grace period, queuing for reconnection", name);
+        await QueueForDeviceReconnectionAsync(name, context);
+    }
+
+    /// <summary>
+    /// Attempts to recover a player's audio stream by recreating it on the same device.
+    /// This preserves the MA connection and group membership.
+    /// </summary>
+    private async Task RecoverPlayerStreamAsync(string name, PlayerContext context)
+    {
+        var deviceId = context.Config.DeviceId;
+
+        _logger.LogInformation("Attempting stream recovery for '{Name}' on device '{Device}'", name, deviceId);
+
+        // Use SwitchDeviceAsync to switch to the SAME device
+        // This recreates the PA stream without disconnecting from MA
+        await context.Pipeline.SwitchDeviceAsync(deviceId, CancellationToken.None);
+
+        context.ErrorMessage = null;
+        _logger.LogInformation("Player '{Name}' stream recovered successfully, MA connection preserved", name);
+
+        _ = BroadcastStatusAsync();
+    }
 
     /// <summary>
     /// Queues a player for automatic restart when its audio device reappears.
@@ -2293,19 +2417,6 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         }
 
         _ = BroadcastStatusAsync();
-
-        // Schedule an immediate check after a short delay - the device might still be
-        // available (USB bus glitch) or might reappear very quickly. Don't rely solely
-        // on sink events which might be missed during rapid disconnect/reconnect cycles.
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(1500); // Wait for PA to stabilize
-            if (!_disposed && _devicePendingPlayers.ContainsKey(name))
-            {
-                _logger.LogDebug("Running scheduled device check for '{Name}' after queue", name);
-                await CheckDevicePendingPlayersAsync();
-            }
-        });
     }
 
     /// <summary>
@@ -2842,6 +2953,13 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     /// <param name="reason">The reason for stopping (error message).</param>
     private async Task StopPlayerInternalAsync(string name, string reason)
     {
+        // Cancel any pending device loss grace period for this player
+        if (_deviceLossGracePeriods.TryRemove(name, out var graceCts))
+        {
+            graceCts.Cancel();
+            graceCts.Dispose();
+        }
+
         if (!_players.TryGetValue(name, out var context))
             return;
 
