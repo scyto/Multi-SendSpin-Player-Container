@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-254f0ac
+## Development Build: sha-8c46228
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #91 from scyto/feature/recover-auto-reconnect
+- Fix invalid goodbye reason for device loss
 - Merge pull request #90 from scyto/feature/recover-auto-reconnect
 - Add auto-resume playback after device reconnection
 - Fix device auto-reconnect: PA subscription events and device identifiers
@@ -13,8 +15,6 @@
 - Add auto-restart when USB audio device reconnects
 - Merge pull request #89 from scyto/bug/hid-signalr-broadcast
 - Add SignalR broadcast for mute changes and log all HID events
-- Merge pull request #88 from scyto/bug/hid-mute-state-sync
-- Fix HID mute toggle using actual player state instead of cached state
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
