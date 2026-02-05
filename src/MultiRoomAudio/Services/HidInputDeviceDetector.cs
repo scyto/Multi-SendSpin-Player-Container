@@ -49,7 +49,7 @@ public partial class HidInputDeviceDetector
 
     /// <summary>
     /// Find the HID input device path for a USB audio device.
-    /// Uses USB port matching to handle multiple identical devices.
+    /// Uses USB port as primary matching criteria for reliability with identical devices.
     /// </summary>
     /// <param name="busPath">The audio device's bus_path from PulseAudio (e.g., pci-0000:07:1b.0-usb-0:2:1.0).</param>
     /// <param name="vendorId">The USB vendor ID (e.g., "0d8c").</param>
@@ -79,9 +79,31 @@ public partial class HidInputDeviceDetector
         try
         {
             var entries = Directory.GetFiles(InputByIdPath);
-            var candidates = new List<string>();
 
-            // First pass: collect candidate devices that match by vendor ID or serial
+            // PRIMARY: Match by USB port (most reliable, works with duplicate serials)
+            if (!string.IsNullOrEmpty(targetUsbPort))
+            {
+                foreach (var entry in entries)
+                {
+                    var fileName = Path.GetFileName(entry);
+
+                    // Only consider USB event interfaces
+                    if (!InputByIdPattern().IsMatch(fileName))
+                        continue;
+
+                    var candidatePort = GetUsbPortForInputDevice(entry);
+                    if (candidatePort == targetUsbPort)
+                    {
+                        _logger.LogInformation("Found HID input device by USB port match: {InputDevice} (port={Port})",
+                            entry, candidatePort);
+                        return entry;
+                    }
+                }
+
+                _logger.LogDebug("No HID input device found on USB port {Port}, falling back to vendor/serial match", targetUsbPort);
+            }
+
+            // FALLBACK: Match by vendor ID or serial (for cases where port detection fails)
             foreach (var entry in entries)
             {
                 var fileName = Path.GetFileName(entry);
@@ -96,8 +118,9 @@ public partial class HidInputDeviceDetector
                 if (!string.IsNullOrEmpty(vendorId) &&
                     fileNameLower.Contains(vendorId.ToLowerInvariant()))
                 {
-                    candidates.Add(entry);
-                    continue;
+                    _logger.LogInformation("Found HID input device by vendor ID fallback: {InputDevice} (vendorId={VendorId})",
+                        entry, vendorId);
+                    return entry;
                 }
 
                 // Check serial match
@@ -107,49 +130,16 @@ public partial class HidInputDeviceDetector
                     if (fileNameLower.Contains(serial.ToLowerInvariant()) ||
                         fileNameLower.Contains(serialNormalized.ToLowerInvariant()))
                     {
-                        candidates.Add(entry);
+                        _logger.LogInformation("Found HID input device by serial fallback: {InputDevice} (serial={Serial})",
+                            entry, serial);
+                        return entry;
                     }
                 }
             }
 
-            _logger.LogDebug("Found {Count} HID input candidate(s) matching vendor/serial", candidates.Count);
-
-            // If only one candidate, return it (no need for port matching)
-            if (candidates.Count == 1)
-            {
-                _logger.LogInformation("Found single HID input device: {InputDevice}", candidates[0]);
-                return candidates[0];
-            }
-
-            // Multiple candidates - need to match by USB port
-            if (candidates.Count > 1 && !string.IsNullOrEmpty(targetUsbPort))
-            {
-                foreach (var candidate in candidates)
-                {
-                    var candidatePort = GetUsbPortForInputDevice(candidate);
-                    _logger.LogDebug("Candidate {Candidate} is on USB port {Port}", candidate, candidatePort ?? "(unknown)");
-
-                    if (candidatePort == targetUsbPort)
-                    {
-                        _logger.LogInformation("Found HID input device by USB port match: {InputDevice} (port={Port})",
-                            candidate, candidatePort);
-                        return candidate;
-                    }
-                }
-
-                // No exact port match, log warning and return first candidate
-                _logger.LogWarning("Multiple HID candidates but no USB port match found (target={TargetPort}), using first candidate",
-                    targetUsbPort);
-                return candidates[0];
-            }
-
-            // No candidates found
-            if (candidates.Count == 0)
-            {
-                _logger.LogDebug("No HID input device found for vendor={VendorId}, serial={Serial}", vendorId, serial);
-            }
-
-            return candidates.Count > 0 ? candidates[0] : null;
+            _logger.LogDebug("No HID input device found for port={Port}, vendor={VendorId}, serial={Serial}",
+                targetUsbPort, vendorId, serial);
+            return null;
         }
         catch (Exception ex)
         {
