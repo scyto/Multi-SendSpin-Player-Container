@@ -49,6 +49,7 @@ public partial class HidInputDeviceDetector
 
     /// <summary>
     /// Find the HID input device path for a USB audio device.
+    /// Uses USB port as primary matching criteria for reliability with identical devices.
     /// </summary>
     /// <param name="busPath">The audio device's bus_path from PulseAudio (e.g., pci-0000:07:1b.0-usb-0:2:1.0).</param>
     /// <param name="vendorId">The USB vendor ID (e.g., "0d8c").</param>
@@ -70,13 +71,39 @@ public partial class HidInputDeviceDetector
             return null;
         }
 
-        _logger.LogDebug("Looking for HID input device for USB audio: vendorId={VendorId}, productId={ProductId}, serial={Serial}",
-            vendorId, productId, serial);
+        // Extract target USB port from audio device's bus_path
+        var targetUsbPort = ExtractUsbPortFromBusPath(busPath);
+        _logger.LogDebug("Looking for HID input device for USB audio: busPath={BusPath}, targetPort={TargetPort}, vendorId={VendorId}",
+            busPath, targetUsbPort ?? "(null)", vendorId);
 
         try
         {
             var entries = Directory.GetFiles(InputByIdPath);
 
+            // PRIMARY: Match by USB port (most reliable, works with duplicate serials)
+            if (!string.IsNullOrEmpty(targetUsbPort))
+            {
+                foreach (var entry in entries)
+                {
+                    var fileName = Path.GetFileName(entry);
+
+                    // Only consider USB event interfaces
+                    if (!InputByIdPattern().IsMatch(fileName))
+                        continue;
+
+                    var candidatePort = GetUsbPortForInputDevice(entry);
+                    if (candidatePort == targetUsbPort)
+                    {
+                        _logger.LogInformation("Found HID input device by USB port match: {InputDevice} (port={Port})",
+                            entry, candidatePort);
+                        return entry;
+                    }
+                }
+
+                _logger.LogDebug("No HID input device found on USB port {Port}, falling back to vendor/serial match", targetUsbPort);
+            }
+
+            // FALLBACK: Match by vendor ID or serial (for cases where port detection fails)
             foreach (var entry in entries)
             {
                 var fileName = Path.GetFileName(entry);
@@ -87,39 +114,166 @@ public partial class HidInputDeviceDetector
 
                 var fileNameLower = fileName.ToLowerInvariant();
 
-                // Method 1: Match by vendor ID in filename (most reliable)
-                // e.g., "usb-0d8c_USB_Sound_Device-event-if03" contains "0d8c"
+                // Check vendor ID match
                 if (!string.IsNullOrEmpty(vendorId) &&
                     fileNameLower.Contains(vendorId.ToLowerInvariant()))
                 {
-                    _logger.LogInformation("Found HID input device by vendor ID: {InputDevice} (vendorId={VendorId})",
+                    _logger.LogInformation("Found HID input device by vendor ID fallback: {InputDevice} (vendorId={VendorId})",
                         entry, vendorId);
                     return entry;
                 }
 
-                // Method 2: Match by serial in filename
-                // e.g., "usb-Generic_USB2.0_Device_20121120222012-event-if02" contains serial
+                // Check serial match
                 if (!string.IsNullOrEmpty(serial))
                 {
-                    // The serial might be embedded in the filename with underscores replacing special chars
                     var serialNormalized = serial.Replace(" ", "_").Replace("-", "_");
                     if (fileNameLower.Contains(serial.ToLowerInvariant()) ||
                         fileNameLower.Contains(serialNormalized.ToLowerInvariant()))
                     {
-                        _logger.LogInformation("Found HID input device by serial: {InputDevice} (serial={Serial})",
+                        _logger.LogInformation("Found HID input device by serial fallback: {InputDevice} (serial={Serial})",
                             entry, serial);
                         return entry;
                     }
                 }
             }
+
+            _logger.LogDebug("No HID input device found for port={Port}, vendor={VendorId}, serial={Serial}",
+                targetUsbPort, vendorId, serial);
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Error scanning {Path}", InputByIdPath);
         }
 
-        _logger.LogDebug("No HID input device found for vendor={VendorId}, serial={Serial}", vendorId, serial);
         return null;
+    }
+
+    /// <summary>
+    /// Get the USB port number for an input device by resolving its sysfs path.
+    /// Uses shell 'readlink' as .NET symlink resolution doesn't work reliably on Linux.
+    /// </summary>
+    private string? GetUsbPortForInputDevice(string inputByIdPath)
+    {
+        try
+        {
+            // Use readlink to resolve the symlink (more reliable than .NET on Linux)
+            var sysfsPath = ResolveInputDeviceSysfsPath(inputByIdPath);
+            if (string.IsNullOrEmpty(sysfsPath))
+                return null;
+
+            // Extract USB port from sysfs path
+            // Example: /sys/devices/.../usb9/9-2/9-2:1.3/... -> port "2"
+            var match = SysfsUsbPortPattern().Match(sysfsPath);
+            if (match.Success)
+            {
+                var usbPortFull = match.Groups[1].Value; // e.g., "9-2" or "9-2.1"
+                var parts = usbPortFull.Split('-');
+                if (parts.Length >= 2)
+                {
+                    // Return just the port portion (may include hub like "2.1")
+                    return parts[1].Split('.')[0]; // "2" from "9-2" or "9-2.1"
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error getting USB port for {Path}", inputByIdPath);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolve input device symlink to its full sysfs path using shell readlink.
+    /// </summary>
+    private string? ResolveInputDeviceSysfsPath(string inputByIdPath)
+    {
+        try
+        {
+            // First resolve /dev/input/by-id/... -> /dev/input/eventX
+            var eventPath = RunReadlink(inputByIdPath);
+            if (string.IsNullOrEmpty(eventPath))
+                return null;
+
+            // eventPath might be relative (../eventX), make it absolute
+            if (!eventPath.StartsWith('/'))
+            {
+                var dir = Path.GetDirectoryName(inputByIdPath);
+                eventPath = Path.GetFullPath(Path.Combine(dir ?? "/dev/input/by-id", eventPath));
+            }
+
+            // Get event name (e.g., "event4")
+            var eventName = Path.GetFileName(eventPath);
+
+            // Now resolve /sys/class/input/eventX/device -> physical sysfs path
+            var sysfsDevicePath = Path.Combine(SysClassInputPath, eventName, "device");
+            if (!Directory.Exists(sysfsDevicePath) && !File.Exists(sysfsDevicePath))
+            {
+                // Try as symlink
+                var linkTarget = RunReadlink(sysfsDevicePath);
+                if (!string.IsNullOrEmpty(linkTarget))
+                {
+                    if (!linkTarget.StartsWith('/'))
+                    {
+                        var dir = Path.GetDirectoryName(sysfsDevicePath);
+                        linkTarget = Path.GetFullPath(Path.Combine(dir ?? "", linkTarget));
+                    }
+                    return linkTarget;
+                }
+                return null;
+            }
+
+            // Resolve the device symlink
+            var physicalPath = RunReadlink(sysfsDevicePath);
+            if (!string.IsNullOrEmpty(physicalPath))
+            {
+                if (!physicalPath.StartsWith('/'))
+                {
+                    var dir = Path.GetDirectoryName(sysfsDevicePath);
+                    physicalPath = Path.GetFullPath(Path.Combine(dir ?? "", physicalPath));
+                }
+                return physicalPath;
+            }
+
+            return sysfsDevicePath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error resolving sysfs path for {Path}", inputByIdPath);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Run readlink command to resolve a symlink.
+    /// </summary>
+    private static string? RunReadlink(string path)
+    {
+        try
+        {
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "readlink",
+                Arguments = $"-f \"{path}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit(1000);
+
+            return process.ExitCode == 0 && !string.IsNullOrEmpty(output) ? output : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
