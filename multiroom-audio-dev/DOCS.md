@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-1375190
+## Development Build: sha-a24c24b
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #75 from scyto/revert/hot-path-diagnostics
+- Revert "Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback"
 - Merge pull request #74 from scyto/feature/hot-path-diagnostics-toggle
 - Add ENABLE_HOT_PATH_DIAGNOSTICS toggle to skip GetStats in audio callback
 - Merge pull request #73 from scyto/feature/auto-resume-playback
@@ -12,8 +14,6 @@
 - Merge pull request #72 from scyto/bug/device-reconnect-event-fix
 - Fix device auto-reconnect: PA subscription events and device identifiers
 - Merge pull request #71 from scyto/bug/device-reconnect-flow-fix
-- Fix device loss detection in pipeline error handler
-- Merge pull request #69 from scyto/bug/device-reconnect-pipeline-fix
 - Fix device loss detection in pipeline error handler
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
