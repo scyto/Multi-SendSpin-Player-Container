@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3ab6585
+## Development Build: sha-3e3498f
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #95 from scyto/bug/grace-period-cts-disposal
+- Fix CTS disposal timing in grace period debouncing
 - Merge pull request #94 from scyto/bug/hid-enable-on-running-player
 - Merge pull request #93 from scyto/feature/device-loss-grace-period
 - Start HID reader immediately when enabling on running player
@@ -13,8 +15,6 @@
 - Add device loss grace period for USB bus glitch handling
 - Merge pull request #92 from scyto/feature/recover-auto-reconnect
 - Add scheduled device check after queuing for reconnection
-- Merge pull request #91 from scyto/feature/recover-auto-reconnect
-- Fix invalid goodbye reason for device loss
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
