@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-110d014
+## Development Build: sha-52db051
 
 **Current Dev Build Changes** (recent)
 
+- Restore legacy-key fallback in card profile reads
 - Merge pull request #108 from scyto/feature/api-first-cleanup
 - Fix wizard alias persistence and clean up migration code
 - Merge pull request #107 from scyto/feature/sink-identifier-migration
@@ -14,7 +15,6 @@
 - Merge pull request #106 from scyto/feature/shared-modal-utils
 - Replace native browser dialogs with Bootstrap modals
 - Remove 'v' prefix for dev builds in ProductName
-- Truncate build SHA to short format in VersionService
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
