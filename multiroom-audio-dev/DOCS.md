@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fc44e1a
+## Development Build: sha-78e676c
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #102 from scyto/feature/custom-sink-migration
+- Use CardProfileService for alsa_card_N sink resolution
 - Merge pull request #101 from scyto/feature/custom-sink-migration
 - Fix sink name parsing for PCI addresses with dots
 - Merge pull request #100 from scyto/feature/custom-sink-migration
@@ -13,8 +15,6 @@
 - Merge pull request #99 from scyto/feature/auto-reconnect-option
 - Detect device loss for idle players and show immediate feedback
 - Merge pull request #98 from scyto/feature/auto-reconnect-option
-- Add SignalR notifications for device hotplug events
-- Merge pull request #97 from scyto/feature/auto-reconnect-option
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
