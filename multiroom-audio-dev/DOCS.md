@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-03f3f3f
+## Development Build: sha-5d56288
 
 **Current Dev Build Changes** (recent)
 
+- Add device metadata for Music Assistant player identification
 - Merge pull request #99 from scyto/feature/auto-reconnect-option
 - Detect device loss for idle players and show immediate feedback
 - Merge pull request #98 from scyto/feature/auto-reconnect-option
@@ -14,7 +15,6 @@
 - Merge pull request #96 from scyto/feature/auto-reconnect-option
 - Fix auto-resume not saved when creating new player
 - Add auto-resume option for device reconnection
-- Merge pull request #95 from scyto/bug/grace-period-cts-disposal
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
