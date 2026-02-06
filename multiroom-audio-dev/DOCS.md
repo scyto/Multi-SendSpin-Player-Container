@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-2deaed9
+## Development Build: sha-5950a5a
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #103 from scyto/feature/custom-sink-migration
+- Guard against null/empty profile in card matching
 - Merge pull request #102 from scyto/feature/custom-sink-migration
 - Use CardProfileService for alsa_card_N sink resolution
 - Merge pull request #101 from scyto/feature/custom-sink-migration
@@ -13,8 +15,6 @@
 - Add bus path migration for custom sinks
 - Add device metadata for Music Assistant player identification
 - Merge pull request #99 from scyto/feature/auto-reconnect-option
-- Detect device loss for idle players and show immediate feedback
-- Merge pull request #98 from scyto/feature/auto-reconnect-option
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
