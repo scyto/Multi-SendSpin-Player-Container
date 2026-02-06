@@ -702,6 +702,43 @@ public class CustomSinksService : IAsyncDisposable
                     }
                 }
 
+                // Verify identity: sink name exists but might point to WRONG device after ALSA renumbering
+                // (e.g., USB inserted causes PCIe cards to shift indices, alsa_card_0 now refers to different hardware)
+                if (masterExists && config.MasterSinkIdentifiers?.HasStableIdentifier() == true)
+                {
+                    var currentDevice = currentDevices.FirstOrDefault(d =>
+                        d.Id.Equals(config.MasterSink, StringComparison.OrdinalIgnoreCase));
+
+                    if (currentDevice?.Identifiers != null && !IdentifiersMatch(currentDevice.Identifiers, config.MasterSinkIdentifiers))
+                    {
+                        // Name exists but points to DIFFERENT device! Resolve to find correct one
+                        _logger.LogWarning(
+                            "Sink '{Name}' master '{MasterSink}' exists but points to different device (expected BusPath: {Expected}, actual: {Actual})",
+                            config.Name, config.MasterSink,
+                            config.MasterSinkIdentifiers.BusPath ?? "none",
+                            currentDevice.Identifiers.BusPath ?? "none");
+
+                        var resolvedSink = ResolveSinkByIdentifiers(config.MasterSinkIdentifiers, currentDevices);
+                        if (resolvedSink != null)
+                        {
+                            _logger.LogInformation(
+                                "Resolved sink '{Name}' master to correct device '{New}' (was incorrectly pointing to '{Old}')",
+                                config.Name, resolvedSink.Id, config.MasterSink);
+                            config.MasterSink = resolvedSink.Id;
+                            config.MasterSinkIdentifiers.LastKnownSinkName = resolvedSink.Id;
+                            needsSave = true;
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                "Could not find correct device for sink '{Name}' - device with BusPath '{BusPath}' not found",
+                                config.Name, config.MasterSinkIdentifiers.BusPath);
+                        }
+                        // Skip the other branches since we've handled this case
+                        continue;
+                    }
+                }
+
                 if (!masterExists && config.MasterSinkIdentifiers != null)
                 {
                     // Try to resolve using identifiers
@@ -821,6 +858,35 @@ public class CustomSinksService : IAsyncDisposable
                                     config.Name, i, config.SlaveIdentifiers[i]?.BusPath ?? "none");
                             }
                         }
+
+                        // Verify identity: slave name exists but might point to WRONG device after ALSA renumbering
+                        var storedIdentifiers = i < slaveIdentifiers.Count ? slaveIdentifiers[i] : null;
+                        if (storedIdentifiers?.HasStableIdentifier() == true)
+                        {
+                            var currentDevice = currentDevices.FirstOrDefault(d =>
+                                d.Id.Equals(slave, StringComparison.OrdinalIgnoreCase));
+
+                            if (currentDevice?.Identifiers != null && !IdentifiersMatch(currentDevice.Identifiers, storedIdentifiers))
+                            {
+                                // Name exists but points to DIFFERENT device! Resolve to find correct one
+                                _logger.LogWarning(
+                                    "Combine sink '{Name}' slave[{Index}] '{Slave}' exists but points to different device",
+                                    config.Name, i, slave);
+
+                                var resolvedSink = ResolveSinkByIdentifiers(storedIdentifiers, currentDevices);
+                                if (resolvedSink != null)
+                                {
+                                    _logger.LogInformation(
+                                        "Resolved combine sink '{Name}' slave[{Index}] to correct device '{New}'",
+                                        config.Name, i, resolvedSink.Id);
+                                    resolvedSlaves.Add(resolvedSink.Id);
+                                    storedIdentifiers.LastKnownSinkName = resolvedSink.Id;
+                                    needsSave = true;
+                                    continue;
+                                }
+                            }
+                        }
+
                         resolvedSlaves.Add(slave);
                     }
                 }
@@ -953,6 +1019,42 @@ public class CustomSinksService : IAsyncDisposable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Checks if a device's identifiers match the stored identifiers.
+    /// Returns true if ANY stable identifier matches (BusPath preferred, then AlsaLongCardName, Serial, or VID/PID).
+    /// </summary>
+    private static bool IdentifiersMatch(DeviceIdentifiers device, SinkIdentifiersConfig stored)
+    {
+        // Priority 1: BusPath (most reliable for USB devices, tied to physical port)
+        if (!string.IsNullOrEmpty(stored.BusPath) && !string.IsNullOrEmpty(device.BusPath))
+        {
+            return stored.BusPath.Equals(device.BusPath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Priority 2: AlsaLongCardName (stable for PCIe devices)
+        if (!string.IsNullOrEmpty(stored.AlsaLongCardName) && !string.IsNullOrEmpty(device.AlsaLongCardName))
+        {
+            return stored.AlsaLongCardName.Equals(device.AlsaLongCardName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Priority 3: Serial (may not be unique across identical devices)
+        if (!string.IsNullOrEmpty(stored.Serial) && !string.IsNullOrEmpty(device.Serial))
+        {
+            return stored.Serial.Equals(device.Serial, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Priority 4: VID/PID combination
+        if (!string.IsNullOrEmpty(stored.VendorId) && !string.IsNullOrEmpty(stored.ProductId) &&
+            !string.IsNullOrEmpty(device.VendorId) && !string.IsNullOrEmpty(device.ProductId))
+        {
+            return stored.VendorId.Equals(device.VendorId, StringComparison.OrdinalIgnoreCase) &&
+                   stored.ProductId.Equals(device.ProductId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // No stable identifiers to compare - can't verify
+        return true;
     }
 
     /// <summary>
