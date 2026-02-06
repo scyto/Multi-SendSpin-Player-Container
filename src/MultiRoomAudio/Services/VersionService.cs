@@ -34,7 +34,13 @@ public class VersionService
     public VersionService()
     {
         Version = Environment.GetEnvironmentVariable("APP_VERSION") ?? "dev";
-        BuildSha = Environment.GetEnvironmentVariable("APP_BUILD_SHA");
+
+        // Get build SHA and truncate to short format (7 chars) if available
+        var fullSha = Environment.GetEnvironmentVariable("APP_BUILD_SHA");
+        BuildSha = !string.IsNullOrEmpty(fullSha) && fullSha.Length >= 7
+            ? fullSha.Substring(0, 7)
+            : fullSha;
+
         BuildDate = Environment.GetEnvironmentVariable("APP_BUILD_DATE");
 
         // Format model string: "v1.2.3 (abc123f)" or "v1.2.3"
