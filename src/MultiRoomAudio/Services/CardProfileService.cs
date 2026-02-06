@@ -223,7 +223,8 @@ public class CardProfileService
 
         return cards.Select(card =>
         {
-            // Try new key format first, then fall back to old format for backwards compatibility
+            // Try stable key first, fall back to legacy card.Name for pre-migration reads
+            // (migration runs in background after Kestrel starts, so API calls may arrive first)
             var stableKey = ConfigurationService.GenerateCardKey(card);
             var config = savedProfiles.GetValueOrDefault(stableKey)
                 ?? savedProfiles.GetValueOrDefault(card.Name);
@@ -255,7 +256,8 @@ public class CardProfileService
         }
 
         var savedProfiles = LoadConfigurations();
-        // Try new key format first, then fall back to old format
+        // Try stable key first, fall back to legacy card.Name for pre-migration reads
+        // (migration runs in background after Kestrel starts, so API calls may arrive first)
         var stableKey = ConfigurationService.GenerateCardKey(card);
         var config = savedProfiles.GetValueOrDefault(stableKey)
             ?? savedProfiles.GetValueOrDefault(card.Name);
@@ -715,6 +717,19 @@ public class CardProfileService
         }
     }
 
+    /// <summary>
+    /// Removes old-format key (card.Name) if it exists during save operations.
+    /// This cleans up legacy keys that weren't converted during migration.
+    /// </summary>
+    private void RemoveOldFormatKeyIfExists(Dictionary<string, CardProfileConfiguration> configs, string cardName, string context)
+    {
+        if (configs.ContainsKey(cardName))
+        {
+            configs.Remove(cardName);
+            _logger.LogDebug("Removed old-format key '{OldKey}' during {Context}", cardName, context);
+        }
+    }
+
     private void SaveProfile(PulseAudioCard card, string profileName)
     {
         var stableKey = ConfigurationService.GenerateCardKey(card);
@@ -753,12 +768,7 @@ public class CardProfileService
                 }
             }
 
-            // Remove old-format key if it exists (migration)
-            if (configs.ContainsKey(card.Name))
-            {
-                configs.Remove(card.Name);
-                _logger.LogDebug("Removed old-format key '{OldKey}' during save", card.Name);
-            }
+            RemoveOldFormatKeyIfExists(configs, card.Name, "profile save");
 
             // Add or update using stable key
             if (configs.TryGetValue(stableKey, out var existing))
@@ -903,12 +913,7 @@ public class CardProfileService
                 }
             }
 
-            // Remove old-format key if it exists (migration)
-            if (configs.ContainsKey(card.Name))
-            {
-                configs.Remove(card.Name);
-                _logger.LogDebug("Removed old-format key '{OldKey}' during boot mute save", card.Name);
-            }
+            RemoveOldFormatKeyIfExists(configs, card.Name, "boot mute save");
 
             // Add or update using stable key
             if (configs.TryGetValue(stableKey, out var existing))

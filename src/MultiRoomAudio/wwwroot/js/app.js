@@ -738,21 +738,66 @@ function setupSignalR() {
 }
 
 // API calls
-async function refreshStatus(force = false) {
+async function refreshStatus(force = false, manual = false) {
     // Skip auto-refresh while modal is open (unless forced)
     if (isModalOpen && !force) {
         return;
     }
 
-    try {
-        const response = await fetch('./api/players');
-        if (!response.ok) throw new Error('Failed to fetch players');
+    // Show spinner on manual refresh (user clicked button)
+    const refreshBtn = document.querySelector('[onclick="refreshStatus(true, true)"]');
+    let originalContent = null;
+    if (manual && refreshBtn) {
+        originalContent = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        refreshBtn.disabled = true;
+    }
 
-        const data = await response.json();
-        players = {};
-        (data.players || []).forEach(p => {
-            players[p.name] = p;
-        });
+    try {
+        // If manual refresh, also refresh devices and cards
+        if (manual) {
+            const [devicesRes, cardsRes, playersRes] = await Promise.all([
+                fetch('./api/devices/refresh', { method: 'POST' }),
+                fetch('./api/cards'),
+                fetch('./api/players')
+            ]);
+
+            if (!playersRes.ok) throw new Error('Failed to fetch players');
+
+            const devicesData = devicesRes.ok ? await devicesRes.json() : null;
+            const cardsData = cardsRes.ok ? await cardsRes.json() : null;
+            const playersData = await playersRes.json();
+
+            // Update players
+            players = {};
+            (playersData.players || []).forEach(p => {
+                players[p.name] = p;
+            });
+
+            renderPlayers();
+
+            // Show toast - warn if device refresh failed
+            const playerCount = Object.keys(players).length;
+            if (!devicesRes.ok) {
+                showAlert(`Refreshed ${playerCount} players, but device scan failed`, 'warning', 4000);
+            } else {
+                const deviceCount = devicesData?.count ?? '?';
+                const cardCount = cardsData?.cards?.length ?? '?';
+                showAlert(`Refreshed: ${playerCount} players, ${deviceCount} devices, ${cardCount} cards`, 'success', 3000);
+            }
+        } else {
+            // Auto-refresh or force-refresh: just fetch players (existing behavior)
+            const response = await fetch('./api/players');
+            if (!response.ok) throw new Error('Failed to fetch players');
+
+            const data = await response.json();
+            players = {};
+            (data.players || []).forEach(p => {
+                players[p.name] = p;
+            });
+
+            renderPlayers();
+        }
 
         // Server responded successfully — if it was previously unavailable, recover
         if (!serverAvailable) {
@@ -775,10 +820,12 @@ async function refreshStatus(force = false) {
                     });
             }
         }
-
-        renderPlayers();
     } catch (error) {
         console.error('Error refreshing status:', error);
+
+        if (manual) {
+            showAlert('Refresh failed: ' + error.message, 'danger', 5000);
+        }
 
         // During startup, errors are expected — don't trigger server-unavailable state
         if (!startupComplete) return;
@@ -786,6 +833,12 @@ async function refreshStatus(force = false) {
         // Mark server as unavailable (only on polling failures, not forced refresh)
         if (!force && serverAvailable) {
             setServerAvailable(false);
+        }
+    } finally {
+        // Restore button state
+        if (manual && refreshBtn && originalContent) {
+            refreshBtn.innerHTML = originalContent;
+            refreshBtn.disabled = false;
         }
     }
 }
@@ -4175,6 +4228,7 @@ let triggersData = null;
 let customSinksList = [];
 let ftdiDevicesData = null;
 let triggersRefreshInterval = null;
+let triggersOperationCount = 0; // Counter to prevent refresh interval from clobbering state during overlapping operations
 
 // Open the triggers configuration modal
 async function openTriggersModal() {
@@ -4199,10 +4253,18 @@ async function openTriggersModal() {
 
 // Refresh only the trigger states (lightweight update without full reload)
 async function refreshTriggersState() {
+    // Skip refresh if an operation is in progress to prevent state clobbering
+    if (triggersOperationCount > 0) {
+        return;
+    }
     try {
         const response = await fetch('./api/triggers');
         if (response.ok) {
             const newData = await response.json();
+            // Recheck after await - an operation may have started while we were fetching
+            if (triggersOperationCount > 0) {
+                return;
+            }
             if (JSON.stringify(newData.boards) !== JSON.stringify(triggersData?.boards)) {
                 triggersData = newData;
                 renderTriggers();
@@ -4736,6 +4798,18 @@ async function removeBoard(boardId) {
         return;
     }
 
+    // Prevent refresh interval from clobbering expanded state during this operation
+    triggersOperationCount++;
+
+    // Save expanded state before any async operations
+    const container = document.getElementById('triggersContainer');
+    container.querySelectorAll('.accordion-collapse.show').forEach(el => {
+        const match = el.id.match(/^board-(.+)$/);
+        if (match) {
+            expandedBoardsState.add(match[1]);
+        }
+    });
+
     try {
         const response = await fetch(`./api/triggers/boards/${encodeURIComponent(boardId)}`, {
             method: 'DELETE'
@@ -4751,6 +4825,8 @@ async function removeBoard(boardId) {
     } catch (error) {
         console.error('Error removing board:', error);
         showAlert(`Failed to remove board: ${error.message}`, 'danger');
+    } finally {
+        triggersOperationCount--;
     }
 }
 
@@ -4870,6 +4946,18 @@ async function updateBoardBehavior(boardId, behaviorType, value) {
     const isStartup = behaviorType === 'startupBehavior';
     const typeName = isStartup ? 'Startup' : 'Shutdown';
 
+    // Prevent refresh interval from clobbering expanded state during this operation
+    triggersOperationCount++;
+
+    // Save expanded state before any async operations
+    const container = document.getElementById('triggersContainer');
+    container.querySelectorAll('.accordion-collapse.show').forEach(el => {
+        const match = el.id.match(/^board-(.+)$/);
+        if (match) {
+            expandedBoardsState.add(match[1]);
+        }
+    });
+
     try {
         const response = await fetch(`./api/triggers/boards/${encodeURIComponent(boardId)}`, {
             method: 'PUT',
@@ -4896,11 +4984,16 @@ async function updateBoardBehavior(boardId, behaviorType, value) {
         showAlert(`Failed to update ${typeName.toLowerCase()} behavior: ${error.message}`, 'danger');
         // Revert the dropdown by reloading
         await loadTriggers();
+    } finally {
+        triggersOperationCount--;
     }
 }
 
 // Reconnect a specific board
 async function reconnectBoard(boardId) {
+    // Prevent refresh interval from clobbering expanded state during this operation
+    triggersOperationCount++;
+
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
     container.querySelectorAll('.accordion-collapse.show').forEach(el => {
@@ -4926,6 +5019,8 @@ async function reconnectBoard(boardId) {
     } catch (error) {
         console.error('Error reconnecting board:', error);
         showAlert(`Failed to reconnect: ${error.message}`, 'danger');
+    } finally {
+        triggersOperationCount--;
     }
 }
 
@@ -4989,6 +5084,9 @@ async function updateTriggerDelay(boardId, channel, delay) {
 
 // Test a trigger relay (multi-board)
 async function testTrigger(boardId, channel, on) {
+    // Prevent refresh interval from clobbering expanded state during this operation
+    triggersOperationCount++;
+
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
     container.querySelectorAll('.accordion-collapse.show').forEach(el => {
@@ -5019,6 +5117,8 @@ async function testTrigger(boardId, channel, on) {
     } catch (error) {
         console.error('Error testing trigger:', error);
         showAlert(`Failed to test relay: ${error.message}`, 'danger');
+    } finally {
+        triggersOperationCount--;
     }
 }
 
