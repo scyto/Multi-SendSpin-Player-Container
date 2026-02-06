@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-59a5e24
+## Development Build: sha-80add13
 
 **Current Dev Build Changes** (recent)
 
+- Remove 'v' prefix for dev builds in ProductName
+- Truncate build SHA to short format in VersionService
+- Merge remote-tracking branch 'origin/dev' into dev
 - Merge pull request #105 from scyto/feature/custom-sink-migration
 - Fix card profile and custom sink migration ordering bugs
 - Merge pull request #104 from scyto/feature/custom-sink-migration
@@ -12,9 +15,6 @@
 - Merge pull request #103 from scyto/feature/custom-sink-migration
 - Guard against null/empty profile in card matching
 - Merge pull request #102 from scyto/feature/custom-sink-migration
-- Use CardProfileService for alsa_card_N sink resolution
-- Merge pull request #101 from scyto/feature/custom-sink-migration
-- Fix sink name parsing for PCI addresses with dots
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
