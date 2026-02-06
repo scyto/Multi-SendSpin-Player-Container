@@ -4175,7 +4175,7 @@ let triggersData = null;
 let customSinksList = [];
 let ftdiDevicesData = null;
 let triggersRefreshInterval = null;
-let triggersOperationInProgress = false; // Prevents refresh interval from clobbering state during operations
+let triggersOperationCount = 0; // Counter to prevent refresh interval from clobbering state during overlapping operations
 
 // Open the triggers configuration modal
 async function openTriggersModal() {
@@ -4201,13 +4201,17 @@ async function openTriggersModal() {
 // Refresh only the trigger states (lightweight update without full reload)
 async function refreshTriggersState() {
     // Skip refresh if an operation is in progress to prevent state clobbering
-    if (triggersOperationInProgress) {
+    if (triggersOperationCount > 0) {
         return;
     }
     try {
         const response = await fetch('./api/triggers');
         if (response.ok) {
             const newData = await response.json();
+            // Recheck after await - an operation may have started while we were fetching
+            if (triggersOperationCount > 0) {
+                return;
+            }
             if (JSON.stringify(newData.boards) !== JSON.stringify(triggersData?.boards)) {
                 triggersData = newData;
                 renderTriggers();
@@ -4742,7 +4746,7 @@ async function removeBoard(boardId) {
     }
 
     // Prevent refresh interval from clobbering expanded state during this operation
-    triggersOperationInProgress = true;
+    triggersOperationCount++;
 
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
@@ -4769,7 +4773,7 @@ async function removeBoard(boardId) {
         console.error('Error removing board:', error);
         showAlert(`Failed to remove board: ${error.message}`, 'danger');
     } finally {
-        triggersOperationInProgress = false;
+        triggersOperationCount--;
     }
 }
 
@@ -4890,7 +4894,7 @@ async function updateBoardBehavior(boardId, behaviorType, value) {
     const typeName = isStartup ? 'Startup' : 'Shutdown';
 
     // Prevent refresh interval from clobbering expanded state during this operation
-    triggersOperationInProgress = true;
+    triggersOperationCount++;
 
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
@@ -4928,14 +4932,14 @@ async function updateBoardBehavior(boardId, behaviorType, value) {
         // Revert the dropdown by reloading
         await loadTriggers();
     } finally {
-        triggersOperationInProgress = false;
+        triggersOperationCount--;
     }
 }
 
 // Reconnect a specific board
 async function reconnectBoard(boardId) {
     // Prevent refresh interval from clobbering expanded state during this operation
-    triggersOperationInProgress = true;
+    triggersOperationCount++;
 
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
@@ -4963,7 +4967,7 @@ async function reconnectBoard(boardId) {
         console.error('Error reconnecting board:', error);
         showAlert(`Failed to reconnect: ${error.message}`, 'danger');
     } finally {
-        triggersOperationInProgress = false;
+        triggersOperationCount--;
     }
 }
 
@@ -5028,7 +5032,7 @@ async function updateTriggerDelay(boardId, channel, delay) {
 // Test a trigger relay (multi-board)
 async function testTrigger(boardId, channel, on) {
     // Prevent refresh interval from clobbering expanded state during this operation
-    triggersOperationInProgress = true;
+    triggersOperationCount++;
 
     // Save expanded state before any async operations
     const container = document.getElementById('triggersContainer');
@@ -5061,7 +5065,7 @@ async function testTrigger(boardId, channel, on) {
         console.error('Error testing trigger:', error);
         showAlert(`Failed to test relay: ${error.message}`, 'danger');
     } finally {
-        triggersOperationInProgress = false;
+        triggersOperationCount--;
     }
 }
 
