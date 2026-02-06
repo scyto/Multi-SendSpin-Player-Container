@@ -19,6 +19,7 @@ public class CustomSinksService : IAsyncDisposable
     private readonly IPaModuleRunner _moduleRunner;
     private readonly EnvironmentService _environment;
     private readonly IServiceProvider _services;
+    private readonly CardProfileService _cardProfileService;
     private readonly ConcurrentDictionary<string, CustomSinkContext> _sinks = new();
     private readonly string _configPath;
     private readonly IDeserializer _deserializer;
@@ -43,12 +44,14 @@ public class CustomSinksService : IAsyncDisposable
         ILogger<CustomSinksService> logger,
         IPaModuleRunner moduleRunner,
         EnvironmentService environment,
-        IServiceProvider services)
+        IServiceProvider services,
+        CardProfileService cardProfileService)
     {
         _logger = logger;
         _moduleRunner = moduleRunner;
         _environment = environment;
         _services = services;
+        _cardProfileService = cardProfileService;
         _configPath = Path.Combine(environment.ConfigPath, "custom-sinks.yaml");
 
         _deserializer = new DeserializerBuilder()
@@ -670,6 +673,9 @@ public class CustomSinksService : IAsyncDisposable
             return configs;
         }
 
+        // Get cards for profile lookup
+        var cards = _cardProfileService.GetCards().ToList();
+
         var needsSave = false;
 
         foreach (var config in configs)
@@ -678,6 +684,23 @@ public class CustomSinksService : IAsyncDisposable
             {
                 // Check if master sink exists
                 var masterExists = currentDevices.Any(d => d.Id.Equals(config.MasterSink, StringComparison.OrdinalIgnoreCase));
+
+                // Proactively extract identifiers if missing (even if sink name still exists)
+                if (masterExists && (config.MasterSinkIdentifiers == null || !config.MasterSinkIdentifiers.HasStableIdentifier()))
+                {
+                    var currentDevice = currentDevices.FirstOrDefault(d =>
+                        d.Id.Equals(config.MasterSink, StringComparison.OrdinalIgnoreCase));
+                    if (currentDevice != null)
+                    {
+                        config.MasterSinkIdentifiers = ExtractIdentifiers(currentDevice, cards);
+                        needsSave = true;
+                        _logger.LogInformation(
+                            "Enriched remap sink '{Name}' with identifiers (BusPath: {BusPath}, CardProfile: {CardProfile})",
+                            config.Name,
+                            config.MasterSinkIdentifiers?.BusPath ?? "none",
+                            config.MasterSinkIdentifiers?.CardProfile ?? "none");
+                    }
+                }
 
                 if (!masterExists && config.MasterSinkIdentifiers != null)
                 {
@@ -710,7 +733,7 @@ public class CustomSinksService : IAsyncDisposable
                             config.Name, config.MasterSink, resolvedSink.Id);
                         config.MasterSink = resolvedSink.Id;
                         // Store identifiers for future migrations
-                        config.MasterSinkIdentifiers = ExtractIdentifiers(resolvedSink);
+                        config.MasterSinkIdentifiers = ExtractIdentifiers(resolvedSink, cards);
                         needsSave = true;
                     }
                     else
@@ -767,7 +790,7 @@ public class CustomSinksService : IAsyncDisposable
                                 config.SlaveIdentifiers = new List<SinkIdentifiersConfig>();
                             while (config.SlaveIdentifiers.Count <= i)
                                 config.SlaveIdentifiers.Add(null!);
-                            config.SlaveIdentifiers[i] = ExtractIdentifiers(resolvedSink)!;
+                            config.SlaveIdentifiers[i] = ExtractIdentifiers(resolvedSink, cards)!;
                             needsSave = true;
                         }
                         else
@@ -780,6 +803,24 @@ public class CustomSinksService : IAsyncDisposable
                     }
                     else
                     {
+                        // Proactively enrich existing slave with identifiers if missing
+                        if (i >= slaveIdentifiers.Count || slaveIdentifiers[i] == null || !slaveIdentifiers[i].HasStableIdentifier())
+                        {
+                            var existingDevice = currentDevices.FirstOrDefault(d =>
+                                d.Id.Equals(slave, StringComparison.OrdinalIgnoreCase));
+                            if (existingDevice != null)
+                            {
+                                if (config.SlaveIdentifiers == null)
+                                    config.SlaveIdentifiers = new List<SinkIdentifiersConfig>();
+                                while (config.SlaveIdentifiers.Count <= i)
+                                    config.SlaveIdentifiers.Add(null!);
+                                config.SlaveIdentifiers[i] = ExtractIdentifiers(existingDevice, cards)!;
+                                needsSave = true;
+                                _logger.LogInformation(
+                                    "Enriched combine sink '{Name}' slave[{Index}] with identifiers (BusPath: {BusPath})",
+                                    config.Name, i, config.SlaveIdentifiers[i]?.BusPath ?? "none");
+                            }
+                        }
                         resolvedSlaves.Add(slave);
                     }
                 }
@@ -798,50 +839,117 @@ public class CustomSinksService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Resolves a sink using stored identifiers, matching by priority: BusPath > Serial > VID/PID > AlsaLongCardName.
+    /// Resolves a sink using stored identifiers, matching by priority: BusPath > AlsaLongCardName > Serial > VID/PID.
+    /// When multiple sinks match, prefers sinks with a profile suffix matching the stored CardProfile.
     /// </summary>
     private AudioDevice? ResolveSinkByIdentifiers(SinkIdentifiersConfig identifiers, List<AudioDevice> devices)
     {
+        // Extract profile suffix from CardProfile (e.g., "output:analog-surround-71" → "analog-surround-71")
+        string? profileSuffix = null;
+        if (!string.IsNullOrEmpty(identifiers.CardProfile))
+        {
+            profileSuffix = identifiers.CardProfile;
+            var colonIdx = profileSuffix.IndexOf(':');
+            if (colonIdx >= 0)
+                profileSuffix = profileSuffix.Substring(colonIdx + 1);
+        }
+
         // Priority 1: Bus path (most stable for USB devices)
         if (!string.IsNullOrEmpty(identifiers.BusPath))
         {
-            var match = devices.FirstOrDefault(d =>
+            var matches = devices.Where(d =>
                 d.Identifiers?.BusPath != null &&
-                d.Identifiers.BusPath.Equals(identifiers.BusPath, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
+                d.Identifiers.BusPath.Equals(identifiers.BusPath, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                // Prefer sink with matching profile
+                if (!string.IsNullOrEmpty(profileSuffix))
+                {
+                    var profileMatch = matches.FirstOrDefault(d =>
+                        d.Id.EndsWith("." + profileSuffix, StringComparison.OrdinalIgnoreCase));
+                    if (profileMatch != null)
+                        return profileMatch;
+
+                    _logger.LogWarning(
+                        "No sink found matching profile '{Profile}' for bus path '{BusPath}', using first available",
+                        identifiers.CardProfile, identifiers.BusPath);
+                }
+                return matches.First();
+            }
         }
 
         // Priority 2: ALSA long card name (stable for PCIe devices)
         if (!string.IsNullOrEmpty(identifiers.AlsaLongCardName))
         {
-            var match = devices.FirstOrDefault(d =>
+            var matches = devices.Where(d =>
                 d.Identifiers?.AlsaLongCardName != null &&
-                d.Identifiers.AlsaLongCardName.Equals(identifiers.AlsaLongCardName, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
+                d.Identifiers.AlsaLongCardName.Equals(identifiers.AlsaLongCardName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                // Prefer sink with matching profile
+                if (!string.IsNullOrEmpty(profileSuffix))
+                {
+                    var profileMatch = matches.FirstOrDefault(d =>
+                        d.Id.EndsWith("." + profileSuffix, StringComparison.OrdinalIgnoreCase));
+                    if (profileMatch != null)
+                        return profileMatch;
+
+                    _logger.LogWarning(
+                        "No sink found matching profile '{Profile}' for ALSA card '{CardName}', using first available",
+                        identifiers.CardProfile, identifiers.AlsaLongCardName);
+                }
+                return matches.First();
+            }
         }
 
         // Priority 3: Serial number (may not be unique)
         if (!string.IsNullOrEmpty(identifiers.Serial))
         {
-            var match = devices.FirstOrDefault(d =>
+            var matches = devices.Where(d =>
                 d.Identifiers?.Serial != null &&
-                d.Identifiers.Serial.Equals(identifiers.Serial, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
+                d.Identifiers.Serial.Equals(identifiers.Serial, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                // Prefer sink with matching profile
+                if (!string.IsNullOrEmpty(profileSuffix))
+                {
+                    var profileMatch = matches.FirstOrDefault(d =>
+                        d.Id.EndsWith("." + profileSuffix, StringComparison.OrdinalIgnoreCase));
+                    if (profileMatch != null)
+                        return profileMatch;
+                }
+                return matches.First();
+            }
         }
 
         // Priority 4: VID/PID combination (will match first device of same type)
         if (!string.IsNullOrEmpty(identifiers.VendorId) && !string.IsNullOrEmpty(identifiers.ProductId))
         {
-            var match = devices.FirstOrDefault(d =>
+            var matches = devices.Where(d =>
                 d.Identifiers?.VendorId != null &&
                 d.Identifiers?.ProductId != null &&
                 d.Identifiers.VendorId.Equals(identifiers.VendorId, StringComparison.OrdinalIgnoreCase) &&
-                d.Identifiers.ProductId.Equals(identifiers.ProductId, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
-                return match;
+                d.Identifiers.ProductId.Equals(identifiers.ProductId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matches.Count > 0)
+            {
+                // Prefer sink with matching profile
+                if (!string.IsNullOrEmpty(profileSuffix))
+                {
+                    var profileMatch = matches.FirstOrDefault(d =>
+                        d.Id.EndsWith("." + profileSuffix, StringComparison.OrdinalIgnoreCase));
+                    if (profileMatch != null)
+                        return profileMatch;
+                }
+                return matches.First();
+            }
         }
 
         return null;
@@ -1145,11 +1253,26 @@ public class CustomSinksService : IAsyncDisposable
 
     /// <summary>
     /// Extracts identifiers from an audio device for storing in sink configuration.
+    /// Optionally looks up the card profile by bus path if cards are provided.
     /// </summary>
-    private static SinkIdentifiersConfig? ExtractIdentifiers(AudioDevice? device)
+    private static SinkIdentifiersConfig? ExtractIdentifiers(AudioDevice? device, IEnumerable<PulseAudioCard>? cards = null)
     {
         if (device?.Identifiers == null)
             return null;
+
+        // Find matching card by bus path to get the configured profile
+        string? cardProfile = null;
+        if (!string.IsNullOrEmpty(device.Identifiers.BusPath) && cards != null)
+        {
+            var matchingCard = cards.FirstOrDefault(c =>
+                c.Identifiers?.BusPath != null &&
+                c.Identifiers.BusPath.Equals(device.Identifiers.BusPath, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingCard != null)
+            {
+                cardProfile = matchingCard.ActiveProfile;  // e.g., "output:analog-surround-71"
+            }
+        }
 
         return new SinkIdentifiersConfig
         {
@@ -1158,7 +1281,8 @@ public class CustomSinksService : IAsyncDisposable
             VendorId = device.Identifiers.VendorId,
             ProductId = device.Identifiers.ProductId,
             AlsaLongCardName = device.Identifiers.AlsaLongCardName,
-            LastKnownSinkName = device.Id
+            LastKnownSinkName = device.Id,
+            CardProfile = cardProfile
         };
     }
 
