@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-5950a5a
+## Development Build: sha-2b091ef
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #104 from scyto/feature/custom-sink-migration
+- Use devices.yaml historical sink names for migration fallback
 - Merge pull request #103 from scyto/feature/custom-sink-migration
 - Guard against null/empty profile in card matching
 - Merge pull request #102 from scyto/feature/custom-sink-migration
@@ -13,8 +15,6 @@
 - Fix sink name parsing for PCI addresses with dots
 - Merge pull request #100 from scyto/feature/custom-sink-migration
 - Add bus path migration for custom sinks
-- Add device metadata for Music Assistant player identification
-- Merge pull request #99 from scyto/feature/auto-reconnect-option
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
