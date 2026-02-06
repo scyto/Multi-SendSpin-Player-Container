@@ -738,21 +738,66 @@ function setupSignalR() {
 }
 
 // API calls
-async function refreshStatus(force = false) {
+async function refreshStatus(force = false, manual = false) {
     // Skip auto-refresh while modal is open (unless forced)
     if (isModalOpen && !force) {
         return;
     }
 
-    try {
-        const response = await fetch('./api/players');
-        if (!response.ok) throw new Error('Failed to fetch players');
+    // Show spinner on manual refresh (user clicked button)
+    const refreshBtn = document.querySelector('[onclick="refreshStatus(true, true)"]');
+    let originalContent = null;
+    if (manual && refreshBtn) {
+        originalContent = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...';
+        refreshBtn.disabled = true;
+    }
 
-        const data = await response.json();
-        players = {};
-        (data.players || []).forEach(p => {
-            players[p.name] = p;
-        });
+    try {
+        // If manual refresh, also refresh devices and cards
+        if (manual) {
+            const [devicesRes, cardsRes, playersRes] = await Promise.all([
+                fetch('./api/devices/refresh', { method: 'POST' }),
+                fetch('./api/cards'),
+                fetch('./api/players')
+            ]);
+
+            if (!playersRes.ok) throw new Error('Failed to fetch players');
+
+            const devicesData = devicesRes.ok ? await devicesRes.json() : null;
+            const cardsData = cardsRes.ok ? await cardsRes.json() : null;
+            const playersData = await playersRes.json();
+
+            // Update players
+            players = {};
+            (playersData.players || []).forEach(p => {
+                players[p.name] = p;
+            });
+
+            renderPlayers();
+
+            // Show toast - warn if device refresh failed
+            const playerCount = Object.keys(players).length;
+            if (!devicesRes.ok) {
+                showAlert(`Refreshed ${playerCount} players, but device scan failed`, 'warning', 4000);
+            } else {
+                const deviceCount = devicesData?.count ?? '?';
+                const cardCount = cardsData?.cards?.length ?? '?';
+                showAlert(`Refreshed: ${playerCount} players, ${deviceCount} devices, ${cardCount} cards`, 'success', 3000);
+            }
+        } else {
+            // Auto-refresh or force-refresh: just fetch players (existing behavior)
+            const response = await fetch('./api/players');
+            if (!response.ok) throw new Error('Failed to fetch players');
+
+            const data = await response.json();
+            players = {};
+            (data.players || []).forEach(p => {
+                players[p.name] = p;
+            });
+
+            renderPlayers();
+        }
 
         // Server responded successfully — if it was previously unavailable, recover
         if (!serverAvailable) {
@@ -775,10 +820,12 @@ async function refreshStatus(force = false) {
                     });
             }
         }
-
-        renderPlayers();
     } catch (error) {
         console.error('Error refreshing status:', error);
+
+        if (manual) {
+            showAlert('Refresh failed: ' + error.message, 'danger', 5000);
+        }
 
         // During startup, errors are expected — don't trigger server-unavailable state
         if (!startupComplete) return;
@@ -786,6 +833,12 @@ async function refreshStatus(force = false) {
         // Mark server as unavailable (only on polling failures, not forced refresh)
         if (!force && serverAvailable) {
             setServerAvailable(false);
+        }
+    } finally {
+        // Restore button state
+        if (manual && refreshBtn && originalContent) {
+            refreshBtn.innerHTML = originalContent;
+            refreshBtn.disabled = false;
         }
     }
 }
