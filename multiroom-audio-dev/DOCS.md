@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-2b091ef
+## Development Build: sha-59a5e24
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #105 from scyto/feature/custom-sink-migration
+- Fix card profile and custom sink migration ordering bugs
 - Merge pull request #104 from scyto/feature/custom-sink-migration
 - Use devices.yaml historical sink names for migration fallback
 - Merge pull request #103 from scyto/feature/custom-sink-migration
@@ -13,8 +15,6 @@
 - Use CardProfileService for alsa_card_N sink resolution
 - Merge pull request #101 from scyto/feature/custom-sink-migration
 - Fix sink name parsing for PCI addresses with dots
-- Merge pull request #100 from scyto/feature/custom-sink-migration
-- Add bus path migration for custom sinks
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
