@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3e3498f
+## Development Build: sha-fcc8d6e
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #96 from scyto/feature/auto-reconnect-option
+- Fix auto-resume not saved when creating new player
+- Add auto-resume option for device reconnection
 - Merge pull request #95 from scyto/bug/grace-period-cts-disposal
 - Fix CTS disposal timing in grace period debouncing
 - Merge pull request #94 from scyto/bug/hid-enable-on-running-player
@@ -12,9 +15,6 @@
 - Start HID reader immediately when enabling on running player
 - Check subscription service IsReady before device reconnection
 - Add exception handling to grace period task
-- Add device loss grace period for USB bus glitch handling
-- Merge pull request #92 from scyto/feature/recover-auto-reconnect
-- Add scheduled device check after queuing for reconnection
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
