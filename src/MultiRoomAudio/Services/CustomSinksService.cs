@@ -19,7 +19,6 @@ public class CustomSinksService : IAsyncDisposable
     private readonly IPaModuleRunner _moduleRunner;
     private readonly EnvironmentService _environment;
     private readonly IServiceProvider _services;
-    private readonly CardProfileService _cardProfileService;
     private readonly ConcurrentDictionary<string, CustomSinkContext> _sinks = new();
     private readonly string _configPath;
     private readonly IDeserializer _deserializer;
@@ -44,14 +43,12 @@ public class CustomSinksService : IAsyncDisposable
         ILogger<CustomSinksService> logger,
         IPaModuleRunner moduleRunner,
         EnvironmentService environment,
-        IServiceProvider services,
-        CardProfileService cardProfileService)
+        IServiceProvider services)
     {
         _logger = logger;
         _moduleRunner = moduleRunner;
         _environment = environment;
         _services = services;
-        _cardProfileService = cardProfileService;
         _configPath = Path.Combine(environment.ConfigPath, "custom-sinks.yaml");
 
         _deserializer = new DeserializerBuilder()
@@ -673,8 +670,9 @@ public class CustomSinksService : IAsyncDisposable
             return configs;
         }
 
-        // Get cards for profile lookup
-        var cards = _cardProfileService.GetCards().ToList();
+        // Get cards for profile lookup (resolve lazily to avoid DI circular dependency)
+        var cardProfileService = _services.GetService<CardProfileService>();
+        var cards = cardProfileService?.GetCards().ToList() ?? [];
 
         var needsSave = false;
 
