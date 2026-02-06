@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c8d1133
+## Development Build: sha-df15d70
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #106 from scyto/feature/shared-modal-utils
+- Replace native browser dialogs with Bootstrap modals
 - Remove 'v' prefix for dev builds in ProductName
 - Truncate build SHA to short format in VersionService
 - Merge remote-tracking branch 'origin/dev' into dev
@@ -13,8 +15,6 @@
 - Merge pull request #104 from scyto/feature/custom-sink-migration
 - Use devices.yaml historical sink names for migration fallback
 - Merge pull request #103 from scyto/feature/custom-sink-migration
-- Guard against null/empty profile in card matching
-- Merge pull request #102 from scyto/feature/custom-sink-migration
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
