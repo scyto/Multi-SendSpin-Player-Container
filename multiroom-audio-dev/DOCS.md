@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-fcc8d6e
+## Development Build: sha-adeac04
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #97 from scyto/feature/auto-reconnect-option
+- Fix missing device handling for boot-failed players
 - Merge pull request #96 from scyto/feature/auto-reconnect-option
 - Fix auto-resume not saved when creating new player
 - Add auto-resume option for device reconnection
@@ -13,8 +15,6 @@
 - Merge pull request #94 from scyto/bug/hid-enable-on-running-player
 - Merge pull request #93 from scyto/feature/device-loss-grace-period
 - Start HID reader immediately when enabling on running player
-- Check subscription service IsReady before device reconnection
-- Add exception handling to grace period task
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
