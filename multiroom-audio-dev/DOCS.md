@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-647ba3e
+## Development Build: sha-8b2a424
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #122 from scyto/feature/fix-startup-crackle
+- Revert startup deadband to 50ms
 - Merge pull request #121 from scyto/feature/fix-startup-crackle
 - Reduce startup deadband from 50ms to 30ms for multi-room sync
 - Merge pull request #120 from scyto/feature/fix-startup-crackle
@@ -13,8 +15,6 @@
 - Add real-time volume changes while dragging slider
 - Merge pull request #118 from scyto/fix/clear-pending-update-after-actions
 - Preserve other player updates in pendingUpdate
-- Clear pendingUpdate after player actions to prevent stale data
-- Merge pull request #117 from scyto/feature/defer-dom-updates-during-interaction
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
