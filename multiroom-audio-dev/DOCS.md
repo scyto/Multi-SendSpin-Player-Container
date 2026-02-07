@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-9eefd53
+## Development Build: sha-e05881c
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #115 from scyto/fix/boot-mute-lookup
+- Fix boot mute preference not applied at startup
 - Merge pull request #114 from scyto/feature/accordion-reset-fix
 - Fix accordion state not resetting on modal reopen
 - Merge pull request #113 from scyto/feature/accordion-alias-fix
@@ -13,8 +15,6 @@
 - Fix Codex review issues: profile badge, boot mute, mute label
 - Add profile badge to header, Enter-to-save for aliases, fix Codex issues
 - Convert Audio Devices to accordion UI with Bluetooth support
-- Merge pull request #110 from scyto/feature/enhanced-refresh-button
-- Merge pull request #111 from scyto/feature/trigger-accordion-focus-fix
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
