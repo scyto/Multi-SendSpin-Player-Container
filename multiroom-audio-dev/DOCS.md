@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-4737c09
+## Development Build: sha-b5bfd24
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #120 from scyto/feature/fix-startup-crackle
+- Fix audio crackle/pop at stream start
 - Merge pull request #119 from scyto/fix/clear-pending-update-after-actions
 - Add real-time volume changes while dragging slider
 - Merge pull request #118 from scyto/fix/clear-pending-update-after-actions
@@ -13,8 +15,6 @@
 - Merge pull request #117 from scyto/feature/defer-dom-updates-during-interaction
 - Remove focus check to prevent refresh starvation
 - Defer DOM updates during user interaction with player tiles
-- Merge pull request #116 from scyto/feature/toast-notifications
-- Replace inline alerts with Bootstrap Toast notifications
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
