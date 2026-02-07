@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-b5bfd24
+## Development Build: sha-647ba3e
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #121 from scyto/feature/fix-startup-crackle
+- Reduce startup deadband from 50ms to 30ms for multi-room sync
 - Merge pull request #120 from scyto/feature/fix-startup-crackle
 - Fix audio crackle/pop at stream start
 - Merge pull request #119 from scyto/fix/clear-pending-update-after-actions
@@ -13,8 +15,6 @@
 - Preserve other player updates in pendingUpdate
 - Clear pendingUpdate after player actions to prevent stale data
 - Merge pull request #117 from scyto/feature/defer-dom-updates-during-interaction
-- Remove focus check to prevent refresh starvation
-- Defer DOM updates during user interaction with player tiles
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
