@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-777cbc3
+## Development Build: sha-a799b24
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #112 from scyto/feature/audio-devices-accordion
+- Fix Codex review issues: profile badge, boot mute, mute label
+- Add profile badge to header, Enter-to-save for aliases, fix Codex issues
+- Convert Audio Devices to accordion UI with Bluetooth support
 - Merge pull request #110 from scyto/feature/enhanced-refresh-button
 - Merge pull request #111 from scyto/feature/trigger-accordion-focus-fix
 - Merge pull request #109 from scyto/bug/api-docs-missing-endpoints
 - Fix: Separate manual refresh from force-refresh flag
 - Use counter instead of boolean for operation lock
 - Fix trigger accordion losing focus during operations
-- Enhance Refresh button to rescan devices and show feedback
-- Add missing API endpoints to documentation
-- Restore legacy-key fallback in card profile reads
-- Merge pull request #108 from scyto/feature/api-first-cleanup
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
