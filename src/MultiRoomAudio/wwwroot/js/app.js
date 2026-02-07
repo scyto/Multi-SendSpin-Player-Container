@@ -3664,11 +3664,9 @@ function getCardMuteDisplayState(card) {
     }
 
     const isMuted = card.isMuted;
-    const usesBoot = typeof card.bootMuted === 'boolean' && card.bootMuteMatchesCurrent;
-    const labelSuffix = usesBoot ? ' (boot)' : ' (manual)';
     return {
         isMuted,
-        label: `${isMuted ? 'Muted' : 'Unmuted'}${labelSuffix}`,
+        label: isMuted ? 'Muted' : 'Unmuted',
         icon: isMuted ? 'fa-volume-mute' : 'fa-volume-up',
         iconClass: isMuted ? 'text-danger' : 'text-success'
     };
@@ -3748,12 +3746,7 @@ async function setSoundCardBootMute(cardName, value, cardIndex) {
             card.bootMuted = muted;
             card.bootMuteMatchesCurrent = typeof card.isMuted === 'boolean' && card.isMuted === muted;
         }
-
-        const muteState = getCardMuteDisplayState(card || { isMuted: null, bootMuted: muted, bootMuteMatchesCurrent: false });
-        const button = document.querySelector(`#settings-card-${cardIndex} .card-mute-toggle i`);
-        if (button) {
-            button.className = `fas ${muteState.icon} ${muteState.iconClass}`;
-        }
+        // Note: Boot mute doesn't affect the header mute button - it only shows current state
     } catch (error) {
         console.error('Failed to set boot mute:', error);
         showAlert(error.message, 'danger');
@@ -3965,7 +3958,7 @@ async function toggleHidButtons(deviceId, enabled, cardIndex) {
 // Set a sound card's profile
 async function setSoundCardProfile(cardName, profileName, cardIndex) {
     const select = document.getElementById(`settings-profile-select-${cardIndex}`);
-    const statusBadge = document.getElementById(`settings-card-status-${cardIndex}`);
+    const statusBadge = document.getElementById(`device-profile-badge-${cardIndex}`);
     const messageDiv = document.getElementById(`settings-card-message-${cardIndex}`);
 
     if (select) select.disabled = true;

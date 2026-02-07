@@ -467,7 +467,9 @@ public class CardProfileService
     /// </summary>
     public CardBootMuteResponse SetCardBootMute(string cardNameOrIndex, bool muted)
     {
-        var card = PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
+        var card = _environment.IsMockHardware
+            ? MockCardEnumerator.GetCard(cardNameOrIndex)
+            : PulseAudioCardEnumerator.GetCard(cardNameOrIndex);
         if (card == null)
         {
             return new CardBootMuteResponse(false, $"Card '{cardNameOrIndex}' not found.");
