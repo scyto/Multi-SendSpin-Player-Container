@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e466b2b
+## Development Build: sha-4737c09
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #119 from scyto/fix/clear-pending-update-after-actions
+- Add real-time volume changes while dragging slider
 - Merge pull request #118 from scyto/fix/clear-pending-update-after-actions
 - Preserve other player updates in pendingUpdate
 - Clear pendingUpdate after player actions to prevent stale data
@@ -13,8 +15,6 @@
 - Defer DOM updates during user interaction with player tiles
 - Merge pull request #116 from scyto/feature/toast-notifications
 - Replace inline alerts with Bootstrap Toast notifications
-- Merge pull request #115 from scyto/fix/boot-mute-lookup
-- Fix boot mute preference not applied at startup
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
