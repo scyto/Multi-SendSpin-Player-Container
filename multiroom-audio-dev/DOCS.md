@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-8b2a424
+## Development Build: sha-aaa784d
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #123 from scyto/feature/fix-startup-crackle
+- Add player name prefix to SDK log messages
+- Skip invalid 0ms latency samples during lock-in
 - Merge pull request #122 from scyto/feature/fix-startup-crackle
 - Revert startup deadband to 50ms
 - Merge pull request #121 from scyto/feature/fix-startup-crackle
@@ -12,9 +15,6 @@
 - Merge pull request #120 from scyto/feature/fix-startup-crackle
 - Fix audio crackle/pop at stream start
 - Merge pull request #119 from scyto/fix/clear-pending-update-after-actions
-- Add real-time volume changes while dragging slider
-- Merge pull request #118 from scyto/fix/clear-pending-update-after-actions
-- Preserve other player updates in pendingUpdate
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
