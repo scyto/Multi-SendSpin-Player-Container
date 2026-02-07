@@ -971,13 +971,33 @@ h1, h2, h3, h4, h5, h6 {
     outline: none;
 }
 
-/* Device Accordion Header - Aligned columns */
+/* Device Accordion Header - Two-line layout */
+.device-header-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
 .device-header-info {
     display: flex;
     align-items: center;
     flex: 1;
     min-width: 0;
     padding-right: 9.5rem; /* Space for volume + mute + chevron */
+}
+
+/* Profile badge on second line - left aligned */
+.device-header-profile {
+    display: flex;
+    align-items: center;
+}
+
+.device-header-profile .badge {
+    max-width: calc(100% - 9.5rem); /* Don't overlap with volume/mute/chevron */
+    font-weight: normal;
+    font-size: 0.75rem;
 }
 
 /* Accordion header needs relative positioning for absolute elements */
@@ -1018,13 +1038,18 @@ h1, h2, h3, h4, h5, h6 {
     border-color: var(--bs-secondary-border-subtle);
 }
 
+/* Alias input wrapper - prevents accordion toggle when clicking input */
+.device-header-alias-wrapper {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
 /* Editable alias input inline in accordion header */
 .device-header-alias {
     width: 120px;
     height: 1.5rem;
     padding: 0.1rem 0.4rem;
     font-size: 0.8rem;
-    flex-shrink: 0;
 }
 
 .device-header-alias::placeholder {

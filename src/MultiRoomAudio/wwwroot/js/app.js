@@ -3272,6 +3272,35 @@ function markDeviceAliasChanged(input) {
     }
 }
 
+// Handle Enter key in alias input - save and exit edit mode
+async function handleAliasKeydown(event, input) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const deviceId = input.dataset.deviceId;
+        const newAlias = input.value.trim();
+
+        // Save immediately
+        try {
+            await fetch(`./api/devices/${encodeURIComponent(deviceId)}/alias`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ alias: newAlias || null })
+            });
+            // Update the original alias so it won't be re-saved on modal close
+            input.dataset.originalAlias = newAlias;
+            // Remove from pending since we just saved it
+            delete pendingDeviceAliases[deviceId];
+        } catch (error) {
+            console.error(`Failed to save alias for device ${deviceId}:`, error);
+        }
+
+        // Exit edit mode (like clicking outside)
+        input.blur();
+    }
+}
+
 // Save all pending device aliases using existing device alias API
 async function saveDeviceAliases() {
     const entries = Object.entries(pendingDeviceAliases);
@@ -3304,12 +3333,16 @@ async function loadSoundCards() {
     const modalBody = document.querySelector('#soundCardsModal .modal-body');
 
     // Save expanded device state BEFORE replacing with loading spinner
+    // Clear stale state if no panel is expanded (e.g., device was unplugged)
     const expandedItem = container.querySelector('.accordion-collapse.show');
     if (expandedItem) {
         const match = expandedItem.id.match(/^device-(.+)$/);
         if (match) {
             expandedDeviceState = match[1];
         }
+    } else if (container.querySelector('.accordion')) {
+        // Accordion exists but nothing is expanded - clear stale state
+        expandedDeviceState = null;
     }
 
     // Save scroll position
@@ -3423,20 +3456,29 @@ function renderSoundCards(savedScrollTop = 0) {
                     ${isHidden ? '<div class="device-hidden-overlay"></div>' : ''}
                     <button class="accordion-button ${isExpanded ? '' : 'collapsed'}" type="button"
                             data-bs-toggle="collapse" data-bs-target="#device-${cardKey}">
-                        <span class="device-header-info">
-                            <i class="${busIcon} text-primary me-2" title="${busLabel}"></i>
-                            <span class="fw-bold">${escapeHtml(deviceName)}</span>
-                            <input type="text" class="device-header-alias form-control form-control-sm ms-2"
-                                   placeholder="Alias"
-                                   value="${escapeHtml(deviceAlias)}"
-                                   data-device-id="${escapeHtml(deviceId)}"
-                                   data-original-alias="${escapeHtml(deviceAlias)}"
-                                   ${deviceId ? '' : 'disabled title="No device found for this card"'}
-                                   onclick="event.stopPropagation()"
-                                   onmousedown="event.stopPropagation()"
-                                   onfocus="event.stopPropagation()"
-                                   onchange="markDeviceAliasChanged(this)">
-                        </span>
+                        <div class="device-header-content">
+                            <span class="device-header-info">
+                                <i class="${busIcon} text-primary me-2" title="${busLabel}"></i>
+                                <span class="fw-bold">${escapeHtml(deviceName)}</span>
+                                <span class="device-header-alias-wrapper ms-2" onclick="event.stopImmediatePropagation(); event.preventDefault();" onmousedown="event.stopImmediatePropagation();" onpointerdown="event.stopImmediatePropagation();" ontouchstart="event.stopImmediatePropagation();">
+                                    <input type="text" class="device-header-alias form-control form-control-sm"
+                                           placeholder="Alias"
+                                           value="${escapeHtml(deviceAlias)}"
+                                           data-device-id="${escapeHtml(deviceId)}"
+                                           data-original-alias="${escapeHtml(deviceAlias)}"
+                                           ${deviceId ? '' : 'disabled title="No device found for this card"'}
+                                           onclick="event.stopImmediatePropagation();"
+                                           onmousedown="event.stopImmediatePropagation();"
+                                           ontouchstart="event.stopImmediatePropagation();"
+                                           onfocus="event.stopImmediatePropagation();"
+                                           onchange="markDeviceAliasChanged(this)"
+                                           onkeydown="handleAliasKeydown(event, this)">
+                                </span>
+                            </span>
+                            <div class="device-header-profile">
+                                <span class="badge bg-secondary text-truncate" id="device-profile-badge-${card.index}">${escapeHtml(activeDesc)}</span>
+                            </div>
+                        </div>
                     </button>
                     <span class="device-header-volume small text-muted">Max Vol: ${maxVolumeDisplay}%</span>
                     <span class="device-header-mute"
@@ -3590,6 +3632,11 @@ function handleDeviceHeaderMute(event, button) {
     event.stopImmediatePropagation();
     event.preventDefault();
 
+    // Prevent rapid clicks while API call is in flight (span doesn't support disabled)
+    if (button.dataset.busy === 'true') {
+        return false;
+    }
+
     const cardName = button.dataset.cardName;
     const cardIndex = parseInt(button.dataset.cardIndex, 10);
 
@@ -3631,7 +3678,8 @@ async function setSoundCardMute(cardName, muted, cardIndex) {
     // Find the mute button in the accordion header
     const button = document.querySelector(`#device-item-${cardIndex} .device-header-mute`);
 
-    if (button) button.disabled = true;
+    // Use data-busy attribute since span doesn't support disabled
+    if (button) button.dataset.busy = 'true';
 
     try {
         const response = await fetch(`./api/cards/${encodeURIComponent(cardName)}/mute`, {
@@ -3664,7 +3712,7 @@ async function setSoundCardMute(cardName, muted, cardIndex) {
         console.error('Failed to set card mute:', error);
         showAlert(error.message, 'danger');
     } finally {
-        if (button) button.disabled = false;
+        if (button) delete button.dataset.busy;
     }
 }
 
