@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-01bdba5
+## Development Build: sha-9eefd53
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #114 from scyto/feature/accordion-reset-fix
+- Fix accordion state not resetting on modal reopen
 - Merge pull request #113 from scyto/feature/accordion-alias-fix
 - Fix alias input triggering accordion expand/collapse
 - Merge pull request #112 from scyto/feature/audio-devices-accordion
@@ -13,8 +15,6 @@
 - Convert Audio Devices to accordion UI with Bluetooth support
 - Merge pull request #110 from scyto/feature/enhanced-refresh-button
 - Merge pull request #111 from scyto/feature/trigger-accordion-focus-fix
-- Merge pull request #109 from scyto/bug/api-docs-missing-endpoints
-- Fix: Separate manual refresh from force-refresh flag
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
