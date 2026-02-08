@@ -19,7 +19,7 @@ public class RealRelayDeviceEnumerator : IRelayDeviceEnumerator
     public bool IsHardwareAvailable =>
         FtdiRelayBoard.IsLibraryAvailable() ||
         HidRelayBoard.EnumerateDevices(_logger).Count > 0 ||
-        ModbusRelayBoard.GetAvailableSerialPorts().Count > 0;
+        ModbusRelayBoard.EnumerateDevices(_logger).Count > 0;
 
     /// <inheritdoc />
     public List<FtdiDeviceInfo> GetFtdiDevices()
