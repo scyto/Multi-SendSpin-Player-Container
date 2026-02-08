@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-aaa784d
+## Development Build: sha-1a931c9
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #169 from scyto/feature/lcus-relay-support
+- Add LCUS relay board support and unified CH340 detection
+- Merge pull request #168 from scyto/feature/relay-board-filtering
+- Use filtered EnumerateDevices in IsHardwareAvailable check
+- Filter relay board enumeration to exclude non-relay devices
+- Merge pull request #167 from scyto/bug/bluez-card-sink-matching
+- Add comprehensive BlueZ support across all card/sink matching
+- Fix BlueZ cards not finding their sinks for max volume/mute
 - Merge pull request #123 from scyto/feature/fix-startup-crackle
 - Add player name prefix to SDK log messages
-- Skip invalid 0ms latency samples during lock-in
-- Merge pull request #122 from scyto/feature/fix-startup-crackle
-- Revert startup deadband to 50ms
-- Merge pull request #121 from scyto/feature/fix-startup-crackle
-- Reduce startup deadband from 50ms to 30ms for multi-room sync
-- Merge pull request #120 from scyto/feature/fix-startup-crackle
-- Fix audio crackle/pop at stream start
-- Merge pull request #119 from scyto/fix/clear-pending-update-after-actions
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
