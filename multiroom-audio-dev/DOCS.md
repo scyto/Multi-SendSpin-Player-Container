@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e9c2401
+## Development Build: sha-3940dd6
 
 **Current Dev Build Changes** (recent)
 
+- Fix mobile slider touch: immediate drag response (#131)
+- Add lazy reconnection for FTDI relay boards (#130)
 - Add mobile-responsive UI improvements (#129)
 - Add Trigger log category for relay board operations (#128)
 - Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
@@ -13,8 +15,6 @@
 - Merge pull request #126 from scyto/bug/trigger-modal-reload-on-relay-toggle
 - Fix trigger modal showing loading spinner on relay toggle
 - Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
-- Fix SDK version detection and add clock sync stats to player diagnostics
-- Merge pull request #124 from scyto/feature/diagnostics-download
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
