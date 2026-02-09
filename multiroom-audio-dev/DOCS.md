@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-c7ae300
+## Development Build: sha-3e3ecd9
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
+- Fix SDK version detection and add clock sync stats to player diagnostics
 - Merge pull request #124 from scyto/feature/diagnostics-download
 - Fix base64 decoding for UTF-8 diagnostics content
 - Add diagnostics download feature with progress streaming
@@ -13,8 +15,6 @@
 - Merge pull request #168 from scyto/feature/relay-board-filtering
 - Use filtered EnumerateDevices in IsHardwareAvailable check
 - Filter relay board enumeration to exclude non-relay devices
-- Merge pull request #167 from scyto/bug/bluez-card-sink-matching
-- Add comprehensive BlueZ support across all card/sink matching
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
