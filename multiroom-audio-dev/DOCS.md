@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-90e6c71
+## Development Build: sha-e9c2401
 
 **Current Dev Build Changes** (recent)
 
+- Add mobile-responsive UI improvements (#129)
 - Add Trigger log category for relay board operations (#128)
 - Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
 - Fix LCUS board IDs to use hash instead of device path
@@ -14,7 +15,6 @@
 - Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
 - Fix SDK version detection and add clock sync stats to player diagnostics
 - Merge pull request #124 from scyto/feature/diagnostics-download
-- Fix base64 decoding for UTF-8 diagnostics content
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
