@@ -1236,6 +1236,41 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.9375rem;
 }
 
+/* Delay input group (Stats for Nerds modal) */
+.delay-input-group {
+    max-width: 140px;
+}
+
+/* Volume value display */
+.volume-value-display {
+    min-width: 40px;
+}
+
+/* Trigger action column headers */
+.trigger-action-header {
+    white-space: nowrap;
+}
+
+.trigger-action-col {
+    display: inline-block;
+    width: 38px;
+    text-align: center;
+}
+
+/* Wizard alias input group */
+.alias-input-group {
+    max-width: 300px;
+}
+
+/* Wizard volume controls */
+.wizard-volume-slider {
+    width: 80px;
+}
+
+.wizard-volume-label {
+    width: 35px;
+}
+
 /* Mobile adjustments */
 @media (max-width: 576px) {
     .toast-container {
@@ -1650,41 +1685,6 @@ h1, h2, h3, h4, h5, h6 {
     word-break: break-word;
     max-height: 3em;
     overflow: hidden;
-}
-
-/* Delay input group (Stats for Nerds modal) */
-.delay-input-group {
-    max-width: 140px;
-}
-
-/* Volume value display */
-.volume-value-display {
-    min-width: 40px;
-}
-
-/* Trigger action column headers */
-.trigger-action-header {
-    white-space: nowrap;
-}
-
-.trigger-action-col {
-    display: inline-block;
-    width: 38px;
-    text-align: center;
-}
-
-/* Wizard alias input group */
-.alias-input-group {
-    max-width: 300px;
-}
-
-/* Wizard volume controls */
-.wizard-volume-slider {
-    width: 80px;
-}
-
-.wizard-volume-label {
-    width: 35px;
 }
 
 /* Touch optimization - prevent double-tap zoom */
