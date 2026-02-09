@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-3e3ecd9
+## Development Build: sha-7adfff2
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #126 from scyto/bug/trigger-modal-reload-on-relay-toggle
+- Fix trigger modal showing loading spinner on relay toggle
 - Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
 - Fix SDK version detection and add clock sync stats to player diagnostics
 - Merge pull request #124 from scyto/feature/diagnostics-download
@@ -13,8 +15,6 @@
 - Merge pull request #169 from scyto/feature/lcus-relay-support
 - Add LCUS relay board support and unified CH340 detection
 - Merge pull request #168 from scyto/feature/relay-board-filtering
-- Use filtered EnumerateDevices in IsHardwareAvailable check
-- Filter relay board enumeration to exclude non-relay devices
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
