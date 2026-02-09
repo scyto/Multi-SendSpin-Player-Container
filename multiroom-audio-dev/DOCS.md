@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-7adfff2
+## Development Build: sha-ee113a3
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
+- Fix LCUS board IDs to use hash instead of device path
+- Fix trigger API calls for board IDs containing slashes
 - Merge pull request #126 from scyto/bug/trigger-modal-reload-on-relay-toggle
 - Fix trigger modal showing loading spinner on relay toggle
 - Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
@@ -12,9 +15,6 @@
 - Merge pull request #124 from scyto/feature/diagnostics-download
 - Fix base64 decoding for UTF-8 diagnostics content
 - Add diagnostics download feature with progress streaming
-- Merge pull request #169 from scyto/feature/lcus-relay-support
-- Add LCUS relay board support and unified CH340 detection
-- Merge pull request #168 from scyto/feature/relay-board-filtering
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
