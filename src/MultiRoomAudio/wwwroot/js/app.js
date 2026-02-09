@@ -4477,12 +4477,16 @@ function downloadDiagnostics() {
         eventSource.close();
         activeDiagnosticsEventSource = null;
 
-        // Decode base64 content
+        // Decode base64 content to bytes (preserves UTF-8 encoding)
         const base64Content = event.data;
-        const content = atob(base64Content);
+        const binaryString = atob(base64Content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
 
         // Create blob and trigger download
-        const blob = new Blob([content], { type: 'text/plain' });
+        const blob = new Blob([bytes], { type: 'text/plain; charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const filename = `multiroom-diagnostics-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.txt`;
 
