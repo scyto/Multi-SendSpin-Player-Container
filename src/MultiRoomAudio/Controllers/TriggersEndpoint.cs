@@ -11,6 +11,10 @@ namespace MultiRoomAudio.Controllers;
 /// </summary>
 public static class TriggersEndpoint
 {
+    // Throttle status polling logs - only log INFO once per 30 seconds
+    private static DateTime _lastStatusInfoLog = DateTime.MinValue;
+    private static readonly TimeSpan StatusLogThrottle = TimeSpan.FromSeconds(30);
+
     public static void MapTriggersEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/triggers")
@@ -20,9 +24,18 @@ public static class TriggersEndpoint
         // GET /api/triggers - Get trigger feature status (all boards)
         group.MapGet("/", (TriggerService service, ILoggerFactory lf) =>
         {
-            var logger = lf.CreateLogger("TriggersEndpoint");
-            logger.LogDebug("API: GET /api/triggers");
             var response = service.GetStatus();
+
+            // Throttle logging - only log once per 30 seconds to avoid poll spam
+            var now = DateTime.UtcNow;
+            if (now - _lastStatusInfoLog > StatusLogThrottle)
+            {
+                var logger = lf.CreateLogger("TriggersEndpoint");
+                logger.LogInformation("Trigger status: {BoardCount} boards configured, feature {Status}",
+                    response.Boards.Count, response.Enabled ? "enabled" : "disabled");
+                _lastStatusInfoLog = now;
+            }
+
             return Results.Ok(response);
         })
         .WithName("GetTriggerStatus")
@@ -58,9 +71,8 @@ public static class TriggersEndpoint
         group.MapGet("/devices", (TriggerService service, ILoggerFactory lf) =>
         {
             var logger = lf.CreateLogger("TriggersEndpoint");
-            logger.LogDebug("API: GET /api/triggers/devices");
-
             var devices = service.GetAvailableDevices();
+            logger.LogDebug("FTDI devices enumerated: {Count} found", devices.Count);
             return Results.Ok(new
             {
                 devices,
@@ -75,16 +87,19 @@ public static class TriggersEndpoint
         group.MapGet("/devices/all", (TriggerService service, ILoggerFactory lf) =>
         {
             var logger = lf.CreateLogger("TriggersEndpoint");
-            logger.LogDebug("API: GET /api/triggers/devices/all");
-
             var devices = service.GetAllAvailableDevices();
+            var ftdiCount = devices.Count(d => d.BoardType == RelayBoardType.Ftdi);
+            var hidCount = devices.Count(d => d.BoardType == RelayBoardType.UsbHid);
+            var modbusCount = devices.Count(d => d.BoardType == RelayBoardType.Modbus);
+            logger.LogDebug("All relay devices enumerated: {Total} found (FTDI: {Ftdi}, HID: {Hid}, Modbus: {Modbus})",
+                devices.Count, ftdiCount, hidCount, modbusCount);
             return Results.Ok(new
             {
                 devices,
                 count = devices.Count,
-                ftdiCount = devices.Count(d => d.BoardType == RelayBoardType.Ftdi),
-                hidCount = devices.Count(d => d.BoardType == RelayBoardType.UsbHid),
-                modbusCount = devices.Count(d => d.BoardType == RelayBoardType.Modbus)
+                ftdiCount,
+                hidCount,
+                modbusCount
             });
         })
         .WithName("ListAllRelayDevices")
