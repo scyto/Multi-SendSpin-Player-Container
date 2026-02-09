@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-1a931c9
+## Development Build: sha-c7ae300
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #124 from scyto/feature/diagnostics-download
+- Fix base64 decoding for UTF-8 diagnostics content
+- Add diagnostics download feature with progress streaming
 - Merge pull request #169 from scyto/feature/lcus-relay-support
 - Add LCUS relay board support and unified CH340 detection
 - Merge pull request #168 from scyto/feature/relay-board-filtering
@@ -12,9 +15,6 @@
 - Filter relay board enumeration to exclude non-relay devices
 - Merge pull request #167 from scyto/bug/bluez-card-sink-matching
 - Add comprehensive BlueZ support across all card/sink matching
-- Fix BlueZ cards not finding their sinks for max volume/mute
-- Merge pull request #123 from scyto/feature/fix-startup-crackle
-- Add player name prefix to SDK log messages
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
