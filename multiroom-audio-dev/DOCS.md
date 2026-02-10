@@ -1,10 +1,13 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-d1320b1
+## Development Build: sha-3af4725
 
 **Current Dev Build Changes** (recent)
 
+- Fix diagnostics summary including custom sinks in audio devices (#134)
+- Fix vertical alignment of mute button with slider (#133)
+- Fix duplicate toast messages on server reconnection (#132)
 - Fix mobile slider touch: immediate drag response (#131)
 - Add lazy reconnection for FTDI relay boards (#130)
 - Add mobile-responsive UI improvements (#129)
@@ -12,9 +15,6 @@
 - Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
 - Fix LCUS board IDs to use hash instead of device path
 - Fix trigger API calls for board IDs containing slashes
-- Merge pull request #126 from scyto/bug/trigger-modal-reload-on-relay-toggle
-- Fix trigger modal showing loading spinner on relay toggle
-- Merge pull request #125 from scyto/feature/diagnostics-sdk-clock-stats
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
