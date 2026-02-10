@@ -1,7 +1,7 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-a181925
+## Development Build: sha-60f9a3b
 
 **Current Dev Build Changes** (recent)
 
