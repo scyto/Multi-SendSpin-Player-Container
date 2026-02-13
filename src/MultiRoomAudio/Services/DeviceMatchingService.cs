@@ -470,7 +470,8 @@ public class DeviceMatchingService
 
             if (bestProfile == null)
             {
-                _logger.LogWarning("GetOffProfileDevices: Card '{Card}' has no output profiles (profiles with sinks > 0), skipping. " +
+                // Expected for input-only cards - keep at Debug to avoid alert noise
+                _logger.LogDebug("GetOffProfileDevices: Card '{Card}' has no output profiles (profiles with sinks > 0), skipping. " +
                     "Total profiles: {Total}, Profile names: [{Names}]",
                     card.Name, card.Profiles.Count,
                     string.Join(", ", card.Profiles.Select(p => $"{p.Name}(sinks={p.Sinks})")));
