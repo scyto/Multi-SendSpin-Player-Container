@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-60f9a3b
+## Development Build: sha-36ccced
 
 **Current Dev Build Changes** (recent)
 
+- Fix player state for empty device and diagnostics device matching (#135)
 - Fix diagnostics summary including custom sinks in audio devices (#134)
 - Fix vertical alignment of mute button with slider (#133)
 - Fix duplicate toast messages on server reconnection (#132)
@@ -14,7 +15,6 @@
 - Add Trigger log category for relay board operations (#128)
 - Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
 - Fix LCUS board IDs to use hash instead of device path
-- Fix trigger API calls for board IDs containing slashes
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
