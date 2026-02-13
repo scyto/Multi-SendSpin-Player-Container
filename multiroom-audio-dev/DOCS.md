@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-6886a7f
+## Development Build: sha-b13af1e
 
 **Current Dev Build Changes** (recent)
 
+- Fix off-profile device detection to ignore IsAvailable flag (#137)
 - Show off-profile cards in device selector (#136)
 - Fix player state for empty device and diagnostics device matching (#135)
 - Fix diagnostics summary including custom sinks in audio devices (#134)
@@ -14,7 +15,6 @@
 - Add lazy reconnection for FTDI relay boards (#130)
 - Add mobile-responsive UI improvements (#129)
 - Add Trigger log category for relay board operations (#128)
-- Merge pull request #127 from scyto/bug/trigger-modal-reload-on-relay-toggle
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
