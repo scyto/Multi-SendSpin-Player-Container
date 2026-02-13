@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-698a0e3
+## Development Build: sha-b5db2df
 
 **Current Dev Build Changes** (recent)
 
+- Fix off-profile detection for Intel HDA combined duplex profiles (#139)
 - Fix race condition in device reconnection causing duplicate restarts (#138)
 - Fix off-profile device detection to ignore IsAvailable flag (#137)
 - Show off-profile cards in device selector (#136)
@@ -14,7 +15,6 @@
 - Fix duplicate toast messages on server reconnection (#132)
 - Fix mobile slider touch: immediate drag response (#131)
 - Add lazy reconnection for FTDI relay boards (#130)
-- Add mobile-responsive UI improvements (#129)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
