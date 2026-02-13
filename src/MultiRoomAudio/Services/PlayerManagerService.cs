@@ -2585,9 +2585,11 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             await _hubContext.BroadcastDeviceListChangedAsync();
 
             // Check if any pending players can now be restarted
-            // Use lock to prevent concurrent processing with sink disappear events
-            if (!_devicePendingPlayers.IsEmpty && await _sinkEventLock.WaitAsync(0))
+            // Use blocking wait to serialize sink events (don't drop events)
+            // The TryRemove check in CheckDevicePendingPlayersAsync prevents duplicate restarts
+            if (!_devicePendingPlayers.IsEmpty)
             {
+                await _sinkEventLock.WaitAsync();
                 try
                 {
                     await CheckDevicePendingPlayersAsync();
@@ -2614,17 +2616,15 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             await _hubContext.BroadcastDeviceListChangedAsync();
 
             // Check if any active players were using a sink that no longer exists
-            // Use lock to prevent concurrent processing with sink appear events
-            if (await _sinkEventLock.WaitAsync(0))
+            // Use blocking wait to serialize sink events (don't drop events)
+            await _sinkEventLock.WaitAsync();
+            try
             {
-                try
-                {
-                    await CheckPlayersForLostDeviceAsync();
-                }
-                finally
-                {
-                    _sinkEventLock.Release();
-                }
+                await CheckPlayersForLostDeviceAsync();
+            }
+            finally
+            {
+                _sinkEventLock.Release();
             }
         });
     }
