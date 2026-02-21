@@ -40,6 +40,18 @@ When reporting issues with dev builds, please include:
 - Steps to reproduce the issue
 - Expected vs actual behavior
 
+## Configuration
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `log_level` | string | `info` | Logging verbosity (debug, info, warning, error) |
+| `relay_serial_port` | device | null | Serial port for Modbus/CH340 relay board |
+| `relay_devices` | list | `[]` | Device paths for HID/FTDI relay boards |
+| `mock_hardware` | bool | `false` | Enable mock audio devices and relay boards for testing without hardware |
+| `enable_advanced_formats` | bool | `false` | Show format selection UI (players default to flac-48000 regardless) |
+
 ## For Stable Release
 
 Use the "Multi-Room Audio Controller" add-on (without "Dev") for stable releases.
