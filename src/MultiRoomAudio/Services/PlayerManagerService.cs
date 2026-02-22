@@ -376,11 +376,11 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         PlayerConfig Config,
         DateTime CreatedAt,
         CancellationTokenSource Cts,
-        DeviceCapabilities? DeviceCapabilities = null,
-        AudioDevice? CachedDevice = null
+        DeviceCapabilities? DeviceCapabilities = null
     )
     {
         public Models.PlayerState State { get; set; } = Models.PlayerState.Created;
+        public AudioDevice? CachedDevice { get; set; }
         public string? ErrorMessage { get; set; }
         public DateTime? ConnectedAt { get; set; }
         public int InitialVolume { get; init; } // Store initial volume to detect resets
@@ -836,8 +836,9 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
 
             var cts = new CancellationTokenSource();
 
-            // Cache device info once at creation time for stats display
+            // Cache device info at creation time for stats display
             // This avoids running pactl every 250ms when stats panel is open
+            // Note: refreshed when pipeline starts playing (PulseAudio may reconfigure sink rate)
             var cachedDevice = !string.IsNullOrEmpty(request.Device)
                 ? _backendFactory.GetDevice(request.Device)
                 : null;
@@ -852,11 +853,11 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                 config,
                 DateTime.UtcNow,
                 cts,
-                components.DeviceCapabilities,
-                cachedDevice)
+                components.DeviceCapabilities)
             {
                 State = Models.PlayerState.Created,
-                InitialVolume = request.Volume
+                InitialVolume = request.Volume,
+                CachedDevice = cachedDevice
             };
 
             // Phase 3: Wire up events
@@ -2221,7 +2222,35 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             var stateStr = state.ToString();
 
             if (state == AudioPipelineState.Playing)
+            {
                 context.State = Models.PlayerState.Playing;
+
+                // Refresh cached device info now that PulseAudio has negotiated the actual
+                // hardware format. On first play after cold start, the sink may switch from
+                // its default rate (e.g. 44100Hz) to the stream's rate (e.g. 48000Hz).
+                // Without this refresh, stats would show the stale pre-negotiation rate.
+                // Run async because GetDevice() spawns pactl which shouldn't block the callback.
+                if (!string.IsNullOrEmpty(context.Config.DeviceId))
+                {
+                    var deviceId = context.Config.DeviceId;
+                    var oldRate = context.CachedDevice?.DefaultSampleRate;
+                    FireAndForget(async () =>
+                    {
+                        await Task.Yield();
+                        var refreshedDevice = _backendFactory.GetDevice(deviceId);
+                        if (refreshedDevice != null)
+                        {
+                            context.CachedDevice = refreshedDevice;
+                            if (oldRate != refreshedDevice.DefaultSampleRate)
+                            {
+                                _logger.LogInformation(
+                                    "Player '{Name}' hardware rate updated: {OldRate}Hz -> {NewRate}Hz",
+                                    name, oldRate, refreshedDevice.DefaultSampleRate);
+                            }
+                        }
+                    }, $"Refresh device info for '{name}'", _logger);
+                }
+            }
             else if (state == AudioPipelineState.Buffering)
                 context.State = Models.PlayerState.Buffering;
             else if (state == AudioPipelineState.Idle)
