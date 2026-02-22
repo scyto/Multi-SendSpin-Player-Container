@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-b5db2df
+## Development Build: sha-45ece0a
 
 **Current Dev Build Changes** (recent)
 
+- Fix stale hardware sample rate in stats after cold start (#181)
 - Fix off-profile detection for Intel HDA combined duplex profiles (#139)
 - Fix race condition in device reconnection causing duplicate restarts (#138)
 - Fix off-profile device detection to ignore IsAvailable flag (#137)
@@ -14,7 +15,6 @@
 - Fix vertical alignment of mute button with slider (#133)
 - Fix duplicate toast messages on server reconnection (#132)
 - Fix mobile slider touch: immediate drag response (#131)
-- Add lazy reconnection for FTDI relay boards (#130)
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
