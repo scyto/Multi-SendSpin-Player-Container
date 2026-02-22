@@ -1,20 +1,19 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-f07c6b3
+## Development Build: sha-76b48f7
 
 **Current Dev Build Changes** (recent)
 
-- Merge pull request #175 from scyto/dev
-- Fix off-profile detection for Intel HDA combined duplex profiles (#139)
-- Fix race condition in device reconnection causing duplicate restarts (#138)
-- Fix off-profile device detection to ignore IsAvailable flag (#137)
-- Show off-profile cards in device selector (#136)
-- Fix player state for empty device and diagnostics device matching (#135)
-- Merge pull request #173 from scyto/dev
-- Fix diagnostics summary including custom sinks in audio devices (#134)
-- Fix vertical alignment of mute button with slider (#133)
-- Fix duplicate toast messages on server reconnection (#132)
+- Merge pull request #183 from scyto/bug/fix-hidsharp-ref
+- Restore missing HidSharp NuGet package reference
+- Merge pull request #182 from scyto/dev
+- Fix stale hardware sample rate in stats after cold start (#181)
+- Merge branch 'main' into dev
+- Merge pull request #176 from chrisuthe/dependabot/nuget/src/MultiRoomAudio/Microsoft.AspNetCore.OpenApi-8.0.24
+- Merge pull request #177 from chrisuthe/dependabot/nuget/src/MultiRoomAudio/Microsoft.Extensions.Diagnostics.HealthChecks-10.0.3
+- Bump Microsoft.Extensions.Diagnostics.HealthChecks from 10.0.2 to 10.0.3
+- Bump Microsoft.AspNetCore.OpenApi from 8.0.23 to 8.0.24
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
