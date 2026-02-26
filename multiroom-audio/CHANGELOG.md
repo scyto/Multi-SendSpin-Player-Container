@@ -1,5 +1,90 @@
 # Changelog
 
+## [5.0.0] - USB Device Management, 12V Triggers & Mobile UI
+
+### Highlights
+- **USB Device Hotplug** - Auto-detect USB audio device disconnect/reconnect with grace period for bus glitches
+- **Auto-Resume Playback** - Players automatically resume after device reconnection
+- **12V Trigger Relay Control** - Control amplifier power via FTDI, USB HID, and Modbus/CH340 relay boards
+- **LCUS Relay Board Support** - Added LCUS relay boards alongside existing FTDI, HID, and Modbus boards
+- **Mobile-Responsive UI** - Touch-friendly sliders, responsive layout, and Bootstrap Toast notifications
+- **USB Audio HID Buttons** - Hardware volume/mute button support for USB audio devices
+- **Bluetooth (BlueZ) Support** - Comprehensive card/sink matching for Bluetooth audio devices
+- **Player Mute Control** - Bidirectional mute sync with Music Assistant
+- **Audio Format Selection** - Per-player audio format configuration (flac-48000 default)
+- **SendSpin.SDK 6.1.1** - Major SDK upgrade with improved sync and volume handling
+
+### Added
+- USB audio device hotplug detection with grace period for bus glitches
+- Auto-resume playback after device reconnection with configurable option
+- SignalR notifications for device hotplug events
+- 12V trigger relay control for amplifier zones (FTDI, USB HID, Modbus/CH340, LCUS boards)
+- Multi-board trigger support with startup/shutdown behavior configuration
+- USB audio HID button support for hardware volume/mute controls
+- Comprehensive BlueZ (Bluetooth) support across all card/sink matching
+- Player mute button with bidirectional Music Assistant sync
+- Per-player audio format selection (flac-48000 default for MA compatibility)
+- Real-time volume changes while dragging slider
+- Mobile-responsive UI improvements with touch-friendly interactions
+- Bootstrap Toast notifications replacing inline alerts
+- Diagnostics download feature with progress streaming
+- Clock sync stats and SDK version in player diagnostics
+- Audio hardware clock support for VM-resilient sync timing
+- Stats for Nerds enhancements: hero section, timing source, server time
+- Server-side log download endpoint
+- ALSA capability service for hardware format detection
+- Now Playing track info in Player Details modal
+- Flexible player names with international character support
+- Device metadata for Music Assistant player identification
+- Startup progress overlay with disconnection UX and graceful shutdown
+- Robust reconnection with mDNS watch and WaitingForServer state
+- Mono output mode for remap sinks
+- Profile badge in header, Enter-to-save for aliases
+- Audio Devices accordion UI with Bluetooth indicators
+- Editable alias field for sound cards
+- PulseAudio runtime configuration via environment variables
+- HAOS add-on options exposed as environment variables
+- Anti-oscillation debounce for sync correction
+- Latency lock-in to reduce corrections from PulseAudio jitter
+- AppArmor profile for improved HAOS security rating
+- Identity verification to prevent wrong device after ALSA renumbering
+- Off-profile cards shown in device selector
+- Lazy reconnection for FTDI relay boards
+
+### Fixed
+- Audio crackle/pop at stream start
+- Volume not persisting across container restarts
+- Boot mute preference not applied at startup
+- Device loss detection in pipeline error handler
+- Race condition in device reconnection causing duplicate restarts
+- Off-profile detection for Intel HDA combined duplex profiles
+- Card index mismatch causing wrong device names in UI
+- Audio playing on wrong device when USB is unplugged
+- Deadlock when USB audio device is unplugged
+- Volume delta bug during seek/skip for grouped players
+- Startup volume being overwritten by current volume in edit modal
+- Mute state not syncing with Music Assistant
+- Stats for Nerds blocking at high bitrates (192kHz 24-bit)
+- FTDI OpenByPathHash crash with multiple boards
+- Mobile slider touch: immediate drag response
+- Duplicate toast messages on server reconnection
+- Sink description handling for special characters
+- Kestrel address override warning at startup
+- Various UI fixes: accordion state, alias input, mute button alignment
+
+### Changed
+- SendSpin.SDK upgraded from 5.2.0 to 6.1.1
+- Renamed "Initial Volume" to "Startup Volume"
+- Renamed "Sound Card" to "Audio Device" throughout UI
+- Bus path used as primary key for device/card config persistence
+- Web UI served before service initialization for faster perceived startup
+- Deferred startup orchestration until Kestrel is listening
+- Console logs use HH:mm:ss timestamps in standalone Docker mode
+- 3-point weighted interpolation for sync correction
+- Refactored codebase: extracted utilities, improved thread safety, structured error handling
+
+---
+
 ## [4.0.0] - ARM64 Support & Volume Improvements
 
 ### Highlights

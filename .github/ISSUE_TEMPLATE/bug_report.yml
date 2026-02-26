@@ -112,5 +112,10 @@ body:
     id: logs
     attributes:
       label: Relevant Logs (optional)
-      description: Paste any relevant logs from Settings > Logs in the web UI
-      render: shell
+      description: |
+        Paste logs from Settings > Logs in the web UI, or download the log file and drag it here.
+        You can also attach screenshots.
+      placeholder: |
+        ```
+        Paste your logs here...
+        ```

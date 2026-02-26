@@ -1,29 +1,29 @@
 # Multi-Room Audio Controller
 
 <!-- VERSION_INFO_START -->
-## Latest Release: 4.0.0
+## Latest Release: 5.0.0
 
 
 
 ### Highlights
-- **aarch64 (ARM64) Support** - Now works on Home Assistant Green, Raspberry Pi 4/5, and other ARM64 devices
-- **SendSpin.SDK 6.1.1** - Major SDK upgrade with improved protocol handling
-- **Dual-Volume System** - Separate startup and runtime volume controls for better multi-room sync
-- **Volume Preservation** - Volume now persists across track changes
-- **Boot Mute Control** - Configure sound cards to start muted or unmuted
+- **USB Device Hotplug** - Auto-detect USB audio device disconnect/reconnect with grace period for bus glitches
+- **Auto-Resume Playback** - Players automatically resume after device reconnection
+- **12V Trigger Relay Control** - Control amplifier power via FTDI, USB HID, and Modbus/CH340 relay boards
+- **LCUS Relay Board Support** - Added LCUS relay boards alongside existing FTDI, HID, and Modbus boards
+- **Mobile-Responsive UI** - Touch-friendly sliders, responsive layout, and Bootstrap Toast notifications
+- **USB Audio HID Buttons** - Hardware volume/mute button support for USB audio devices
+- **Bluetooth (BlueZ) Support** - Comprehensive card/sink matching for Bluetooth audio devices
+- **Player Mute Control** - Bidirectional mute sync with Music Assistant
+- **Audio Format Selection** - Per-player audio format configuration (flac-48000 default)
+- **SendSpin.SDK 6.1.1** - Major SDK upgrade with improved sync and volume handling
 
 ### Added
-- ARM64 architecture support for HAOS add-on (Home Assistant Green, Raspberry Pi 4/5)
-- Automatic page reload when backend version changes (detects upgrades automatically)
-- Volume grace period to resolve startup volume sync battles with Music Assistant
-- Boot mute preferences for sound cards (persisted to `card-profiles.yaml`)
-- Real-time mute toggle for sound cards from web UI
-- Controller and metadata roles for player registration
-- Hardware volume slider always visible on player cards
-- Custom sink names for display
-- Automatic reconnection for failed autostart players
-- Onboarding wizard for first-time setup
-- Custom sink creation and management
+- USB audio device hotplug detection with grace period for bus glitches
+- Auto-resume playback after device reconnection with configurable option
+- SignalR notifications for device hotplug events
+- 12V trigger relay control for amplifier zones (FTDI, USB HID, Modbus/CH340, LCUS boards)
+- Multi-board trigger support with startup/shutdown behavior configuration
+- USB audio HID button support for hardware volume/mute controls
 
 [View full changelog](https://github.com/chrisuthe/Multi-SendSpin-Player-Container/blob/main/multiroom-audio/CHANGELOG.md)
 <!-- VERSION_INFO_END -->
