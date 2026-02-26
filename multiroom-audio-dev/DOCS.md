@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-e367114
+## Development Build: sha-5b81d9c
 
 **Current Dev Build Changes** (recent)
 
+- Remove duplicate HidSharp package reference
 - Merge pull request #191 from chrisuthe/claude/fix-relay-serial-port-fRVse
 - Merge remote-tracking branch 'origin/main' into dev
 - Merge pull request #189 from chrisuthe/scyto-patch-1
@@ -14,7 +15,6 @@
 - Restore multiroom-audio/config.yaml to commit 5d448b53be765dec665f624e198e825ec0608a97
 - Revert multiroom-audio/config.yaml to the state before commit af1f957711952b872169c6615d890dd2877ae4f3
 - Revert commit af1f957711952b872169c6615d890dd2877ae4f3
-- Update config.yaml with new multi-room audio controller settings.
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
