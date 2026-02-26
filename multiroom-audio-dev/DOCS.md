@@ -1,10 +1,12 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-76b48f7
+## Development Build: sha-bd2e8b1
 
 **Current Dev Build Changes** (recent)
 
+- Merge pull request #188 from chrisuthe/claude/fix-relay-serial-port-fRVse
+- Remove unused relay_serial_port and relay_devices from HAOS add-on config
 - Merge pull request #183 from scyto/bug/fix-hidsharp-ref
 - Restore missing HidSharp NuGet package reference
 - Merge pull request #182 from scyto/dev
@@ -13,7 +15,6 @@
 - Merge pull request #176 from chrisuthe/dependabot/nuget/src/MultiRoomAudio/Microsoft.AspNetCore.OpenApi-8.0.24
 - Merge pull request #177 from chrisuthe/dependabot/nuget/src/MultiRoomAudio/Microsoft.Extensions.Diagnostics.HealthChecks-10.0.3
 - Bump Microsoft.Extensions.Diagnostics.HealthChecks from 10.0.2 to 10.0.3
-- Bump Microsoft.AspNetCore.OpenApi from 8.0.23 to 8.0.24
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
