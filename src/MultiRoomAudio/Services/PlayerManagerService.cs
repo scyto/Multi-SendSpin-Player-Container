@@ -138,12 +138,14 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     /// Local circular buffer capacity for decompressed PCM audio (in milliseconds).
     ///
     /// This is the TimedAudioBuffer size - how much decoded audio we can hold locally.
-    /// Must be large enough to handle network jitter and decode timing variations.
+    /// Aligned with SDK v7.2.0 default of 30 seconds. Provides ~30s of uninterrupted
+    /// playback during network hiccups and lightweight reconnects. At 48kHz stereo
+    /// float32 this is approximately 11MB per player.
     ///
     /// Note: This is DIFFERENT from ServerAnnouncedBufferCapacityBytes which controls
     /// how far ahead the server sends compressed audio.
     /// </summary>
-    private const int LocalBufferCapacityMs = 8000;
+    private const int LocalBufferCapacityMs = 30_000;
 
     /// <summary>
     /// Target buffer level for playback readiness (in milliseconds).
