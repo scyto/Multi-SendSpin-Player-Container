@@ -324,6 +324,14 @@ app.MapGet("/api", () => Results.Ok(new
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 var environmentService = app.Services.GetRequiredService<EnvironmentService>();
 
+// Load global settings and apply to environment
+var configService = app.Services.GetRequiredService<ConfigurationService>();
+var loadedSettings = configService.LoadSettings(environmentService.SettingsConfigPath);
+if (loadedSettings.BufferSeconds != environmentService.BufferSeconds)
+{
+    environmentService.BufferSeconds = loadedSettings.BufferSeconds;
+}
+
 // Set up custom logging provider for web-visible logs
 var loggingService = app.Services.GetRequiredService<LoggingService>();
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
