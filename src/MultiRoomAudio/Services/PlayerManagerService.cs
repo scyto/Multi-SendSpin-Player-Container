@@ -2189,20 +2189,19 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
             if (args.NewState == ConnectionState.Connected)
             {
                 context.ConnectedAt = DateTime.UtcNow;
+                context.DisconnectedAt = null;  // Clear lightweight reconnect state
                 _logger.LogInformation("VOLUME [GracePeriod] Player '{Name}': grace period started for {Duration}s",
                     name, VolumeGracePeriod.TotalSeconds);
                 _ = PushVolumeToServerAsync(name, context);
             }
 
-            // Handle disconnection - queue for reconnection if appropriate
+            // Handle disconnection - attempt lightweight reconnect first, fall back to full teardown
             if (args.NewState == ConnectionState.Disconnected &&
                 previousState != Models.PlayerState.Stopped &&  // Not user-stopped
                 previousState != Models.PlayerState.Error &&    // Not already errored
                 !_pendingReconnections.ContainsKey(name) &&     // Not already pending server reconnection
                 !_devicePendingPlayers.ContainsKey(name))       // Not waiting for device reconnection
             {
-                _logger.LogWarning("Player '{Name}' disconnected unexpectedly, queuing for reconnection", name);
-
                 // Get the persisted configuration for reconnection
                 var persistedConfig = _config.Players.TryGetValue(name, out var cfg) ? cfg : null;
                 if (persistedConfig == null)
@@ -2211,16 +2210,28 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
                     return;
                 }
 
-                // Fire and forget the reconnection setup (can't await in event handler)
-                FireAndForget(async () =>
+                // First disconnect in this window? Start lightweight reconnect
+                if (context.DisconnectedAt == null)
                 {
-                    // Small delay to let disposal complete
-                    await Task.Delay(100);
+                    context.DisconnectedAt = DateTime.UtcNow;
+                    context.State = Models.PlayerState.Reconnecting;
+                    context.ErrorMessage = "Reconnecting...";
 
-                    // Remove the disconnected player and queue for reconnection
-                    await RemoveAndDisposePlayerAsync(name);
-                    QueueForReconnection(persistedConfig);
-                }, $"Reconnection setup for '{name}'", _logger);
+                    _logger.LogInformation(
+                        "Player '{Name}' disconnected, attempting lightweight reconnect (60s window, audio continues from buffer)",
+                        name);
+
+                    FireAndForget(async () =>
+                    {
+                        await AttemptLightweightReconnectAsync(name, context, persistedConfig);
+                    }, $"Lightweight reconnect for '{name}'", _logger);
+                }
+                else
+                {
+                    // This fires if the lightweight reconnect itself disconnected again
+                    // (e.g., handshake timeout). AttemptLightweightReconnectAsync's retry loop handles this.
+                    _logger.LogDebug("Player '{Name}' disconnected during lightweight reconnect window, retry loop will handle", name);
+                }
             }
 
             // Broadcast status update on connection state change
@@ -3397,6 +3408,124 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     }
 
     #region Reconnection Methods
+
+    /// <summary>
+    /// Attempts lightweight reconnect by reusing existing SDK components.
+    /// Audio continues playing from the 30s buffer while the WebSocket reconnects.
+    /// Falls back to full teardown if the 60s window expires.
+    /// </summary>
+    private async Task AttemptLightweightReconnectAsync(
+        string name, PlayerContext context, PlayerConfiguration config)
+    {
+        var attempt = 0;
+
+        while (context.DisconnectedAt != null &&
+               DateTime.UtcNow - context.DisconnectedAt.Value <= LightweightReconnectTimeout &&
+               !context.Cts.Token.IsCancellationRequested)
+        {
+            attempt++;
+
+            try
+            {
+                // Resolve server URI
+                Uri? serverUri = null;
+                if (!string.IsNullOrEmpty(config.Server))
+                {
+                    serverUri = new Uri(config.Server);
+                }
+                else
+                {
+                    try
+                    {
+                        serverUri = await GetOrDiscoverServerAsync(context.Cts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Player '{Name}': mDNS discovery failed during lightweight reconnect", name);
+                    }
+                }
+
+                if (serverUri == null)
+                {
+                    _logger.LogDebug("Player '{Name}': no server URI found, will retry", name);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Player '{Name}': lightweight reconnect attempt {Attempt} to {Uri}",
+                        name, attempt, serverUri);
+
+                    // Reuse existing client — ConnectAsync creates new WebSocket, re-handshakes,
+                    // SDK resets clock sync and calls Pipeline.NotifyReconnect() automatically
+                    await context.Client.ConnectAsync(serverUri, context.Cts.Token);
+
+                    // Success — clear disconnect timestamp
+                    context.DisconnectedAt = null;
+                    context.ConnectedAt = DateTime.UtcNow;
+                    context.ConnectedAddress = $"{serverUri.Host}:{serverUri.Port}";
+                    context.ServerName = context.Client.ServerName;
+                    context.ErrorMessage = null;
+
+                    _logger.LogInformation(
+                        "Player '{Name}': lightweight reconnect succeeded after {Attempt} attempt(s), pipeline preserved",
+                        name, attempt);
+
+                    _ = BroadcastStatusAsync();
+                    return;
+                }
+            }
+            catch (OperationCanceledException) when (context.Cts.Token.IsCancellationRequested)
+            {
+                _logger.LogDebug("Player '{Name}': lightweight reconnect cancelled", name);
+                return;
+            }
+            catch (Exception ex)
+            {
+                var elapsed = DateTime.UtcNow - context.DisconnectedAt!.Value;
+                var remaining = LightweightReconnectTimeout - elapsed;
+
+                _logger.LogWarning(
+                    "Player '{Name}': lightweight reconnect attempt {Attempt} failed ({Remaining:F0}s remaining): {Message}",
+                    name, attempt, remaining.TotalSeconds, ex.Message);
+
+                if (remaining <= TimeSpan.Zero)
+                    break;
+            }
+
+            // Exponential backoff: 1s, 2s, 4s, 8s... capped at 15s
+            var delay = TimeSpan.FromSeconds(Math.Min(Math.Pow(2, attempt - 1), 15));
+            var timeRemaining = LightweightReconnectTimeout - (DateTime.UtcNow - context.DisconnectedAt!.Value);
+            if (delay > timeRemaining)
+                delay = timeRemaining > TimeSpan.Zero ? timeRemaining : TimeSpan.Zero;
+
+            if (delay > TimeSpan.Zero)
+            {
+                try
+                {
+                    await Task.Delay(delay, context.Cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+        }
+
+        // Lightweight window expired — fall back to full teardown
+        if (context.DisconnectedAt != null)
+        {
+            _logger.LogWarning(
+                "Player '{Name}': lightweight reconnect window expired after {Attempt} attempts, falling back to full teardown",
+                name, attempt);
+
+            context.DisconnectedAt = null;
+
+            // Small delay to let any pending operations complete
+            await Task.Delay(100);
+            await RemoveAndDisposePlayerAsync(name);
+            QueueForReconnection(config);
+        }
+    }
 
     /// <summary>
     /// Queues a player for automatic reconnection.
