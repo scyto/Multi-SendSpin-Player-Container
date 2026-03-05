@@ -404,6 +404,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         public EventHandler<SdkPlayerState>? PlayerStateHandler { get; set; }
         // SDK 7.2.1: Handler for server-pushed sync offset calibration
         public EventHandler<SyncOffsetEventArgs>? SyncOffsetHandler { get; set; }
+        // SDK 7.2.1: Handler for server-cleared artwork
+        public EventHandler? ArtworkClearedHandler { get; set; }
         // Flag to prevent feedback loops when updating server
         public bool IsUpdatingFromServer { get; set; }
     }
@@ -2133,6 +2135,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         context.PlayerStateHandler = CreatePlayerStateHandler(name, context);
         // SDK 7.2.1: SyncOffsetApplied for server-pushed static delay calibration
         context.SyncOffsetHandler = CreateSyncOffsetHandler(name, context);
+        // SDK 7.2.1: ArtworkCleared for clearing stale album art
+        context.ArtworkClearedHandler = CreateArtworkClearedHandler(name, context);
 
         // Subscribe to events
         context.Client.ConnectionStateChanged += context.ConnectionStateHandler;
@@ -2144,6 +2148,8 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
         context.Client.PlayerStateChanged += context.PlayerStateHandler;
         // SDK 7.2.1: Subscribe to SyncOffsetApplied
         context.Client.SyncOffsetApplied += context.SyncOffsetHandler;
+        // SDK 7.2.1: Subscribe to ArtworkCleared
+        context.Client.ArtworkCleared += context.ArtworkClearedHandler;
     }
 
     /// <summary>
@@ -3019,13 +3025,42 @@ public class PlayerManagerService : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
+    /// Creates handler for server-cleared artwork.
+    /// The SDK already sets artwork URL to null internally;
+    /// we just broadcast to UI so stale album art is cleared.
+    /// </summary>
+    /// <remarks>
+    /// SDK 7.2.1 change: ArtworkCleared fires when server sends empty artwork.
+    /// </remarks>
+    private EventHandler CreateArtworkClearedHandler(
+        string name, PlayerContext context)
+    {
+        return (_, _) =>
+        {
+            _logger.LogDebug(
+                "Player '{Name}': artwork cleared by server",
+                name);
+
+            // Broadcast to UI so album art display clears
+            _ = BroadcastStatusAsync();
+        };
+    }
+
+    /// <summary>
     /// Unsubscribes all event handlers from a player context.
     /// Must be called before disposal to prevent memory leaks and access to disposed objects.
     /// </summary>
     private void UnwireEvents(PlayerContext context)
     {
         // Unsubscribe in reverse order of subscription
-        // SDK 7.2.1: Unsubscribe SyncOffsetApplied first (subscribed last)
+        // SDK 7.2.1: Unsubscribe ArtworkCleared first (subscribed last)
+        if (context.ArtworkClearedHandler != null)
+        {
+            context.Client.ArtworkCleared -= context.ArtworkClearedHandler;
+            context.ArtworkClearedHandler = null;
+        }
+
+        // SDK 7.2.1: Unsubscribe SyncOffsetApplied
         if (context.SyncOffsetHandler != null)
         {
             context.Client.SyncOffsetApplied -= context.SyncOffsetHandler;
