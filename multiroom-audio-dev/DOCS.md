@@ -1,20 +1,20 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-45ece0a
+## Development Build: sha-0a8bf69
 
 **Current Dev Build Changes** (recent)
 
-- Fix stale hardware sample rate in stats after cold start (#181)
-- Fix off-profile detection for Intel HDA combined duplex profiles (#139)
-- Fix race condition in device reconnection causing duplicate restarts (#138)
-- Fix off-profile device detection to ignore IsAvailable flag (#137)
-- Show off-profile cards in device selector (#136)
-- Fix player state for empty device and diagnostics device matching (#135)
-- Fix diagnostics summary including custom sinks in audio devices (#134)
-- Fix vertical alignment of mute button with slider (#133)
-- Fix duplicate toast messages on server reconnection (#132)
-- Fix mobile slider touch: immediate drag response (#131)
+- Merge pull request #197 from chrisuthe/task/feat-adjustable-buffer
+- fix: convert PulseAudio config files to LF line endings
+- docs: add BUFFER_SECONDS to environment variables table
+- feat: add System Settings modal with buffer size slider
+- feat: add GET/PUT /api/settings/buffer endpoint
+- feat: add GlobalSettings model and settings.yaml persistence
+- feat: use configurable buffer size from EnvironmentService
+- feat: add BufferSeconds property to EnvironmentService
+- docs: add adjustable buffer implementation plan
+- docs: add adjustable buffer size design document
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
