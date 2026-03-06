@@ -1,10 +1,11 @@
 # Multi-Room Audio (Dev)
 
 <!-- VERSION_INFO_START -->
-## Development Build: sha-0a8bf69
+## Development Build: sha-9f6f9fa
 
 **Current Dev Build Changes** (recent)
 
+- feat: add mono output mode to wizard remap sink UI (#140)
 - Merge pull request #197 from chrisuthe/task/feat-adjustable-buffer
 - fix: convert PulseAudio config files to LF line endings
 - docs: add BUFFER_SECONDS to environment variables table
@@ -14,7 +15,6 @@
 - feat: use configurable buffer size from EnvironmentService
 - feat: add BufferSeconds property to EnvironmentService
 - docs: add adjustable buffer implementation plan
-- docs: add adjustable buffer size design document
 
 > WARNING: This is a development build. For stable releases, use the stable add-on.
 <!-- VERSION_INFO_END -->
